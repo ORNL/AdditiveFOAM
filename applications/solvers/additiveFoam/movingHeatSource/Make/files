@@ -1,0 +1,17 @@
+absorptionModels/absorptionModel/absorptionModel.C
+absorptionModels/absorptionModel/absorptionModelNew.C
+absorptionModels/constant/constantAbsorption.C
+absorptionModels/Kelly/KellyAbsorption.C
+
+segment/segment.C
+
+movingBeam/movingBeam.C
+
+heatSourceModels/heatSourceModel/heatSourceModel.C
+heatSourceModels/heatSourceModel/heatSourceModelNew.C
+heatSourceModels/superGaussian/superGaussian.C
+heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
+
+movingHeatSourceModel/movingHeatSourceModel.C
+
+LIB = $(FOAM_USER_LIBBIN)/libmovingBeamModels

@@ -1,0 +1,28 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     | Website:  https://openfoam.org
+#   \\  /    A nd           | Copyright (C) 2011-2020 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+# Script
+#     Allrun for multiLayer
+#
+# Description
+#   Allrun script created for calling multiLayer utilities.
+#   User must specify path for multiLayer applications
+#
+#------------------------------------------------------------------------------
+cd ${0%/*} || exit 1
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+
+path="$WM_PROJECT_INST_DIR/openfoam-am-dev/applications/utilities/multiLayer"
+
+$path/runLayers -nLayers 5 -nCellsPerLayer 2 -layerThickness 20e-6
+$path/reconstructLayers
+
+#------------------------------------------------------------------------------
