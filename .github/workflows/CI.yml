@@ -24,22 +24,15 @@ jobs:
       - name: Checkout AdditiveFOAM
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
-        env:
-          USER_DIR: ${WM_PROJECT_USER_DIR}
         run: |
-          cd $USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
+          cd applications/solvers/additiveFoam/movingHeatSource
           wmake libso
-          cd $USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
+          cd applications/solvers/additiveFoam
           wmake
       - name: Test AdditiveFOAM
-        working-directory: examples
-        env:
-          USER_DIR: ${WM_PROJECT_USER_DIR}
-          RUN_DIR: ${FOAM_RUN}
+        working-directory: run
         run: |
-          mkdir -p $RUN_DIR/additivefoam
-          cd $RUN_DIR/additivefoam
-          cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
+          cp -r $HOME/AdditiveFOAM/tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created
           blockMesh
