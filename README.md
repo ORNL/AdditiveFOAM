@@ -24,30 +24,46 @@ Some select publications using AdditiveFOAM are provided:
 | [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
 | [tutorials](tutorials)                                     | Tutorial cases based on [NIST AMB2018](https://www.nist.gov/ambench/amb2018-02-description) single tracks |
 
-## Installation
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is accessible to the public through the [OpenFOAM source code repositories at Github](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**, which can be compiled from source code following the steps provided by the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
+## Build and Install
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**, which can be compiled from source code following the steps provided by the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
 
-Once **OpenFOAM-10** is compiled, perform the following steps:
+Alternatively, OpenFOAM-10 can be installed using spack: 
+```spack install openfoam-org@10```
 
-1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_INST_DIR`:
+or used within a Docker container:
+```
+docker pull openfoam/openfoam10-paraview510
+docker run -it openfoam/openfoam10-paraview510
+```
+
+Once **OpenFOAM-10** is available on your system, perform the following steps:
+
+1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_USER_DIR`:
    ```bash
-   cd $WM_PROJECT_INST_DIR
+   cd $WM_PROJECT_USER_DIR
    git clone https://github.com/ORNL/AdditiveFOAM.git
+   ```
+
+   If `git` is not available on your system (in the case of the OpenFOAM docker container) you can instead use:
+   ```bash
+   wget https://github.com/ORNL/AdditiveFOAM/archive/refs/heads/main.tar.gz
+   mkdir AdditiveFOAM
+   tar xzvf main.tar.gz -C AdditiveFOAM --strip-components=1
    ```
 2. Build the `movingHeatSource` library and the `additiveFoam` executable:
    ```bash
-   cd $WM_PROJECT_INST_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
    wmake libso
-   cd $WM_PROJECT_INST_DIR/AdditiveFOAM/applications/solvers/additiveFoam
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
    wmake
    ```
-## Documentation
+## Run AdditiveFOAM
 To run an AdditiveFOAM simulation, it is recommended to perform the following steps:
 1. Prepare the case directory structure using a provided template:
    ```bash
    mkdir -p $FOAM_RUN/additivefoam
    cd $FOAM_RUN/additivefoam
-   cp -r $WM_PROJECT_INST_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
+   cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
    cd userCase
    ```
 2. Modify the necessary input files according to your simulation requirements. These files include:
