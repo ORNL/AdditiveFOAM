@@ -29,16 +29,16 @@ AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfo
 
 Once **OpenFOAM-10** is compiled, perform the following steps:
 
-1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_INST_DIR`:
+1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_USER_DIR`:
    ```bash
-   cd $WM_PROJECT_INST_DIR
+   cd $WM_PROJECT_USER_DIR
    git clone https://github.com/ORNL/AdditiveFOAM.git
    ```
 2. Build the `movingHeatSource` library and the `additiveFoam` executable:
    ```bash
-   cd $WM_PROJECT_INST_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
    wmake libso
-   cd $WM_PROJECT_INST_DIR/AdditiveFOAM/applications/solvers/additiveFoam
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
    wmake
    ```
 ## Documentation
@@ -47,7 +47,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    ```bash
    mkdir -p $FOAM_RUN/additivefoam
    cd $FOAM_RUN/additivefoam
-   cp -r $WM_PROJECT_INST_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
+   cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
    cd userCase
    ```
 2. Modify the necessary input files according to your simulation requirements. These files include:
