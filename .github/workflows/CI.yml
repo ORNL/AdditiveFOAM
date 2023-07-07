@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          source /opt/openfoam10/etc/bashrc 
+          . /opt/openfoam10/etc/bashrc
           cd applications/solvers/additiveFoam/movingHeatSource
           wmake libso
           cd applications/solvers/additiveFoam
@@ -33,7 +33,7 @@ jobs:
       - name: Test AdditiveFOAM
         working-directory: run
         run: |
-          source /opt/openfoam10/etc/bashrc 
+          . /opt/openfoam10/etc/bashrc
           cp -r $HOME/AdditiveFOAM/tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created
