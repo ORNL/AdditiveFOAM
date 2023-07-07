@@ -32,10 +32,9 @@ jobs:
           cd applications/solvers/additiveFoam
           wmake
       - name: Test AdditiveFOAM
-        working-directory: run
         run: |
           . /opt/openfoam10/etc/bashrc
-          cp -r ../tutorials/AMB2018-02-B userCase
+          cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created
           blockMesh
