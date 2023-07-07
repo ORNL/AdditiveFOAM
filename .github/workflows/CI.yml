@@ -26,15 +26,15 @@ jobs:
       - name: Build AdditiveFOAM
         run: |
           . /opt/openfoam10/etc/bashrc
-          cd applications/solvers/additiveFoam/movingHeatSource
+          cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
           wmake libso
-          cd applications/solvers/additiveFoam
+          cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
           wmake
       - name: Test AdditiveFOAM
         working-directory: run
         run: |
           . /opt/openfoam10/etc/bashrc
-          cp -r $HOME/AdditiveFOAM/tutorials/AMB2018-02-B userCase
+          cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created
           blockMesh
