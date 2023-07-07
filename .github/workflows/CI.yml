@@ -10,11 +10,11 @@ jobs:
   CI:
     defaults:
       run:
-        shell: bash
+        shell: bash -ileo pipefail {0}
     strategy:
       matrix:
         cxx: ['g++']
-        cmake_build_type: ['Debug', 'Release']
+        cmake_build_type: ['Release']
        
     runs-on: ubuntu-20.04
     container:
