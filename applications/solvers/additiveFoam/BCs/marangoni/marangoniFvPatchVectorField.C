@@ -44,7 +44,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 :
     transformFvPatchField<vector>(p, iF),
     dSigmadT_(0.0),
-    Tmax_(0.0)
+    Tmax_(GREAT)
 {}
 
 
