@@ -44,7 +44,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 :
     transformFvPatchField<vector>(p, iF),
     dSigmadT_(0.0),
-    Tmax_(0.0)
+    Tmax_(GREAT)
 {}
 
 
@@ -57,7 +57,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 :
     transformFvPatchField<vector>(p, iF),
     dSigmadT_(dict.lookup<scalar>("dSigmadT")),
-    Tmax_(dict.lookupOrDefault<scalar>("Tmax", 0.0))
+    Tmax_(dict.lookupOrDefault<scalar>("Tmax", GREAT))
 {
     evaluate();
 }
