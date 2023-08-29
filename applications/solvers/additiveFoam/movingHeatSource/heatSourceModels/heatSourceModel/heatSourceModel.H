@@ -82,6 +82,15 @@ protected:
         
         //- Pointer to mesh info
         const fvMesh& mesh_;
+        
+        //- Flag to enable/disable power correction (default TRUE)
+        Switch normalize_;
+        
+        //- Name of patch that beam scans over
+        word scanPatchName_;
+        
+        //- List of scan patch bounding points
+        labelList scanPatchPoints_;
 
         //- Flag for transient or static heat source dimensions
         Switch transient_;
@@ -187,7 +196,17 @@ public:
         }
 
         //- Return the volumetric heating field
-        virtual tmp<volScalarField> qDot() const = 0;
+        virtual tmp<volScalarField> qDot() = 0;
+        
+        //- Return D4sigma value of beam shape
+        virtual scalar D4sigma() const = 0;
+        
+        //- Correct integrated power
+        virtual void correctPower
+        (
+            volScalarField& qDot,
+            const scalar& eta
+        );
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

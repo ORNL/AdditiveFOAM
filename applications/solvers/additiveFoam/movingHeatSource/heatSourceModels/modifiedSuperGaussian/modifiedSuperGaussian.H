@@ -94,7 +94,10 @@ public:
     // Member Functions
 
         //- Return the source volumetric heating
-        virtual tmp<volScalarField> qDot() const;
+        virtual tmp<volScalarField> qDot();
+        
+        //- Return the D4sigma value of the modifiedSuperGaussian
+        virtual scalar D4sigma() const;
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

@@ -61,7 +61,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 Foam::tmp<Foam::volScalarField>
-Foam::heatSourceModels::modifiedSuperGaussian::qDot() const
+Foam::heatSourceModels::modifiedSuperGaussian::qDot()
 {
     tmp<volScalarField> tqDot
     (
@@ -128,7 +128,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::qDot() const
         {
             point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
 
-            if (d.z() < s.z())
+            if ((mag(d) < D4sigma()/2.0) && (d.z() < s.z()))
             {                
                 scalar g = Foam::pow(1.0 - Foam::pow(d.z() / s.z(), m_), 1.0/m_);
 
@@ -148,7 +148,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::qDot() const
             {
                 point d = cmptMag(faceCentres[facei] - movingBeam_->position());
 
-                if (d.z() < s.z())
+                if ((mag(d) < D4sigma()/2.0) && (d.z() < s.z()))
                 {
                     scalar g =
                         Foam::pow
@@ -165,22 +165,27 @@ Foam::heatSourceModels::modifiedSuperGaussian::qDot() const
                 }
             }
         }
-
+        
+        //- Assemble qDot from normalized power and face weights
         qDot_ = I0 * fvc::average(factor);
-
-        //- Rescale the total integrated power to the applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value() / eta_;
-
-        if (integratedPower_ > small)
-        {
-            qDot_ *= power_ / integratedPower_;
-        }
-
         qDot_.correctBoundaryConditions();
+        
+        //- Perform power correction for coarse meshes
+        if (normalize_)
+        {
+            correctPower(qDot_, eta_);
+        }
     }
 
     return tqDot;
 }
+
+
+scalar Foam::heatSourceModels::modifiedSuperGaussian::D4sigma() const
+{
+    return 2.0 * max(dimensions_.x(), dimensions_.y());
+}
+
 
 bool Foam::heatSourceModels::modifiedSuperGaussian::read()
 {

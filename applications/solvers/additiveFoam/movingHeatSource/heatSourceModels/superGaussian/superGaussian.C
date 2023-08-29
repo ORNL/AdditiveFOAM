@@ -61,7 +61,6 @@ Foam::heatSourceModels::superGaussian::superGaussian
 
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModels::superGaussian::qDot()
-const
 {
     tmp<volScalarField> tqDot
     (
@@ -119,10 +118,13 @@ const
         for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
         {
             point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
+            
+            if (mag(d) < D4sigma()/2.0)
+            {
+                scalar f = magSqr(cmptDivide(d, s));
 
-            scalar f = magSqr(cmptDivide(d, s));
-
-            factor[facei] = Foam::exp(-Foam::pow(f, k_/2.0));
+                factor[facei] = Foam::exp(-Foam::pow(f, k_/2.0));
+            }
         }
 
         surfaceScalarField::Boundary& bFactor = factor.boundaryFieldRef();
@@ -132,28 +134,36 @@ const
             forAll(faceCentres, facei)
             {
                 point d = cmptMag(faceCentres[facei] - movingBeam_->position());
+                
+                if (mag(d) < D4sigma()/2.0)
+                {
+                    scalar f = magSqr(cmptDivide(d, s));
 
-                scalar f = magSqr(cmptDivide(d, s));
-
-                bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
+                    bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
+                }
             }
         }
 
+        //- Assemble qDot from normalized power and face weights
         qDot_ = I0 * fvc::average(factor);
-
-        //- Rescale the total integrated power to the applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value() / eta_;
-
-        if (integratedPower_ > small)
-        {
-            qDot_ *= power_ / integratedPower_;
-        }
-
         qDot_.correctBoundaryConditions();
+        
+        //- Perform power correction for coarse meshes
+        if (normalize_)
+        {
+            correctPower(qDot_, eta_);
+        }
     }
 
     return tqDot;
 }
+
+
+scalar Foam::heatSourceModels::superGaussian::D4sigma() const
+{
+    return 2.0 * max(dimensions_.x(), dimensions_.y());
+}
+
 
 bool Foam::heatSourceModels::superGaussian::read()
 {
