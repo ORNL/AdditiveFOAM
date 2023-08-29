@@ -127,37 +127,62 @@ Foam::heatSourceModel::heatSourceModel
             procScanPatchPoints.append(gMeshPoints[localScanPatchPoints[pointi]]);
         }
         
-        labelListList gatheredProcScanPatchPoints(Pstream::nProcs());
+        //- Create and gather list of lists for storing all processor scan patch points
+        labelListList listProcScanPatchPoints(Pstream::nProcs());
+        listProcScanPatchPoints[Pstream::myProcNo()] = procScanPatchPoints;
+        Pstream::gatherList(listProcScanPatchPoints);
         
-        gatheredProcScanPatchPoints[Pstream::myProcNo()] = procScanPatchPoints;
+        labelList tempList;
         
-        //- Gather procScanPatchPoints from all processors
-        Pstream::gatherList(gatheredProcScanPatchPoints);
-        
-        //- Sort gathered list
-        sort(gatheredProcScanPatchPoints);
-        
-        //- Loop over entries and check for duplicates
-        forAll(gatheredProcScanPatchPoints, pointi)
-        {
-            //- Check if current point is equal to previous point
-            if ((pointi > 0) && (gatheredProcScanPatchPoints[pointi] == gatheredProcScanPatchPoints[pointi-1]))
+        //- Loop over each list in the list of lists
+        forAll (listProcScanPatchPoints, listi)
+        {            
+            Info << "Adding points from processor " << listi << endl;
+            
+            labelList& procListi = listProcScanPatchPoints[listi];
+            
+            forAll(procListi, pointi)
             {
-                //- Don't add to new list if it is
-            }
-            //- Check if current point is equal to next point
-            else if ((pointi < gatheredProcScanPatchPoints.size() - 1) && (gatheredProcScanPatchPoints[pointi] == gatheredProcScanPatchPoints[pointi+1]))
-            {
-                //- Also don't add to new list if it is
-            }
-            //- Add current entry to final list if not equal to previous or next
-            else
-            {
-                scanPatchPoints_.append(gatheredProcScanPatchPoints[pointi]);
+                tempList.append(procListi[pointi]);
+                
+                Info << "    Appending procListi entry " << pointi << "with global point value " << procListi[pointi] << "to tempList" << endl;
             }
         }
         
-        Pstream::scatterList(scanPatchPoints_);
+        //- Sort temporary list
+        sort(tempList);
+        
+        Info << "Temp list: " << endl;
+        Info << tempList << endl;
+        
+        //- Remove duplicate entries from tempList
+        forAll (tempList, labeli)
+        {
+            Info << "Checking tempList entry " << labeli << endl;
+            //- Check if current entry is equal to previous entry
+            if ((labeli > 0) && (tempList[labeli] == tempList[labeli-1]))
+            {
+                //- Don't do anything
+                Info << "Current entry equal to previous entry." << endl;
+            }
+            //- Check if current entry is equal to next entry
+            else if ((labeli < tempList.size()-1) && (tempList[labeli] == tempList[labeli+1]))
+            {
+                //- Still don't do anything
+                Info << "Current entry equal to next entry." << endl;
+            }
+            //- Append label to real list if not duplicate
+            else
+            {
+                Info << "Appending tempList point " << labeli << " with global point id " << tempList[labeli] << " to scanPatchPoints_" << endl;
+                scanPatchPoints_.append(tempList[labeli]);
+            }
+        }
+        
+        forAll (scanPatchPoints_, pointi)
+        {
+            Info << "scanPatchPoint_ index " << pointi << " has global index " << scanPatchPoints_[pointi] << " with coordinates " << mesh_.points()[scanPatchPoints_[pointi]] << endl;
+        }
     }
 }
 
