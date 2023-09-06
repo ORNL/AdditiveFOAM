@@ -89,6 +89,8 @@ Foam::heatSourceModel::heatSourceModel
     mesh_(mesh),
     scanPatchName_(""),
     scanPatchPoints_(),
+    combinedScanPatchPoints_(),
+    combinedScanPatchPointCoords_(),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
 {
@@ -156,6 +158,68 @@ Foam::heatSourceModel::heatSourceModel
             }
         }
         
+        
+        
+        //- Gather list across processors
+        List<scalar> scanPatchPoints(scanPatchPoints_.size());
+        List<point> scanPatchPointCoords(scanPatchPoints_.size());
+        
+        //- Copy contents
+        for (int i = 0; i < scanPatchPoints_.size(); ++i)
+        {
+            scanPatchPoints[i] = scanPatchPoints_[i];
+            scanPatchPointCoords[i] = mesh_.points()[scanPatchPoints_[i]];
+        }
+        
+        //- Create list of lists of the scan patch points
+        List<List<scalar>> gatheredScanPatchPoints(Pstream::nProcs());
+        List<List<point>> gatheredScanPatchPointCoords(Pstream::nProcs());
+        
+        //- Populate and gather list onto master processor
+        gatheredScanPatchPoints[Pstream::myProcNo()] = scanPatchPoints;
+        Pstream::gatherList(gatheredScanPatchPoints);
+        
+        gatheredScanPatchPointCoords[Pstream::myProcNo()] = scanPatchPointCoords;
+        Pstream::gatherList(gatheredScanPatchPointCoords);
+        
+        Info << "Dumping gatheredScanPatchPoints" << endl;
+        
+        Info << gatheredScanPatchPoints << endl;
+        
+        Info << "End dump of gathered points" << endl;
+        
+        //- Scatter list back onto individual processors
+        //Pstream::listCombineScatter(gatheredScanPatchPoints);
+        
+        //List<label> combinedScanPatchPoints;
+        
+        for (int i = 0; i < gatheredScanPatchPoints.size(); i++)
+        {
+            for (int j = 0; j < gatheredScanPatchPoints[i].size(); j++)
+            {
+                combinedScanPatchPoints_.append(gatheredScanPatchPoints[i][j]);
+                combinedScanPatchPointCoords_.append(gatheredScanPatchPointCoords[i][j]);
+            }
+        }
+
+        
+        Info << "Dumping combinedScanPatchPoints" << endl;
+        
+        Info << combinedScanPatchPoints_ << endl;
+        
+        Info << "End dump of combined points" << endl;
+        
+        Info << "Dumping combinedScanPatchPointCoords" << endl;
+        
+        Info << combinedScanPatchPointCoords_ << endl;
+        
+        Info << "End dump of combined pont coords" << endl;
+        
+        //Pstream::scatterList(combinedScanPatchPoints_);
+
+
+
+
         //- Write points to csv file
         const fileName pointsPath
         (
@@ -168,6 +232,17 @@ Foam::heatSourceModel::heatSourceModel
         (
             pointsPath + "/" + "points_" + Foam::name(Pstream::myProcNo()) + ".csv"
         );
+        
+        OFstream gos
+        (
+            pointsPath + "/" + "gatheredPoints.csv"
+        );
+        
+        for (int i = 0; i < combinedScanPatchPoints_.size(); i++)
+        {
+            const point& currPoint = mesh_.points()[combinedScanPatchPoints_[i]];
+            gos << currPoint.x() << " , " << currPoint.y() << " , " << currPoint.z() << "\n";
+        }
         
         for (int i=0; i < scanPatchPoints_.size(); i++)
         {
@@ -208,9 +283,13 @@ void Foam::heatSourceModel::correctPower
         //- Loop over points to determine if beam center is within 2sigma of
         //  any patch boundary points
         const pointField& points = mesh_.points();
-        forAll (scanPatchPoints_, pointi)
+        //forAll (scanPatchPoints_, pointi)
+        //forAll (combinedScanPatchPoints_, pointi)
+        forAll (combinedScanPatchPointCoords_, pointi)
         {
-            scalar bDist = mag(position - points[scanPatchPoints_[pointi]]);
+            //scalar bDist = mag(position - points[scanPatchPoints_[pointi]]);
+            //scalar bDist = mag(position - points[combinedScanPatchPoints_[pointi]]);
+            scalar bDist = mag(position - combinedScanPatchPointCoords_[pointi]);
             
             if (bDist < minWallDist)
             {
