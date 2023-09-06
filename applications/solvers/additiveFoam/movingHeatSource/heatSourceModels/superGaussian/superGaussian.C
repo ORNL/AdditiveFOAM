@@ -141,10 +141,6 @@ Foam::heatSourceModels::superGaussian::qDot()
 
                     bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
                 }
-                else
-                {
-                    bFactor[patchi][facei] = 0.0;
-                }
             }
         }
 
