@@ -39,4 +39,4 @@ jobs:
           # FIXME: use built-in "additiveFoam" smaller case when created
           blockMesh
           decomposePar
-          mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel > log.additiveFoam
+          mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel
