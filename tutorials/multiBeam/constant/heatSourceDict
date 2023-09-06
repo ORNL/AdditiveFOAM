@@ -21,6 +21,10 @@ sources (beam1 beam2);
 beam1
 {
     pathName            scanPath_1;
+    
+    normalize           true;
+    
+    scanPatchName       top;
  
     absorptionModel     constant;    
     constantCoeffs
@@ -41,7 +45,11 @@ beam1
 beam2
 {
     pathName            scanPath_2;
- 
+     
+    normalize           true;
+    
+    scanPatchName       top;
+    
     absorptionModel     Kelly;    
     KellyCoeffs
     {

@@ -118,72 +118,67 @@ Foam::heatSourceModel::heatSourceModel
         
         //- Create list of LOCALLY ordered boundary points
         const labelList& localScanPatchPoints = scanPatch.boundaryPoints();
-        labelList procScanPatchPoints;
+        const labelList& gMeshPoints = scanPatch.meshPoints();
         
         //- Append each LOCAL boundary point to a list of PROCESSOR boundary points
         forAll (localScanPatchPoints, pointi)
         {
-            const labelList& gMeshPoints = scanPatch.meshPoints();
-            procScanPatchPoints.append(gMeshPoints[localScanPatchPoints[pointi]]);
-        }
-        
-        //- Create and gather list of lists for storing all processor scan patch points
-        labelListList listProcScanPatchPoints(Pstream::nProcs());
-        listProcScanPatchPoints[Pstream::myProcNo()] = procScanPatchPoints;
-        Pstream::gatherList(listProcScanPatchPoints);
-        
-        labelList tempList;
-        
-        //- Loop over each list in the list of lists
-        forAll (listProcScanPatchPoints, listi)
-        {            
-            Info << "Adding points from processor " << listi << endl;
+            //procScanPatchPoints.append(gMeshPoints[localScanPatchPoints[pointi]]);
             
-            labelList& procListi = listProcScanPatchPoints[listi];
+            //- Get list of GLOBAL faces from GLOBAL point label
+            const labelList& pointFaces = mesh_.pointFaces()[gMeshPoints[localScanPatchPoints[pointi]]];
             
-            forAll(procListi, pointi)
+            bool isProcFace = false;
+            
+            //- Check to see if any face connected to the point is coupled
+            forAll(pointFaces, facei)
+            {              
+                //- Get patch of current face
+                const label& currPatchID = mesh_.boundaryMesh().whichPatch(pointFaces[facei]);
+
+                //- If a valid ID is obtained (i.e. the face is not internal), test if coupled
+                if (currPatchID >= 0)
+                {
+                    const polyPatch& currPatch = mesh_.boundaryMesh()[currPatchID];
+                    
+                    if (currPatch.coupled())
+                    {
+                        isProcFace = true;
+                        break;
+                    }
+                }
+            }
+            
+            //- If the point is not connected to a coupled face, add it to the list
+            if (!isProcFace)
             {
-                tempList.append(procListi[pointi]);
-                
-                Info << "    Appending procListi entry " << pointi << "with global point value " << procListi[pointi] << "to tempList" << endl;
+                scanPatchPoints_.append(gMeshPoints[localScanPatchPoints[pointi]]);
             }
         }
         
-        //- Sort temporary list
-        sort(tempList);
+        //- Write points to csv file
+        const fileName pointsPath
+        (
+            mesh_.time().rootPath()/mesh_.time().globalCaseName()/"procPoints"
+        );
         
-        Info << "Temp list: " << endl;
-        Info << tempList << endl;
+        mkDir(pointsPath);
         
-        //- Remove duplicate entries from tempList
-        forAll (tempList, labeli)
+        OFstream os
+        (
+            pointsPath + "/" + "points_" + Foam::name(Pstream::myProcNo()) + ".csv"
+        );
+        
+        for (int i=0; i < scanPatchPoints_.size(); i++)
         {
-            Info << "Checking tempList entry " << labeli << endl;
-            //- Check if current entry is equal to previous entry
-            if ((labeli > 0) && (tempList[labeli] == tempList[labeli-1]))
-            {
-                //- Don't do anything
-                Info << "Current entry equal to previous entry." << endl;
-            }
-            //- Check if current entry is equal to next entry
-            else if ((labeli < tempList.size()-1) && (tempList[labeli] == tempList[labeli+1]))
-            {
-                //- Still don't do anything
-                Info << "Current entry equal to next entry." << endl;
-            }
-            //- Append label to real list if not duplicate
-            else
-            {
-                Info << "Appending tempList point " << labeli << " with global point id " << tempList[labeli] << " to scanPatchPoints_" << endl;
-                scanPatchPoints_.append(tempList[labeli]);
-            }
+            //Info << "Finding currPointLabel" << endl;
+            //const label& currPointLabel = scanPatchPoints_[i];
+            Info << "Finding currPoint" << endl;
+            const point& currPoint = mesh_.points()[scanPatchPoints_[i]]; //mesh_.points()[gMeshPoints[currPointLabel]];
+            Info << "Writing to os" << endl;
+            os << currPoint.x() << " , " << currPoint.y() << " , " << currPoint.z() << "\n";
         }
-        
-        forAll (scanPatchPoints_, pointi)
-        {
-            Info << "scanPatchPoint_ index " << pointi << " has global index " << scanPatchPoints_[pointi] << " with coordinates " << mesh_.points()[scanPatchPoints_[pointi]] << endl;
-        }
-    }
+    }      
 }
 
 
@@ -191,12 +186,13 @@ Foam::heatSourceModel::heatSourceModel
 
 void Foam::heatSourceModel::correctPower
 (
-    volScalarField& qDot,
-    const scalar& eta
+    volScalarField& qDot_,
+    const scalar& eta_
 )
-{    
+{   
+    Info << "Correcting power" << endl;
     //- Calculate total resolved power
-    scalar resPower = (fvc::domainIntegrate(qDot)).value() / eta;
+    scalar resPower = (fvc::domainIntegrate(qDot_)).value() / eta_;
     
     //- Only normalize if resolved power is > 0
     if (resPower > SMALL)
@@ -214,7 +210,6 @@ void Foam::heatSourceModel::correctPower
         const pointField& points = mesh_.points();
         forAll (scanPatchPoints_, pointi)
         {
-            Info << "Checking scanPatchPoints entry " << pointi << " with coordinates " << points[scanPatchPoints_[pointi]] << endl;
             scalar bDist = mag(position - points[scanPatchPoints_[pointi]]);
             
             if (bDist < minWallDist)
@@ -242,8 +237,14 @@ void Foam::heatSourceModel::correctPower
             scalar expPower = movingBeam_->power();
             
             //- Normalize qDot
-            qDot *= expPower / resPower;
-            qDot.correctBoundaryConditions();
+            qDot_ *= expPower / resPower;
+            qDot_.correctBoundaryConditions();
+        }
+        else
+        {
+            Info << "Not correcting qDot." << endl;
+            qDot_ *= 1.0;
+            qDot_.correctBoundaryConditions();
         }
     }
 }

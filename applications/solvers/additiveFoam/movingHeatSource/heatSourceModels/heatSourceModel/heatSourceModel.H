@@ -204,8 +204,8 @@ public:
         //- Correct integrated power
         virtual void correctPower
         (
-            volScalarField& qDot,
-            const scalar& eta
+            volScalarField& qDot_,
+            const scalar& eta_
         );
 
         //- Read the heat source dictionary

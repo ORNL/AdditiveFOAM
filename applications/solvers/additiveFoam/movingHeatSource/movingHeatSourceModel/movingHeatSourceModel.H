@@ -90,6 +90,7 @@ public:
         //- Return const access to the total volumetric heating
         const volScalarField& qDot() const
         {
+            Info << "returning qDot_" << endl;
             return qDot_;
         }
         

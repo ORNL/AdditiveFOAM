@@ -19,7 +19,11 @@ sources (beam);
 
 beam
 {
-    pathName            scanPath;    
+    pathName            scanPath;  
+    
+    normalize           true;
+    
+    scanPatchName       top;  
 
     absorptionModel     constant;
     
