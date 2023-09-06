@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  CI:
+    defaults:
+      run:
+        shell: bash -ileo pipefail {0}
+    strategy:
+      matrix:
+        cxx: ['g++']
+        cmake_build_type: ['Release']
+       
+    runs-on: ubuntu-20.04
+    container:
+      image: docker.io/openfoam/openfoam10-paraview510
+      options: --user root
+    steps:
+      - name: Checkout AdditiveFOAM
+        uses: actions/checkout@v2
+      - name: Build AdditiveFOAM
+        run: |
+          . /opt/openfoam10/etc/bashrc
+          cd applications/solvers/additiveFoam/movingHeatSource
+          wmake libso
+          cd -
+          cd applications/solvers/additiveFoam
+          wmake
+      - name: Test AdditiveFOAM
+        run: |
+          . /opt/openfoam10/etc/bashrc
+          cp -r tutorials/AMB2018-02-B userCase
+          cd userCase
+          # FIXME: use built-in "additiveFoam" smaller case when created
+          blockMesh
+          decomposePar
+          mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel
