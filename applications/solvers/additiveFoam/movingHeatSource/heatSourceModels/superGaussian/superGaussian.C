@@ -62,7 +62,6 @@ Foam::heatSourceModels::superGaussian::superGaussian
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModels::superGaussian::qDot()
 {
-    Info << "entering supergaussian qdot" << endl;
     tmp<volScalarField> tqDot
     (
         new volScalarField
@@ -84,8 +83,7 @@ Foam::heatSourceModels::superGaussian::qDot()
     const scalar power_ = movingBeam_->power();
     
     if (power_ > small)
-    {        
-        Info << "power > small" << endl;
+    {
         const scalar AR = 
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
         
@@ -117,7 +115,6 @@ Foam::heatSourceModels::superGaussian::qDot()
             dimensionedScalar("Zero", dimless, 0.0)          
         );
 
-        Info << "for loop over faces" << endl;
         for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
         {
             point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
@@ -150,7 +147,7 @@ Foam::heatSourceModels::superGaussian::qDot()
                 }
             }
         }
-        Info << "assembling qdot" << endl;
+
         //- Assemble qDot from normalized power and face weights
         qDot_ = I0 * fvc::average(factor);
         qDot_.correctBoundaryConditions();

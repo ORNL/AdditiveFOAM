@@ -4,8 +4,6 @@ scalar nThermoCorr =
 
 scalar thermoTol = 
     pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
-    
-Info << "integrating qdot" << endl;
 
 // Integrate the total power input to domain
 const scalar totalPower = fvc::domainIntegrate(sources.qDot()).value();

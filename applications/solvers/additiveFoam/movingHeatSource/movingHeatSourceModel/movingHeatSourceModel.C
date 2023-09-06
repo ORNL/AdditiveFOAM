@@ -116,7 +116,6 @@ bool Foam::movingHeatSourceModel::transientExists()
 
 void Foam::movingHeatSourceModel::update()
 {
-    Info << "Entering movingHeatSourceModel::update()" << endl;
     //- Update the moving heat source shape for each transient case
     if ( transientExists() )
     {

@@ -90,7 +90,11 @@ protected:
         word scanPatchName_;
         
         //- List of scan patch bounding points
-        List<point> scanPatchPoints_;
+        labelList scanPatchPoints_;
+        
+        List<label> combinedScanPatchPoints_;
+        
+        List<point> combinedScanPatchPointCoords_;
 
         //- Flag for transient or static heat source dimensions
         Switch transient_;

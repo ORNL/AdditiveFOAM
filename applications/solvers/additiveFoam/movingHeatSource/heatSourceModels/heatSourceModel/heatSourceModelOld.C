@@ -89,6 +89,8 @@ Foam::heatSourceModel::heatSourceModel
     mesh_(mesh),
     scanPatchName_(""),
     scanPatchPoints_(),
+    combinedScanPatchPoints_(),
+    combinedScanPatchPointCoords_(),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
 {
@@ -120,12 +122,11 @@ Foam::heatSourceModel::heatSourceModel
         const labelList& localScanPatchPoints = scanPatch.boundaryPoints();
         const labelList& gMeshPoints = scanPatch.meshPoints();
         
-        //- Create list of points on myProc
-        List<point> myProcScanPatchPoints;
-        
         //- Append each LOCAL boundary point to a list of PROCESSOR boundary points
         forAll (localScanPatchPoints, pointi)
         {
+            //procScanPatchPoints.append(gMeshPoints[localScanPatchPoints[pointi]]);
+            
             //- Get list of GLOBAL faces from GLOBAL point label
             const labelList& pointFaces = mesh_.pointFaces()[gMeshPoints[localScanPatchPoints[pointi]]];
             
@@ -150,31 +151,107 @@ Foam::heatSourceModel::heatSourceModel
                 }
             }
             
-            //- If the point is not connected to a coupled face, add the coordinates of the point
-            //  to the list of processor scan patch points
+            //- If the point is not connected to a coupled face, add it to the list
             if (!isProcFace)
             {
-                myProcScanPatchPoints.append
-                (
-                    mesh_.points()[gMeshPoints[localScanPatchPoints[pointi]]]
-                );
+                scanPatchPoints_.append(gMeshPoints[localScanPatchPoints[pointi]]);
             }
         }
         
+        
+        
+        //- Gather list across processors
+        List<scalar> scanPatchPoints(scanPatchPoints_.size());
+        List<point> scanPatchPointCoords(scanPatchPoints_.size());
+        
+        //- Copy contents
+        for (int i = 0; i < scanPatchPoints_.size(); ++i)
+        {
+            scanPatchPoints[i] = scanPatchPoints_[i];
+            scanPatchPointCoords[i] = mesh_.points()[scanPatchPoints_[i]];
+        }
+        
         //- Create list of lists of the scan patch points
-        List<List<point>> gatheredScanPatchPoints(Pstream::nProcs());
+        List<List<scalar>> gatheredScanPatchPoints(Pstream::nProcs());
+        List<List<point>> gatheredScanPatchPointCoords(Pstream::nProcs());
         
         //- Populate and gather list onto master processor
-        gatheredScanPatchPoints[Pstream::myProcNo()] = myProcScanPatchPoints;
+        gatheredScanPatchPoints[Pstream::myProcNo()] = scanPatchPoints;
         Pstream::gatherList(gatheredScanPatchPoints);
         
-        //- Combine list from all processors into single list
-        for (int i = 0; i < Pstream::nProcs(); i++)
+        gatheredScanPatchPointCoords[Pstream::myProcNo()] = scanPatchPointCoords;
+        Pstream::gatherList(gatheredScanPatchPointCoords);
+        
+        Info << "Dumping gatheredScanPatchPoints" << endl;
+        
+        Info << gatheredScanPatchPoints << endl;
+        
+        Info << "End dump of gathered points" << endl;
+        
+        //- Scatter list back onto individual processors
+        //Pstream::listCombineScatter(gatheredScanPatchPoints);
+        
+        //List<label> combinedScanPatchPoints;
+        
+        for (int i = 0; i < gatheredScanPatchPoints.size(); i++)
         {
             for (int j = 0; j < gatheredScanPatchPoints[i].size(); j++)
             {
-                scanPatchPoints_.append(gatheredScanPatchPoints[i][j]);
+                combinedScanPatchPoints_.append(gatheredScanPatchPoints[i][j]);
+                combinedScanPatchPointCoords_.append(gatheredScanPatchPointCoords[i][j]);
             }
+        }
+
+        
+        Info << "Dumping combinedScanPatchPoints" << endl;
+        
+        Info << combinedScanPatchPoints_ << endl;
+        
+        Info << "End dump of combined points" << endl;
+        
+        Info << "Dumping combinedScanPatchPointCoords" << endl;
+        
+        Info << combinedScanPatchPointCoords_ << endl;
+        
+        Info << "End dump of combined pont coords" << endl;
+        
+        //Pstream::scatterList(combinedScanPatchPoints_);
+
+
+
+
+        //- Write points to csv file
+        const fileName pointsPath
+        (
+            mesh_.time().rootPath()/mesh_.time().globalCaseName()/"procPoints"
+        );
+        
+        mkDir(pointsPath);
+        
+        OFstream os
+        (
+            pointsPath + "/" + "points_" + Foam::name(Pstream::myProcNo()) + ".csv"
+        );
+        
+        OFstream gos
+        (
+            pointsPath + "/" + "gatheredPoints.csv"
+        );
+        
+        for (int i = 0; i < combinedScanPatchPoints_.size(); i++)
+        {
+            const point& currPoint = mesh_.points()[combinedScanPatchPoints_[i]];
+            gos << currPoint.x() << " , " << currPoint.y() << " , " << currPoint.z() << "\n";
+        }
+        
+        for (int i=0; i < scanPatchPoints_.size(); i++)
+        {
+            //Info << "Finding currPointLabel" << endl;
+            //const label& currPointLabel = scanPatchPoints_[i];
+            Info << "Finding currPoint" << endl;
+            const point& currPoint = mesh_.points()[scanPatchPoints_[i]]; //mesh_.points()[gMeshPoints[currPointLabel]];
+            Info << "Writing to os" << endl;
+            os << currPoint.x() << " , " << currPoint.y() << " , " << currPoint.z() << "\n";
         }
     }      
 }
@@ -187,8 +264,9 @@ void Foam::heatSourceModel::correctPower
     volScalarField& qDot_,
     const scalar& eta_
 )
-{
-    //- Find total resolved power in domain
+{   
+    Info << "Correcting power" << endl;
+    //- Calculate total resolved power
     scalar resPower = (fvc::domainIntegrate(qDot_)).value() / eta_;
     
     //- Only normalize if resolved power is > 0
@@ -200,12 +278,24 @@ void Foam::heatSourceModel::correctPower
         //- Get beam position from movingBeam
         vector position = movingBeam_->position();
         
+        scalar minWallDist = GREAT;
+        
         //- Loop over points to determine if beam center is within 2sigma of
         //  any patch boundary points
-        forAll (scanPatchPoints_, pointi)
+        const pointField& points = mesh_.points();
+        //forAll (scanPatchPoints_, pointi)
+        //forAll (combinedScanPatchPoints_, pointi)
+        forAll (combinedScanPatchPointCoords_, pointi)
         {
-            scalar bDist = mag(position - scanPatchPoints_[pointi]);
-
+            //scalar bDist = mag(position - points[scanPatchPoints_[pointi]]);
+            //scalar bDist = mag(position - points[combinedScanPatchPoints_[pointi]]);
+            scalar bDist = mag(position - combinedScanPatchPointCoords_[pointi]);
+            
+            if (bDist < minWallDist)
+            {
+                minWallDist = bDist;
+            }
+            
             //- Set flag and break loop if position is near boundary
             if (bDist < D4sigma()/2.0)
             {
@@ -214,6 +304,8 @@ void Foam::heatSourceModel::correctPower
                 break;
             }
         }
+        
+        Info << "Min wall dist = " << minWallDist << endl;
         
         //- Normalize if beam isn't near boundary
         if (!isNearBoundary)
@@ -227,9 +319,9 @@ void Foam::heatSourceModel::correctPower
             qDot_ *= expPower / resPower;
             qDot_.correctBoundaryConditions();
         }
-        //- Code hangs without the operations in this else statement, not sure why
         else
         {
+            Info << "Not correcting qDot." << endl;
             qDot_ *= 1.0;
             qDot_.correctBoundaryConditions();
         }

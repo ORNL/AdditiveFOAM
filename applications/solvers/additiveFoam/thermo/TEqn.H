@@ -1,12 +1,10 @@
 {
-    Info << "creating TEqn" << endl;
     fvScalarMatrix TEqn
     (
         rho*Cp*(fvm::ddt(T) + fvm::div(phi, T))
       - fvm::laplacian(fvc::interpolate(kappa), T)
       - sources.qDot()
     );
-    Info << "created TEqn" << endl;
 
     volScalarField dFdT
     (
