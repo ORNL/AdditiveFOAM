@@ -122,18 +122,10 @@ void Foam::marangoniFvPatchVectorField::reset
 Foam::tmp<Foam::vectorField>
 Foam::marangoniFvPatchVectorField::snGrad() const
 {
-    const label patchi = this->patch().index();
-
     const vectorField nHat(this->patch().nf());
     vectorField pif(this->patchInternalField());
 
-    const dictionary& dict_ =
-        db().lookupObject<IOdictionary>("transportProperties");
-
-    dimensionedScalar mu_("mu", dimDynamicViscosity, dict_.lookup("mu"));
-
-    scalar coeff_(dSigmadT_ / mu_.value());
-
+    // calculate the temperature gradient on the patch
     const volScalarField& T = 
         this->internalField().mesh().lookupObject<volScalarField>("T");
 
@@ -141,15 +133,24 @@ Foam::marangoniFvPatchVectorField::snGrad() const
 
     const tmp<volVectorField> tgradT(fvc::grad(min(T, Tmax)));
 
-    const vectorField tGrad(tgradT().boundaryField()[patchi]);
+    const vectorField tGrad(tgradT().boundaryField()[this->patch().index()]);
 
+    // calculate the marangoni coefficient
+    const dictionary& dict_ =
+        db().lookupObject<IOdictionary>("transportProperties");
+
+    dimensionedScalar mu_("mu", dimDynamicViscosity, dict_.lookup("mu"));
+
+    scalar coeff_(dSigmadT_ / mu_.value());
+
+    // calculate the surface normal gradient on the patch
     return
     (
-        transform(I - sqr(nHat), pif)
+        transform(I - sqr(nHat), pif) - pif
       + coeff_*transform(I - sqr(nHat), tGrad) / this->patch().deltaCoeffs()
-      - pif
     )*this->patch().deltaCoeffs();
 }
+
 
 void Foam::marangoniFvPatchVectorField::evaluate
 (
@@ -161,32 +162,11 @@ void Foam::marangoniFvPatchVectorField::evaluate
         this->updateCoeffs();
     }
 
-    const label patchi = this->patch().index();
-
+    // evaluate patch field as a slip condition
     const vectorField nHat(this->patch().nf());
     vectorField pif(this->patchInternalField());
 
-    const dictionary& dict_ =
-        db().lookupObject<IOdictionary>("transportProperties");
-
-    dimensionedScalar mu_("mu", dimDynamicViscosity, dict_.lookup("mu"));
-
-    scalar coeff_(dSigmadT_ / mu_.value());
-
-    const volScalarField& T = 
-        this->internalField().mesh().lookupObject<volScalarField>("T");
-
-    const dimensionedScalar Tmax("Tmax", dimTemperature, Tmax_);
-
-    const tmp<volVectorField> tgradT(fvc::grad(min(T, Tmax)));
-
-    const vectorField tGrad(tgradT().boundaryField()[patchi]);
-
-    vectorField::operator=
-    (
-        transform(I - sqr(nHat), pif)
-      + coeff_*transform(I - sqr(nHat), tGrad) / this->patch().deltaCoeffs()
-    );
+    vectorField::operator=(transform(I - sqr(nHat), pif));
 
     transformFvPatchField<vector>::evaluate();
 }
