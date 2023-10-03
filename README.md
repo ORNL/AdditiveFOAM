@@ -25,16 +25,20 @@ Some select publications using AdditiveFOAM are provided:
 | [tutorials](tutorials)                                     | Tutorial cases based on [NIST AMB2018](https://www.nist.gov/ambench/amb2018-02-description) single tracks |
 
 ## Build and Install
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**, which can be compiled from source code following the steps provided by the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
 
-Alternatively, OpenFOAM-10 can be installed using spack: 
-```spack install openfoam-org@10```
+### Spack install
+[spack](https://spack.readthedocs.io/en/latest/) provides a simple way to install AdditiveFOAM. spack `develop` is currently required:
+```spack install additivefoam```
 
-or used within a Docker container:
+### Manual install
+Alternatively, a Docker container with pre-built OpenFOAM-10 can be used:
 ```
 docker pull openfoam/openfoam10-paraview510
 docker run -it openfoam/openfoam10-paraview510
 ```
+
+or instead OpenFOAM-10 can be compiled from source code following the steps provided by the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
 
 Once **OpenFOAM-10** is available on your system, perform the following steps:
 
@@ -57,6 +61,7 @@ Once **OpenFOAM-10** is available on your system, perform the following steps:
    cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
    wmake
    ```
+
 ## Run AdditiveFOAM
 To run an AdditiveFOAM simulation, it is recommended to perform the following steps:
 1. Prepare the case directory structure using a provided template:
