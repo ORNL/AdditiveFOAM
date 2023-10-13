@@ -10,6 +10,7 @@ If you use AdditiveFoam in your work, please cite the [source code](CITATION.bib
 - [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
 - [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
 - [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
+- [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
 
 ## Publications
 Some select publications using AdditiveFOAM are provided:
