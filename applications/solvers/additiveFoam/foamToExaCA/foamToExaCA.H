@@ -41,6 +41,7 @@ SourceFiles
 #include "IOdictionary.H"
 #include "volFields.H"
 #include "volPointInterpolation.H"
+#include "meshSearch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -58,27 +59,33 @@ class foamToExaCA
 private:
     // Private data
 
-        //- Reference to the mesh
         const fvMesh& mesh_;
+
         const Time& runTime_;
 
         const volScalarField& T_;
 
         volPointInterpolation vpi_;
+
         mutable pointScalarField Tp_;
+
 
         List<DynamicList<label>> pointsInCell;
 
         DynamicList<point> positions;
         DynamicList<scalarField> weights;
 
-        DynamicList<List<scalar>> data;
-        List<scalar> tm_;
+        DynamicList<label> compactCells;
+
+        DynamicList<List<scalar>> events;
 
         Switch    execute_;
+
         boundBox  box_;
-        scalar    dx_;
+
         scalar    iso_;
+
+        scalar    dx_;
 
 public:
     TypeName("foamToExaCA");
@@ -96,6 +103,10 @@ public:
     virtual void update();
 
     virtual void write();
+
+    virtual void mapPoints(const meshSearch& searchEngine);
+
+    virtual void interpolatePoints();
 };
 
 
