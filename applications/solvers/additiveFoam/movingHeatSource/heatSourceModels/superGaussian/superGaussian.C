@@ -27,8 +27,6 @@ License
 
 #include "superGaussian.H"
 #include "addToRunTimeSelectionTable.H"
-#include "multiDirRefinement.H"
-#include "labelVector.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
