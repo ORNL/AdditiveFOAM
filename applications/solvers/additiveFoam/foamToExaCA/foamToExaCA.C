@@ -27,15 +27,9 @@ License
 
 #include "foamToExaCA/foamToExaCA.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fvcDdt.H"
-#include "fvcGrad.H"
-#include "fvcAverage.H"
 #include "DynamicList.H"
-
-#include "meshSearch.H"
-#include "labelVector.H"
-
 #include "interpolation.H"
+#include "labelVector.H"
 #include "pointMVCWeight.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -85,8 +79,6 @@ Foam::foamToExaCA::foamToExaCA
         vpi_.interpolate(T_)
     ),
 
-    pointsInCell(mesh_.nCells()),
-
     execute_(false)
 {
     if (this->headerOk())
@@ -106,70 +98,47 @@ void Foam::foamToExaCA::initialize()
         return;
     }
 
-    // read remaining fields
     box_ = this->lookup("box");
-    dx_  = this->lookup<scalar>("dx");
     iso_ = this->lookup<scalar>("isotherm");
+    dx_  = this->lookup<scalar>("dx");
 
-    const labelVector nPoints(vector::one + box_.span()/dx_);
+    treeBoundBox bb(box_);
 
-    Info << "box span" << box_.span() << " nPoints: " << nPoints << endl;
+    // create a compact cell-stencil using the overlap sub-space
+    const cellList& cells = mesh_.cells();
+    const faceList& faces = mesh_.faces();
+    const pointField& points = mesh_.points();
 
-    // bounding box of local processor domain
-    treeBoundBox procBb(mesh_.points());
+    treeBoundBox procBb(points);
 
-    meshSearch searchEngine(mesh_, polyMesh::CELL_TETS);
+    const vector extend = 1e-10*vector::one;
 
-    // set point and cell addressing
-    label pI = 0;
-    label seedi = searchEngine.findCell(box_.min(), 0, false);
-
-    for (label k=0; k < nPoints.z(); ++k)
+    if (procBb.overlaps(bb))
     {
-        for (label j=0; j < nPoints.y(); ++j)
+        forAll(cells, celli)
         {
-            for (label i=0; i < nPoints.x(); ++i)
+            const cell& c = cells[celli];
+
+            // determine bounding box of cell
+            treeBoundBox cellBb(point::max, point::min);
+            forAll(c, facei)
             {
-                const point pt = box_.max() - vector(i, j, k)*dx_;
-
-                if (procBb.contains(pt))
+                const face& f = faces[c[facei]];
+                forAll(f, fp)
                 {
-                    // shift point during search to avoid edges in pointMVC
-                    const point spt = pt - vector::one*1e-10;
-
-                    label celli = searchEngine.findCell(spt, seedi, true);
-
-                    if (celli != -1)
-                    {
-                        positions.append(pt);
-
-                        pointMVCWeight cpw(mesh_, spt, celli);
-                        weights.append(cpw.weights()); 
-
-                        pointsInCell[celli].append(pI);
-
-                        pI++;
-                    }
-                    
-                    seedi = celli;
+                    cellBb.min() = min(cellBb.min(), points[f[fp]] - extend);
+                    cellBb.max() = max(cellBb.max(), points[f[fp]] + extend);
                 }
+            }
+
+            if (cellBb.overlaps(bb))
+            {
+                compactCells.append(celli);
             }
         }
     }
-    
-    positions.shrink();
-    weights.shrink();
 
-    for (auto& pic : pointsInCell)
-    {
-        pic.shrink();
-    }
-
-    tm_.setSize(positions.size(), 0);
-
-    Info<< "Assigned all points to a cell in: "
-        << returnReduce(runTime_.cpuTimeIncrement(), maxOp<scalar>())
-        << " s" << endl;
+    compactCells.shrink();
 }
 
 void Foam::foamToExaCA::update()
@@ -179,124 +148,168 @@ void Foam::foamToExaCA::update()
         return;
     }
 
-    // interpolate temperature histories to cell vertices
     const pointScalarField Tp0_("Tp0_", Tp_);
 
     Tp_ = vpi_.interpolate(T_);
 
-    // calculate the local cooling rate in each cell
-    volScalarField R_
-    (
-        "R",
-        max
-        (
-            -fvc::ddt(T_),
-            dimensionedScalar(dimTemperature/dimTime, 0.0)
-        )
-    );
-    
-    // interpolate the average cooling rate to the cell vertices
-    const pointScalarField Rp_(vpi_.interpolate(fvc::average(R_)));
-
-    const scalar dt = runTime_.deltaTValue();
-    const scalar t0 = runTime_.value() - dt;
-
-    forAll(mesh_.cells(), cellI)
+    // capture events at interface cells: {cell id, time, vertice temperatures}
+    forAll(compactCells, i)
     {
-        // find the cells containing the interface
-        bool foundMin = false;
-        bool foundMax = false;
+        label celli = compactCells[i];
 
-        const labelList& vertices = mesh_.cellPoints()[cellI];
+        const labelList& vertices = mesh_.cellPoints()[celli];
 
-        if (pointsInCell[cellI].size())
+        label prev = 0;
+        label curr = 0;
+
+        forAll(vertices, pI)
         {
-            forAll(vertices, pI)
+            if (Tp0_[vertices[pI]] >= iso_)
             {
-                if (Tp_[vertices[pI]] <= iso_ || Tp0_[vertices[pI]] <= iso_)
-                {
-                    foundMin = true;
-                }
+                prev++;
+            }
 
-                if (Tp_[vertices[pI]] >= iso_ || Tp0_[vertices[pI]] >= iso_)
-                {
-                    foundMax = true;
-                }
-
-                if (foundMin && foundMax)
-                {
-                    break;
-                }
+            if (Tp_[vertices[pI]] >= iso_)
+            {
+                curr++;
             }
         }
 
-        // interpolate temperature histories to exaca grid
-        if (foundMin && foundMax)
+        prev = prev % vertices.size();
+        curr = curr % vertices.size();
+
+        if ( prev )
         {
-            for (const label& pI : pointsInCell[cellI])
+            // add current event
+            List<scalar> event(vertices.size() + 2);
+
+            event[0] = celli;
+
+            event[1] = runTime_.value();
+
+            forAll(vertices, pI)
             {
-                const scalarField& w = weights[pI];
-                
-                scalar tp0 = Zero;
-                scalar tp  = Zero;
-
-                forAll(vertices, i)
-                {
-                    tp0 += w[i]*Tp0_[vertices[i]];
-                    tp  += w[i]*Tp_[vertices[i]];
-                }
-
-                if ((tp <= iso_) && (tp0 > iso_))
-                {
-                    const point& pt = positions[pI];
-
-                    scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
-
-                    scalar cr  = Zero;
-
-                    forAll(vertices, i)
-                    {
-                        cr  += w[i]*Rp_[vertices[i]];
-                    }
-
-                    data.append
-                    (
-                        {
-                            pt[0],
-                            pt[1],
-                            pt[2],
-                            tm_[pI],
-                            t0 + m_*dt,
-                            cr
-                        }
-                    );
-                }
-                else if ((tp > iso_) && (tp0 <= iso_))
-                {
-                    scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
-                    tm_[pI] = t0 + m_*dt;
-                }
+                event[pI + 2] = Tp_[vertices[pI]];
             }
+
+            events.append(event);
+        }
+        else if ( curr )
+        {
+            List<scalar> event(vertices.size() + 2);
+
+            event[0] = celli;
+
+            // add old event
+            event[1] = runTime_.value() - runTime_.deltaTValue();
+
+            forAll(vertices, pI)
+            {
+                event[pI + 2] = Tp0_[vertices[pI]];
+            }
+
+            events.append(event);
+
+            // add current event
+            event[1] = runTime_.value();
+
+            forAll(vertices, pI)
+            {
+                event[pI + 2] = Tp_[vertices[pI]];
+            }
+
+            events.append(event);
         }
     }
 }
 
-void Foam::foamToExaCA::write()
+void Foam::foamToExaCA::interpolatePoints()
 {
-    if (!execute_)
+    // dynamic list for exaca reduced data format
+    DynamicList<List<scalar>> data;
+
+    // initialize melting time for first event
+    List<scalar> tm;
+    tm.setSize(pointsInCell[events[0][0]].size(), events[0][1]);
+
+    // events are order by cell id, and each cell id is ordered in time
+    for (label i = 1; i < events.size(); i++)
     {
-        return;
+        const List<scalar> prevEvent = events[i - 1];
+
+        const List<scalar> currEvent = events[i];
+
+        // first event for the cell. set the melting time and continue
+        label celli = currEvent[0];
+
+        if (currEvent[0] != prevEvent[0])
+        {
+            tm.setSize(pointsInCell[celli].size(), currEvent[1]);
+            continue;
+        }
+
+        // extract event information
+        scalar prevTime = prevEvent[1];
+
+        scalar currTime = currEvent[1];
+
+        List<scalar> psi0(prevEvent.size() - 2);
+        List<scalar> psi(currEvent.size() - 2);
+
+        for (int j = 0; j < psi.size(); j++)
+        {
+            psi0[j] = prevEvent[j + 2];
+            psi[j]  = currEvent[j + 2];
+        }
+
+        int p = 0;
+        for (const label& pointi : pointsInCell[celli])
+        {
+            scalar tp0 = Zero;
+            scalar tp  = Zero;
+
+            List<scalar> w = weights[pointi];
+            
+            for (int j = 0; j < psi.size(); j++)
+            {
+                tp0 += w[j]*psi0[j];
+                tp  += w[j]*psi[j];
+            }
+
+            if ((tp <= iso_) && (tp0 > iso_))
+            {
+                const point& pt = positions[pointi];
+
+                scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
+
+                data.append
+                (
+                    {
+                        pt[0],
+                        pt[1],
+                        pt[2],
+                        tm[p],
+                        prevTime + m_*(currTime - prevTime),
+                        (tp0 - tp) / (currTime - prevTime)
+                    }
+                );
+            }
+            else if ((tp > iso_) && (tp0 <= iso_))
+            {
+                scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
+
+                tm[p] = prevTime + m_*(currTime - prevTime);
+            }
+
+            p++;
+        }
     }
 
-    Info<< "Number of solidification events: "
-        << returnReduce(data.size(), sumOp<scalar>()) << endl;
-
+    // write the events for each processor to their own file
     const fileName exacaPath
     (
         runTime_.rootPath()/runTime_.globalCaseName()/"ExaCA"
     );
-
-    mkDir(exacaPath);
 
     OFstream os
     (
@@ -313,6 +326,128 @@ void Foam::foamToExaCA::write()
         }
         os << data[i][n] << "\n";
     }
+}
+
+
+void Foam::foamToExaCA::mapPoints(const meshSearch& searchEngine)
+{
+    // find event sub-space before constructing interpolants
+    const cellList& cells = mesh_.cells();
+    const faceList& faces = mesh_.faces();
+    const pointField& points = mesh_.points();
+
+    const vector extend = 1e-10*vector::one;
+
+    treeBoundBox eventBb(point::max, point::min);
+
+    for (label i = 1; i < events.size(); i++)
+    {
+        if (events[i][0] == events[i - 1][0])
+        {
+            continue;
+        }
+
+        const cell& c = cells[events[i][0]];
+
+        forAll(c, facei)
+        {
+            const face& f = faces[c[facei]];
+            forAll(f, fp)
+            {
+                eventBb.min() = min(eventBb.min(), points[f[fp]] - extend);
+                eventBb.max() = max(eventBb.max(), points[f[fp]] + extend);
+            }
+        }
+    }
+
+    label pI = 0;
+    label seedi = events[0][0];
+
+    pointsInCell.setSize(mesh_.nCells());
+
+    const labelVector nPoints(vector::one + box_.span() / dx_);
+
+    for (label k=0; k < nPoints.z(); ++k)
+    {
+        for (label j=0; j < nPoints.y(); ++j)
+        {
+            for (label i=0; i < nPoints.x(); ++i)
+            {
+                const point pt = box_.max() - vector(i, j, k)*dx_;
+
+                if (eventBb.contains(pt))
+                {
+                    // shift point during search to avoid edges in pointMVC
+                    const point spt = pt - vector::one*1e-10;
+
+                    label celli = searchEngine.findCell(spt, seedi, true);
+
+                    if (celli != -1)
+                    {
+                        positions.append(pt);
+
+                        pointMVCWeight cpw(mesh_, spt, celli);
+
+                        weights.append(cpw.weights());
+
+                        pointsInCell[celli].append(pI);
+
+                        pI++;
+                    }
+                    
+                    seedi = celli;
+                }
+            }
+        }
+    }
+
+    positions.shrink();
+
+    weights.shrink();
+
+    for (auto& pic : pointsInCell)
+    {
+        pic.shrink();
+    }
+}
+
+void Foam::foamToExaCA::write()
+{
+    if (!execute_)
+    {
+        return;
+    }
+
+    // write the event data for each processor to separate files
+    const fileName exacaPath
+    (
+        runTime_.rootPath()/runTime_.globalCaseName()/"ExaCA"
+    );
+
+    mkDir(exacaPath);
+
+    Info<< "Number of solidification events: "
+        << returnReduce(events.size(), sumOp<scalar>()) << endl;
+
+    events.shrink();
+
+    sort(events);
+
+    // write exaca reduced data format with remelting
+    runTime_.cpuTimeIncrement();
+
+    meshSearch searchEngine(mesh_, polyMesh::CELL_TETS);
+
+    if (events.size() > 0)
+    {
+        mapPoints(searchEngine);
+
+        interpolatePoints();
+    }
+
+    Info<< "Successfully mapped events to exaca file in: "
+        << returnReduce(runTime_.cpuTimeIncrement(), maxOp<scalar>()) << " s"
+        << endl << endl;
 }
 
 // ************************************************************************* //
