@@ -27,6 +27,8 @@ License
 
 #include "superGaussian.H"
 #include "addToRunTimeSelectionTable.H"
+#include "multiDirRefinement.H"
+#include "labelVector.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -59,100 +61,29 @@ Foam::heatSourceModels::superGaussian::superGaussian
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-Foam::tmp<Foam::volScalarField>
-Foam::heatSourceModels::superGaussian::qDot()
-const
+inline Foam::scalar
+Foam::heatSourceModels::superGaussian::weight(const vector& d)
 {
-    tmp<volScalarField> tqDot
+    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+
+    scalar x = Foam::pow(magSqr(cmptDivide(d, s)), k_/2.0);
+
+    return Foam::exp(-x);
+}
+
+inline Foam::dimensionedScalar
+Foam::heatSourceModels::superGaussian::V0()
+{
+    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+
+    const dimensionedScalar V0
     (
-        new volScalarField
-        (
-            IOobject
-            (
-                "qDot_",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh_,
-            dimensionedScalar("Zero", dimPower/dimVolume, 0.0)
-        )
+        "V0",
+        dimVolume,
+        (2.0 / 3.0)*s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 3.0/k_)
     );
-    volScalarField& qDot_ = tqDot.ref();
 
-    const scalar power_ = movingBeam_->power();
-    
-    if (power_ > small)
-    {        
-        const scalar AR = 
-            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
-        
-        const scalar eta_ = absorptionModel_->eta(AR);
-        
-        //- Calculate volumetric intesity
-        const vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
-
-        const dimensionedScalar I0
-        (
-            "I0",
-            dimPower / dimVolume,
-            eta_*power_*k_
-          / (s.x()*s.y()*s.z()*2.0*pi*Foam::tgamma(3.0/k_))
-        );
-
-        //- Calculate heat source weights a cell-faces
-        surfaceScalarField factor
-        (
-            IOobject
-            (
-                "factor",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh_,
-            dimensionedScalar("Zero", dimless, 0.0)          
-        );
-
-        for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
-        {
-            point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
-
-            scalar f = magSqr(cmptDivide(d, s));
-
-            factor[facei] = Foam::exp(-Foam::pow(f, k_/2.0));
-        }
-
-        surfaceScalarField::Boundary& bFactor = factor.boundaryFieldRef();
-        forAll(bFactor, patchi)
-        {
-            const pointField& faceCentres = mesh_.Cf().boundaryField()[patchi];
-            forAll(faceCentres, facei)
-            {
-                point d = cmptMag(faceCentres[facei] - movingBeam_->position());
-
-                scalar f = magSqr(cmptDivide(d, s));
-
-                bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
-            }
-        }
-
-        qDot_ = I0 * fvc::average(factor);
-
-        //- Rescale the total integrated power to the applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value() / eta_;
-
-        if (integratedPower_ > small)
-        {
-            qDot_ *= power_ / integratedPower_;
-        }
-
-        qDot_.correctBoundaryConditions();
-    }
-
-    return tqDot;
+    return V0;
 }
 
 bool Foam::heatSourceModels::superGaussian::read()

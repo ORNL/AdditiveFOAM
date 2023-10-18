@@ -28,7 +28,6 @@ License
 #include "movingHeatSourceModel.H"
 #include "DynamicList.H"
 #include "OFstream.H"
-#include "isoPoints.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -98,65 +97,8 @@ void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
     }
 }
 
-bool Foam::movingHeatSourceModel::transientExists()
-{
-    bool exists_ = false;
-    
-    forAll(sources_, i)
-    {
-        if (sources_[i].transient())
-        {
-            exists_ = true;
-            break;
-        }
-    }
-
-    return exists_;
-}
-
 void Foam::movingHeatSourceModel::update()
 {
-    //- Update the moving heat source shape for each transient case
-    if ( transientExists() )
-    {
-        const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
-        forAll(sources_, i)
-        {
-            if (sources_[i].transient())
-            {
-                List<point> localPoints = isoPoints(T, sources_[i].isoValue());
-
-                // get the user-defined (static) heat source dimensions
-                vector newDimensions = sources_[i].staticDimensions();
-
-                scalar maxDepth = newDimensions.z();
-
-                const scalar searchRadius(cmptMax(newDimensions));
-
-                for (const point& pt : localPoints)
-                {
-                    vector d = cmptMag(pt - sources_[i].beam().position());
-
-                    scalar r = Foam::sqrt(d.x()*d.x() + d.y()*d.y());
-                    
-                    if (r <= searchRadius)
-                    {
-                        maxDepth = max(maxDepth, d.z());
-                    }
-                }
-
-                reduce(maxDepth, maxOp<scalar>());
-
-                newDimensions[2] = maxDepth;
-
-                // helper function to update the heat source dimensions
-                sources_[i].setDimensions(newDimensions);
-            }
-
-            Info << sourceNames_[i] << tab << sources_[i].dimensions() << endl;
-        }
-    }
-
     //- Subcycle each moving heat source in time and combine into a single field
     qDot_ = dimensionedScalar("Zero", qDot_.dimensions(), 0.0);
     
@@ -164,6 +106,9 @@ void Foam::movingHeatSourceModel::update()
     {
         if (sources_[i].beam().activePath())
         {
+            sources_[i].updateDimensions();
+
+            // integrate volumetric heat source over desired time step
             scalar pathTime = mesh_.time().value();
 
             const scalar nextTime = pathTime + mesh_.time().deltaTValue();

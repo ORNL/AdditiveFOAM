@@ -5,8 +5,10 @@ EXE_INC = \
     -Isegment \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/OpenFOAM/lnInclude \
-    -I$(LIB_SRC)/finiteVolume/lnInclude
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude
 
 LIB_LIBS = \
     -lmeshTools \
-    -lfiniteVolume
+    -lfiniteVolume \
+    -ldynamicMesh

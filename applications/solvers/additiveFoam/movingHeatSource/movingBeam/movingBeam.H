@@ -150,13 +150,13 @@ public:
     // Member Functions
     
         //- Return current position of the moving beam
-        vector position() const
+        inline vector position() const
         {
             return position_;
         }
 
         //- Return current power of the moving beam
-        scalar power() const
+        inline scalar power() const
         {
             return power_;
         }
