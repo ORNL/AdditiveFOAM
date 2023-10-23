@@ -325,7 +325,7 @@ Foam::heatSourceModel::qDot()
                                     )
                                 );
 
-                                treeBoundBox ptBb(pt - 0.5*dxi, pt + +0.5*dxi);
+                                treeBoundBox ptBb(pt - 0.5*dxi, pt + 0.5*dxi);
 
                                 // calculate weight for point in beam bound box
                                 if (beamBb.overlaps(ptBb))
