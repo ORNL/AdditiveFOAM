@@ -41,6 +41,7 @@ SourceFiles
 #include "volFields.H"
 #include "movingBeam.H"
 #include "absorptionModel.H"
+#include "labelVector.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -87,6 +88,8 @@ protected:
         Switch transient_;
 
         scalar isoValue_;
+
+        vector dx_;
 
         vector dimensions_;
 
@@ -180,14 +183,17 @@ public:
             return staticDimensions_;
         }
 
-        //- Helper function to update heat source dimensions
-        void setDimensions(vector newDimensions)
-        {
-            dimensions_ = newDimensions;
-        }
+        //- Update the transient heat source dimensions
+        void updateDimensions();
 
         //- Return the volumetric heating field
-        virtual tmp<volScalarField> qDot() const = 0;
+        virtual tmp<volScalarField> qDot();
+
+        //- Return the weight of the heat source distribution at a given point
+        virtual scalar weight(const vector& d) = 0;
+
+        //- Return the normalization volume for the integrated distribution
+        virtual dimensionedScalar V0() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

@@ -93,12 +93,9 @@ public:
             return qDot_;
         }
         
-        //- Adjust deltaT for each beam
+        //- Adjust deltaT using the current state of each beam
         void adjustDeltaT(scalar& deltaT);
         
-        //- Return boolean for whether a heat source has transient dimensions
-        bool transientExists();
-
         //- Update total qDot field
         void update();
 };

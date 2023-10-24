@@ -60,126 +60,46 @@ Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-Foam::tmp<Foam::volScalarField>
-Foam::heatSourceModels::modifiedSuperGaussian::qDot() const
+inline Foam::scalar
+Foam::heatSourceModels::modifiedSuperGaussian::weight(const vector& d)
 {
-    tmp<volScalarField> tqDot
-    (
-        new volScalarField
-        (
-            IOobject
-            (
-                "qDot_",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh_,
-            dimensionedScalar("Zero", dimPower/dimVolume, 0.0)
-        )
-    );
-    volScalarField& qDot_ = tqDot.ref();
+    scalar a = Foam::pow(2.0, 1.0/k_);
 
-    const scalar power_ = movingBeam_->power();
-    
-    if (power_ > small)
+    vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
+
+    if (d.z() < s.z())
     {
-        const scalar AR =
-            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
-        
-        const scalar eta_ = absorptionModel_->eta(AR);
+        s *= Foam::pow(1.0 - Foam::pow(d.z() / s.z(), m_), 1.0/m_);
 
-        //- Calculate volumetric intesity
-        const scalar a = Foam::pow(2.0, 1.0/k_);
+        vector di = vector(d.x(), d.y(), 0.0);
 
-        const vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
+        scalar x = Foam::pow(magSqr(cmptDivide(di, s)), k_/2.0);
 
-        const scalar f_rsg
-        (
-            Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
-          / Foam::tgamma(1.0 + 3.0/m_)
-        );
-
-        const dimensionedScalar I0
-        (
-            "I0",
-            dimPower / dimVolume,
-            eta_*power_*k_
-          / (s.x()*s.y()*s.z() * 2.0 * pi * Foam::tgamma(2.0/k_) * f_rsg)
-        );
-
-        //- Calculate heat source weights a cell-faces
-        surfaceScalarField factor
-        (
-            IOobject
-            (
-                "factor",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh_,
-            dimensionedScalar("Zero", dimless, 0.0)          
-        );
-        
-        for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
-        {
-            point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
-
-            if (d.z() < s.z())
-            {                
-                scalar g = Foam::pow(1.0 - Foam::pow(d.z() / s.z(), m_), 1.0/m_);
-
-                d.replace(vector::Z, 0.0);
-
-                scalar f = magSqr(cmptDivide(d, s*g));
-
-                factor[facei] = Foam::exp(-Foam::pow(f, k_/2.0));
-            }
-        }
-
-        surfaceScalarField::Boundary& bFactor = factor.boundaryFieldRef();
-        forAll(bFactor, patchi)
-        {
-            const pointField& faceCentres = mesh_.Cf().boundaryField()[patchi];
-            forAll(faceCentres, facei)
-            {
-                point d = cmptMag(faceCentres[facei] - movingBeam_->position());
-
-                if (d.z() < s.z())
-                {
-                    scalar g =
-                        Foam::pow
-                        (
-                            1.0 - Foam::pow(d.z() / s.z(), m_),
-                            1.0/m_
-                        );
-
-                    d.replace(vector::Z, 0.0);
-
-                    scalar f = magSqr(cmptDivide(d, s*g));
-
-                    bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
-                }
-            }
-        }
-
-        qDot_ = I0 * fvc::average(factor);
-
-        //- Rescale the total integrated power to the applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value() / eta_;
-
-        if (integratedPower_ > small)
-        {
-            qDot_ *= power_ / integratedPower_;
-        }
-
-        qDot_.correctBoundaryConditions();
+        return Foam::exp(-x);
     }
+    else
+    {
+        return 0.0;
+    }
+}
 
-    return tqDot;
+inline Foam::dimensionedScalar
+Foam::heatSourceModels::modifiedSuperGaussian::V0()
+{
+    const scalar a = Foam::pow(2.0, 1.0/k_);
+
+    const vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
+
+    const dimensionedScalar V0
+    (
+        "V0",
+        dimVolume,
+        s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 2.0/k_)
+      * Foam::tgamma(1.0 + 2.0/m_)*Foam::tgamma(1.0 + 2.0/k_)
+      / Foam::tgamma(1.0 + 3.0/m_)
+    );
+
+    return V0;
 }
 
 bool Foam::heatSourceModels::modifiedSuperGaussian::read()
