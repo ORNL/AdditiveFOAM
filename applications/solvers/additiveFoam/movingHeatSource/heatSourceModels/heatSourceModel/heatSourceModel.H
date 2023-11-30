@@ -87,13 +87,17 @@ protected:
         //- Flag for transient or static heat source dimensions
         Switch transient_;
 
+        //- Isotherm depth tracked in transient heat source model
         scalar isoValue_;
 
-        vector dx_;
-
+        //- Dimensions of the heat source (dynamic)
         vector dimensions_;
 
+        //- Dimensions of the heat source (static)
         vector staticDimensions_;
+
+        //- Number of points along heat source dimensions resolved by sampling
+        labelVector nPoints_;
 
         //- AutoPtrs to absorption model and moving beam instances
         autoPtr<absorptionModel> absorptionModel_;

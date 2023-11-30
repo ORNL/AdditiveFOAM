@@ -94,8 +94,19 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
-
-        ExaCA.update();
+       
+        // sensible cooling rate in liquid
+        volScalarField R
+        (
+            "R",
+            max
+            (
+                fvc::ddt(alpha1) * Lf / Cp - fvc::ddt(T),
+                dimensionedScalar(dimTemperature/dimTime, 0.0)
+            )
+        );
+        
+        ExaCA.update(R);
 
         runTime.write();
 

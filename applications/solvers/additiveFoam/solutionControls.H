@@ -19,3 +19,25 @@ if (!(beamOn || fluidInDomain))
 {
     nThermoCorr = 1;
 }
+
+//- solve energy equation explicitly whenever possible
+Switch explicitSolve =
+    pimple.dict().lookupOrDefault<Switch>("explicitSolve", false);
+
+if (explicitSolve)
+{
+    scalar maxExplicitTimeStep
+    (
+        Foam::pow(0.5, mesh.nSolutionD())
+      * gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)())
+    );
+
+    if (runTime.deltaTValue() < maxExplicitTimeStep)
+    {
+        explicitSolve = true;
+    }
+    else
+    {
+        explicitSolve = false;
+    }
+}

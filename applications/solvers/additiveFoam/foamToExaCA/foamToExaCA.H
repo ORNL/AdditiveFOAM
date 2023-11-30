@@ -78,6 +78,7 @@ private:
         DynamicList<label> compactCells;
 
         DynamicList<List<scalar>> events;
+        DynamicList<List<scalar>> rates;
 
         Switch    execute_;
 
@@ -100,7 +101,7 @@ public:
     // Member Functions
     virtual void initialize();
 
-    virtual void update();
+    virtual void update(const volScalarField& R);
 
     virtual void write();
 

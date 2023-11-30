@@ -105,8 +105,6 @@ void Foam::foamToExaCA::initialize()
     treeBoundBox bb(box_);
 
     // create a compact cell-stencil using the overlap sub-space
-    const cellList& cells = mesh_.cells();
-    const faceList& faces = mesh_.faces();
     const pointField& points = mesh_.points();
 
     treeBoundBox procBb(points);
@@ -115,20 +113,16 @@ void Foam::foamToExaCA::initialize()
 
     if (procBb.overlaps(bb))
     {
-        forAll(cells, celli)
+        forAll(mesh_.cells(), celli)
         {
-            const cell& c = cells[celli];
-
-            // determine bounding box of cell
             treeBoundBox cellBb(point::max, point::min);
-            forAll(c, facei)
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, i)
             {
-                const face& f = faces[c[facei]];
-                forAll(f, fp)
-                {
-                    cellBb.min() = min(cellBb.min(), points[f[fp]] - extend);
-                    cellBb.max() = max(cellBb.max(), points[f[fp]] + extend);
-                }
+                cellBb.min() = min(cellBb.min(), points[vertices[i]] - extend);
+                cellBb.max() = max(cellBb.max(), points[vertices[i]] + extend);
             }
 
             if (cellBb.overlaps(bb))
@@ -141,7 +135,7 @@ void Foam::foamToExaCA::initialize()
     compactCells.shrink();
 }
 
-void Foam::foamToExaCA::update()
+void Foam::foamToExaCA::update(const volScalarField& R)
 {
     if (!execute_)
     {
@@ -152,11 +146,14 @@ void Foam::foamToExaCA::update()
 
     Tp_ = vpi_.interpolate(T_);
 
+    const pointScalarField Rp_ = vpi_.interpolate(R);
+
     // capture events at interface cells: {cell id, time, vertice temperatures}
     forAll(compactCells, i)
     {
         label celli = compactCells[i];
 
+        // check if the interface is in cell for the previous or current time
         const labelList& vertices = mesh_.cellPoints()[celli];
 
         label prev = 0;
@@ -178,40 +175,52 @@ void Foam::foamToExaCA::update()
         prev = prev % vertices.size();
         curr = curr % vertices.size();
 
-        if ( prev )
+        // overshoot correction: interface jumped this cell during time step
+        if (!prev && !curr)
         {
-            // add current event
-            List<scalar> event(vertices.size() + 2);
-
-            event[0] = celli;
-
-            event[1] = runTime_.value();
-
-            forAll(vertices, pI)
+            if
+            (
+                (T_[celli] > iso_ && T_.oldTime()[celli] < iso_)
+             || (T_[celli] < iso_ && T_.oldTime()[celli] > iso_)
+            )
             {
-                event[pI + 2] = Tp_[vertices[pI]];
+                prev = 0;
+                curr = 1;
             }
-
-            events.append(event);
         }
-        else if ( curr )
+
+        // capture the solidification events
+        if (prev || curr)
         {
             List<scalar> event(vertices.size() + 2);
+            List<scalar> rate(vertices.size() + 2);
 
             event[0] = celli;
-
-            // add old event
-            event[1] = runTime_.value() - runTime_.deltaTValue();
+            rate[0]  = celli;
 
             forAll(vertices, pI)
             {
-                event[pI + 2] = Tp0_[vertices[pI]];
-            }
+                rate[pI + 2] = Rp_[vertices[pI]];
+            }            
 
-            events.append(event);
+            // add previous event
+            if (curr && !prev)
+            {
+                event[1] = runTime_.value() - runTime_.deltaTValue();
+                rate[1]  = runTime_.value() - runTime_.deltaTValue();
+
+                forAll(vertices, pI)
+                {
+                    event[pI + 2] = Tp0_[vertices[pI]];
+                }
+
+                events.append(event);
+                rates.append(rate);
+            }
 
             // add current event
             event[1] = runTime_.value();
+            rate[1]  = runTime_.value();
 
             forAll(vertices, pI)
             {
@@ -219,6 +228,7 @@ void Foam::foamToExaCA::update()
             }
 
             events.append(event);
+            rates.append(rate);
         }
     }
 }
@@ -253,34 +263,40 @@ void Foam::foamToExaCA::interpolatePoints()
 
         scalar currTime = currEvent[1];
 
-        List<scalar> psi0(prevEvent.size() - 2);
-        List<scalar> psi(currEvent.size() - 2);
-
-        for (int j = 0; j < psi.size(); j++)
-        {
-            psi0[j] = prevEvent[j + 2];
-            psi[j]  = currEvent[j + 2];
-        }
-
         int p = 0;
         for (const label& pointi : pointsInCell[celli])
         {
+            // interpolate temperature to points
             scalar tp0 = Zero;
             scalar tp  = Zero;
 
             List<scalar> w = weights[pointi];
-            
-            for (int j = 0; j < psi.size(); j++)
+
+            const label nVert = w.size();
+            for (int j = 0; j < nVert; j++)
             {
-                tp0 += w[j]*psi0[j];
-                tp  += w[j]*psi[j];
+                tp0 += w[j]*prevEvent[j + 2];
+                tp  += w[j]*currEvent[j + 2];
             }
 
             if ((tp <= iso_) && (tp0 > iso_))
             {
+                // interpolate cooling rate to points
+                const List<scalar> rate = rates[i];
+
+                scalar Rp = Zero;
+
+                for (int j = 0; j < nVert; j++)
+                {
+                    Rp += w[j]*rate[j + 2];
+                }                
+
+                // store the ExaCA event data
                 const point& pt = positions[pointi];
 
                 scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
+
+                scalar ts = prevTime + m_*(currTime - prevTime);
 
                 data.append
                 (
@@ -289,8 +305,8 @@ void Foam::foamToExaCA::interpolatePoints()
                         pt[1],
                         pt[2],
                         tm[p],
-                        prevTime + m_*(currTime - prevTime),
-                        (tp0 - tp) / (currTime - prevTime)
+                        ts,
+                        Rp
                     }
                 );
             }
@@ -332,8 +348,6 @@ void Foam::foamToExaCA::interpolatePoints()
 void Foam::foamToExaCA::mapPoints(const meshSearch& searchEngine)
 {
     // find event sub-space before constructing interpolants
-    const cellList& cells = mesh_.cells();
-    const faceList& faces = mesh_.faces();
     const pointField& points = mesh_.points();
 
     const vector extend = 1e-10*vector::one;
@@ -342,21 +356,19 @@ void Foam::foamToExaCA::mapPoints(const meshSearch& searchEngine)
 
     for (label i = 1; i < events.size(); i++)
     {
-        if (events[i][0] == events[i - 1][0])
+        const label celli = events[i][0];
+
+        if (celli == events[i - 1][0])
         {
             continue;
         }
 
-        const cell& c = cells[events[i][0]];
+        const labelList& vertices = mesh_.cellPoints()[celli];
 
-        forAll(c, facei)
+        forAll(vertices, i)
         {
-            const face& f = faces[c[facei]];
-            forAll(f, fp)
-            {
-                eventBb.min() = min(eventBb.min(), points[f[fp]] - extend);
-                eventBb.max() = max(eventBb.max(), points[f[fp]] + extend);
-            }
+            eventBb.min() = min(eventBb.min(), points[vertices[i]] - extend);
+            eventBb.max() = max(eventBb.max(), points[vertices[i]] + extend);
         }
     }
 
@@ -429,9 +441,14 @@ void Foam::foamToExaCA::write()
     Info<< "Number of solidification events: "
         << returnReduce(events.size(), sumOp<scalar>()) << endl;
 
+    Info<< "Number of rate events: "
+        << returnReduce(rates.size(), sumOp<scalar>()) << endl;
+
     events.shrink();
+    rates.shrink();
 
     sort(events);
+    sort(rates);
 
     // write exaca reduced data format with remelting
     runTime_.cpuTimeIncrement();

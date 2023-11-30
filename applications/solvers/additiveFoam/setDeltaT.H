@@ -4,20 +4,25 @@ if (adjustTimeStep)
     scalar maxAlphaCo =
         runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 0.1);
 
-    const scalar dtBydT = mag(runTime.deltaT() / (Tliq - Tsol)).value();
+    alphaCoNum = gMax(mag(T - T.oldTime())()) / (Tliq - Tsol).value();
 
-    alphaCoNum = gMax(mag(fvc::ddt(T))())*dtBydT;
-
-    Info << "Courant Number thermo: " << alphaCoNum << endl;
-
-    FoNum = gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)());
+    Info << "alphaCoNum: " << alphaCoNum << endl;
 
     scalar maxFo = runTime.controlDict().lookupOrDefault<scalar>("maxFo", 1);
 
+    const scalar diffusionTime
+    (
+        gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)())
+    );
+
+    FoNum = runTime.deltaTValue() / diffusionTime;
+
+    Info << "FoNum: " << FoNum << endl;
+
     scalar deltaT = min
     (
-        min(maxCo/(CoNum + small), maxFo/(FoNum + small)),
-        maxAlphaCo/(alphaCoNum + small)
+        min(maxCo/(CoNum + small), maxAlphaCo/(alphaCoNum + small)),
+        maxFo/(FoNum + small)
     )*runTime.deltaTValue();
 
     deltaT = min
