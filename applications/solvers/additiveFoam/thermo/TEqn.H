@@ -58,14 +58,8 @@
         alpha1.correctBoundaryConditions();
 
         //- check convergence of iterative procedure
-        scalar residual
-        (
-            max
-            (
-                gMax(mag(alpha1.internalField() - alpha10.internalField())()),
-                gMax(mag(T.internalField() - T0.internalField())())
-            )
-        );
+        scalar residual =
+            gMax(mag(alpha1.internalField() - alpha10.internalField())());
 
         Info<< "Thermo: iteration " << tCorr
             << " residual: " << residual << endl;
