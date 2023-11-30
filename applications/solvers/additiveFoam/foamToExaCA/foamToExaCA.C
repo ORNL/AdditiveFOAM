@@ -146,7 +146,7 @@ void Foam::foamToExaCA::update(const volScalarField& R)
 
     Tp_ = vpi_.interpolate(T_);
 
-    const pointScalarField Rp_ = vpi_.interpolate(R);
+    const pointScalarField Rp_("Rp", vpi_.interpolate(R));
 
     // capture events at interface cells: {cell id, time, vertice temperatures}
     forAll(compactCells, i)
