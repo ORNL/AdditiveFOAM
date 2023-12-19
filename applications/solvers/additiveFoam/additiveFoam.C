@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
     // initialize time-stepping controls
-    scalar FoNum = 0.0;
+    scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
 
@@ -94,19 +94,8 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
-       
-        // sensible cooling rate in liquid
-        volScalarField R
-        (
-            "R",
-            max
-            (
-                fvc::ddt(alpha1) * Lf / Cp - fvc::ddt(T),
-                dimensionedScalar(dimTemperature/dimTime, 0.0)
-            )
-        );
         
-        ExaCA.update(R);
+        ExaCA.update();
 
         runTime.write();
 

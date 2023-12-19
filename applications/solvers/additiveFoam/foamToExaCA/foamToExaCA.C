@@ -135,7 +135,7 @@ void Foam::foamToExaCA::initialize()
     compactCells.shrink();
 }
 
-void Foam::foamToExaCA::update(const volScalarField& R)
+void Foam::foamToExaCA::update()
 {
     if (!execute_)
     {
@@ -146,14 +146,11 @@ void Foam::foamToExaCA::update(const volScalarField& R)
 
     Tp_ = vpi_.interpolate(T_);
 
-    const pointScalarField Rp_("Rp", vpi_.interpolate(R));
-
     // capture events at interface cells: {cell id, time, vertice temperatures}
     forAll(compactCells, i)
     {
         label celli = compactCells[i];
 
-        // check if the interface is in cell for the previous or current time
         const labelList& vertices = mesh_.cellPoints()[celli];
 
         label prev = 0;
@@ -193,21 +190,13 @@ void Foam::foamToExaCA::update(const volScalarField& R)
         if (prev || curr)
         {
             List<scalar> event(vertices.size() + 2);
-            List<scalar> rate(vertices.size() + 2);
 
             event[0] = celli;
-            rate[0]  = celli;
-
-            forAll(vertices, pI)
-            {
-                rate[pI + 2] = Rp_[vertices[pI]];
-            }            
-
+        
             // add previous event
             if (curr && !prev)
             {
                 event[1] = runTime_.value() - runTime_.deltaTValue();
-                rate[1]  = runTime_.value() - runTime_.deltaTValue();
 
                 forAll(vertices, pI)
                 {
@@ -215,12 +204,10 @@ void Foam::foamToExaCA::update(const volScalarField& R)
                 }
 
                 events.append(event);
-                rates.append(rate);
             }
 
             // add current event
             event[1] = runTime_.value();
-            rate[1]  = runTime_.value();
 
             forAll(vertices, pI)
             {
@@ -228,7 +215,6 @@ void Foam::foamToExaCA::update(const volScalarField& R)
             }
 
             events.append(event);
-            rates.append(rate);
         }
     }
 }
@@ -263,40 +249,34 @@ void Foam::foamToExaCA::interpolatePoints()
 
         scalar currTime = currEvent[1];
 
+        List<scalar> psi0(prevEvent.size() - 2);
+        List<scalar> psi(currEvent.size() - 2);
+
+        for (int j = 0; j < psi.size(); j++)
+        {
+            psi0[j] = prevEvent[j + 2];
+            psi[j]  = currEvent[j + 2];
+        }
+
         int p = 0;
         for (const label& pointi : pointsInCell[celli])
         {
-            // interpolate temperature to points
             scalar tp0 = Zero;
             scalar tp  = Zero;
 
             List<scalar> w = weights[pointi];
-
-            const label nVert = w.size();
-            for (int j = 0; j < nVert; j++)
+            
+            for (int j = 0; j < psi.size(); j++)
             {
-                tp0 += w[j]*prevEvent[j + 2];
-                tp  += w[j]*currEvent[j + 2];
+                tp0 += w[j]*psi0[j];
+                tp  += w[j]*psi[j];
             }
 
             if ((tp <= iso_) && (tp0 > iso_))
             {
-                // interpolate cooling rate to points
-                const List<scalar> rate = rates[i];
-
-                scalar Rp = Zero;
-
-                for (int j = 0; j < nVert; j++)
-                {
-                    Rp += w[j]*rate[j + 2];
-                }                
-
-                // store the ExaCA event data
                 const point& pt = positions[pointi];
 
                 scalar m_ = min(max((iso_ - tp0)/(tp - tp0), 0), 1);
-
-                scalar ts = prevTime + m_*(currTime - prevTime);
 
                 data.append
                 (
@@ -305,8 +285,8 @@ void Foam::foamToExaCA::interpolatePoints()
                         pt[1],
                         pt[2],
                         tm[p],
-                        ts,
-                        Rp
+                        prevTime + m_*(currTime - prevTime),
+                        (tp0 - tp) / (currTime - prevTime)
                     }
                 );
             }
@@ -441,14 +421,9 @@ void Foam::foamToExaCA::write()
     Info<< "Number of solidification events: "
         << returnReduce(events.size(), sumOp<scalar>()) << endl;
 
-    Info<< "Number of rate events: "
-        << returnReduce(rates.size(), sumOp<scalar>()) << endl;
-
     events.shrink();
-    rates.shrink();
 
     sort(events);
-    sort(rates);
 
     // write exaca reduced data format with remelting
     runTime_.cpuTimeIncrement();

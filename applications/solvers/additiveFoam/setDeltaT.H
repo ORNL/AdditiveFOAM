@@ -1,39 +1,47 @@
 if (adjustTimeStep)
 {
-    // temporal resolution w.r.t freezing range
     scalar maxAlphaCo =
-        runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 0.1);
+        runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 1.0);
 
-    alphaCoNum = gMax(mag(T - T.oldTime())()) / (Tliq - Tsol).value();
-
-    Info << "alphaCoNum: " << alphaCoNum << endl;
-
-    scalar maxFo = runTime.controlDict().lookupOrDefault<scalar>("maxFo", 1);
-
-    const scalar diffusionTime
+    const volScalarField::Internal alphaNum
     (
-        gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)())
+        mag(fvc::ddt(T))()()
+       /(Tliq - Tsol)
+      *runTime.deltaT()
     );
 
-    FoNum = runTime.deltaTValue() / diffusionTime;
+    alphaCoNum = gMax(alphaNum);
 
-    Info << "FoNum: " << FoNum << endl;
+    Info << "Thermo Number max: " << alphaCoNum << endl;
 
-    scalar deltaT = min
+    scalar maxDi = runTime.controlDict().lookupOrDefault<scalar>("maxDi", 10.0);
+
+    const volScalarField::Internal DiNumvf
+    (
+        fvc::surfaceSum
+        (
+            mesh.magSf()
+           *fvc::interpolate(kappa)
+           *mesh.surfaceInterpolation::deltaCoeffs()
+        )()()
+       /(mesh.V()*rho.value()*Cp())
+       *runTime.deltaT()
+    );
+
+    DiNum = gMax(DiNumvf);
+
+    Info<< "Diffusion Number max: " << DiNum << endl;
+
+    scalar maxDeltaTFact = min
     (
         min(maxCo/(CoNum + small), maxAlphaCo/(alphaCoNum + small)),
-        maxFo/(FoNum + small)
-    )*runTime.deltaTValue();
-
-    deltaT = min
-    (
-        min(deltaT, runTime.deltaTValue() + 0.1*deltaT),
-        1.2*runTime.deltaTValue()
+        maxDi/(DiNum + small)
     );
 
-    deltaT = min(deltaT, maxDeltaT);
+    scalar deltaTFact = min(min(maxDeltaTFact, 1.0 + 0.1*maxDeltaTFact), 1.2);
 
-    // adjust time step to desired hit scan path resolution
+    scalar deltaT = min(deltaTFact*runTime.deltaTValue(), maxDeltaT);
+
     sources.adjustDeltaT(deltaT);
 
     runTime.setDeltaT(deltaT);

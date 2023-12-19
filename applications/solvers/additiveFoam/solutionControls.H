@@ -26,18 +26,17 @@ Switch explicitSolve =
 
 if (explicitSolve)
 {
-    scalar maxExplicitTimeStep
+    const volScalarField::Internal DiNumvf
     (
-        Foam::pow(0.5, mesh.nSolutionD())
-      * gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)())
+        fvc::surfaceSum
+        (
+            mesh.magSf()
+           *fvc::interpolate(kappa)
+           *mesh.surfaceInterpolation::deltaCoeffs()
+        )()()
+       /(mesh.V()*rho.value()*Cp())
+       *runTime.deltaT()
     );
 
-    if (runTime.deltaTValue() < maxExplicitTimeStep)
-    {
-        explicitSolve = true;
-    }
-    else
-    {
-        explicitSolve = false;
-    }
+    explicitSolve = (gMax(DiNumvf) < 1.0) ? true : false;
 }

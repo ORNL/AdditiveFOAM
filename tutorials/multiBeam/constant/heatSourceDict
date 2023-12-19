@@ -34,6 +34,7 @@ beam1
         dimensions      (85.0e-6 85.0e-6 30e-6);
         k               2.0;
         transient       false;
+        nPoints         (10 10 10);
     }
 }
 
@@ -58,6 +59,7 @@ beam2
         k               2.0;
         transient       true;
         isoValue        1410;
+        nPoints         (10 10 10);
     }
 }
 
