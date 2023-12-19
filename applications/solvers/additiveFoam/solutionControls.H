@@ -19,3 +19,24 @@ if (!(beamOn || fluidInDomain))
 {
     nThermoCorr = 1;
 }
+
+//- solve energy equation explicitly whenever possible
+Switch explicitSolve =
+    pimple.dict().lookupOrDefault<Switch>("explicitSolve", false);
+
+if (explicitSolve)
+{
+    const volScalarField::Internal DiNumvf
+    (
+        fvc::surfaceSum
+        (
+            mesh.magSf()
+           *fvc::interpolate(kappa)
+           *mesh.surfaceInterpolation::deltaCoeffs()
+        )()()
+       /(mesh.V()*rho.value()*Cp())
+       *runTime.deltaT()
+    );
+
+    explicitSolve = (gMax(DiNumvf) < 1.0) ? true : false;
+}

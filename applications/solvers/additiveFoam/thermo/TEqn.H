@@ -1,11 +1,26 @@
 {
-    fvScalarMatrix TEqn
-    (
-        rho*Cp*(fvm::ddt(T) + fvm::div(phi, T))
-      - fvm::laplacian(fvc::interpolate(kappa), T)
-      - sources.qDot()
-    );
+    fvScalarMatrix TEqn(T, dimPower);
 
+    if (explicitSolve)
+    {
+        TEqn =
+        (
+            rho*Cp*(fvm::ddt(T) + fvc::div(phi, T))
+          - fvc::laplacian(fvc::interpolate(kappa), T)
+          - sources.qDot()
+        );
+    }
+    else
+    {
+        TEqn =
+        (
+            rho*Cp*(fvm::ddt(T) + fvm::div(phi, T))
+          - fvm::laplacian(fvc::interpolate(kappa), T)
+          - sources.qDot()
+        );
+    }
+
+    //- solve thermodynamic coupling using root-finding algorithm
     volScalarField dFdT
     (
         IOobject
@@ -20,7 +35,6 @@
 
     dimensionedScalar dt(runTime.deltaT());
 
-    //- store previous iteration values for root-finding algorithm
     volScalarField T0("T0", T);
     volScalarField alpha10("alpha10", alpha1);
 
@@ -43,12 +57,9 @@
         alpha1 = min(max(alpha10 + dFdT*(T - T0), 0.0), 1.0);
         alpha1.correctBoundaryConditions();
 
-        
         //- check convergence of iterative procedure
-        scalar residual
-        (
-            gMax(mag(alpha1.internalField() - alpha10.internalField())())
-        );
+        scalar residual =
+            gMax(mag(alpha1.internalField() - alpha10.internalField())());
 
         Info<< "Thermo: iteration " << tCorr
             << " residual: " << residual << endl;

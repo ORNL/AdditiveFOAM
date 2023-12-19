@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
     // initialize time-stepping controls
-    scalar FoNum = 0.0;
+    scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
-
+        
         ExaCA.update();
 
         runTime.write();

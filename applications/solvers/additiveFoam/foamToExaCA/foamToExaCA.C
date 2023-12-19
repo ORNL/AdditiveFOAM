@@ -105,8 +105,6 @@ void Foam::foamToExaCA::initialize()
     treeBoundBox bb(box_);
 
     // create a compact cell-stencil using the overlap sub-space
-    const cellList& cells = mesh_.cells();
-    const faceList& faces = mesh_.faces();
     const pointField& points = mesh_.points();
 
     treeBoundBox procBb(points);
@@ -115,20 +113,16 @@ void Foam::foamToExaCA::initialize()
 
     if (procBb.overlaps(bb))
     {
-        forAll(cells, celli)
+        forAll(mesh_.cells(), celli)
         {
-            const cell& c = cells[celli];
-
-            // determine bounding box of cell
             treeBoundBox cellBb(point::max, point::min);
-            forAll(c, facei)
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, i)
             {
-                const face& f = faces[c[facei]];
-                forAll(f, fp)
-                {
-                    cellBb.min() = min(cellBb.min(), points[f[fp]] - extend);
-                    cellBb.max() = max(cellBb.max(), points[f[fp]] + extend);
-                }
+                cellBb.min() = min(cellBb.min(), points[vertices[i]] - extend);
+                cellBb.max() = max(cellBb.max(), points[vertices[i]] + extend);
             }
 
             if (cellBb.overlaps(bb))
@@ -178,37 +172,39 @@ void Foam::foamToExaCA::update()
         prev = prev % vertices.size();
         curr = curr % vertices.size();
 
-        if ( prev )
+        // overshoot correction: interface jumped this cell during time step
+        if (!prev && !curr)
         {
-            // add current event
-            List<scalar> event(vertices.size() + 2);
-
-            event[0] = celli;
-
-            event[1] = runTime_.value();
-
-            forAll(vertices, pI)
+            if
+            (
+                (T_[celli] > iso_ && T_.oldTime()[celli] < iso_)
+             || (T_[celli] < iso_ && T_.oldTime()[celli] > iso_)
+            )
             {
-                event[pI + 2] = Tp_[vertices[pI]];
+                prev = 0;
+                curr = 1;
             }
-
-            events.append(event);
         }
-        else if ( curr )
+
+        // capture the solidification events
+        if (prev || curr)
         {
             List<scalar> event(vertices.size() + 2);
 
             event[0] = celli;
-
-            // add old event
-            event[1] = runTime_.value() - runTime_.deltaTValue();
-
-            forAll(vertices, pI)
+        
+            // add previous event
+            if (curr && !prev)
             {
-                event[pI + 2] = Tp0_[vertices[pI]];
-            }
+                event[1] = runTime_.value() - runTime_.deltaTValue();
 
-            events.append(event);
+                forAll(vertices, pI)
+                {
+                    event[pI + 2] = Tp0_[vertices[pI]];
+                }
+
+                events.append(event);
+            }
 
             // add current event
             event[1] = runTime_.value();
@@ -332,8 +328,6 @@ void Foam::foamToExaCA::interpolatePoints()
 void Foam::foamToExaCA::mapPoints(const meshSearch& searchEngine)
 {
     // find event sub-space before constructing interpolants
-    const cellList& cells = mesh_.cells();
-    const faceList& faces = mesh_.faces();
     const pointField& points = mesh_.points();
 
     const vector extend = 1e-10*vector::one;
@@ -342,21 +336,19 @@ void Foam::foamToExaCA::mapPoints(const meshSearch& searchEngine)
 
     for (label i = 1; i < events.size(); i++)
     {
-        if (events[i][0] == events[i - 1][0])
+        const label celli = events[i][0];
+
+        if (celli == events[i - 1][0])
         {
             continue;
         }
 
-        const cell& c = cells[events[i][0]];
+        const labelList& vertices = mesh_.cellPoints()[celli];
 
-        forAll(c, facei)
+        forAll(vertices, i)
         {
-            const face& f = faces[c[facei]];
-            forAll(f, fp)
-            {
-                eventBb.min() = min(eventBb.min(), points[f[fp]] - extend);
-                eventBb.max() = max(eventBb.max(), points[f[fp]] + extend);
-            }
+            eventBb.min() = min(eventBb.min(), points[vertices[i]] - extend);
+            eventBb.max() = max(eventBb.max(), points[vertices[i]] + extend);
         }
     }
 

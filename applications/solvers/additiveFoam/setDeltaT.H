@@ -1,34 +1,47 @@
 if (adjustTimeStep)
 {
-    // temporal resolution w.r.t freezing range
     scalar maxAlphaCo =
-        runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 0.1);
+        runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 1.0);
 
-    const scalar dtBydT = mag(runTime.deltaT() / (Tliq - Tsol)).value();
-
-    alphaCoNum = gMax(mag(fvc::ddt(T))())*dtBydT;
-
-    Info << "Courant Number thermo: " << alphaCoNum << endl;
-
-    FoNum = gMin(Foam::pow(mesh.V().field(), 2.0/3.0) / (kappa/rho/Cp)());
-
-    scalar maxFo = runTime.controlDict().lookupOrDefault<scalar>("maxFo", 1);
-
-    scalar deltaT = min
+    const volScalarField::Internal alphaNum
     (
-        min(maxCo/(CoNum + small), maxFo/(FoNum + small)),
-        maxAlphaCo/(alphaCoNum + small)
-    )*runTime.deltaTValue();
-
-    deltaT = min
-    (
-        min(deltaT, runTime.deltaTValue() + 0.1*deltaT),
-        1.2*runTime.deltaTValue()
+        mag(fvc::ddt(T))()()
+       /(Tliq - Tsol)
+      *runTime.deltaT()
     );
 
-    deltaT = min(deltaT, maxDeltaT);
+    alphaCoNum = gMax(alphaNum);
 
-    // adjust time step to desired hit scan path resolution
+    Info << "Thermo Number max: " << alphaCoNum << endl;
+
+    scalar maxDi = runTime.controlDict().lookupOrDefault<scalar>("maxDi", 10.0);
+
+    const volScalarField::Internal DiNumvf
+    (
+        fvc::surfaceSum
+        (
+            mesh.magSf()
+           *fvc::interpolate(kappa)
+           *mesh.surfaceInterpolation::deltaCoeffs()
+        )()()
+       /(mesh.V()*rho.value()*Cp())
+       *runTime.deltaT()
+    );
+
+    DiNum = gMax(DiNumvf);
+
+    Info<< "Diffusion Number max: " << DiNum << endl;
+
+    scalar maxDeltaTFact = min
+    (
+        min(maxCo/(CoNum + small), maxAlphaCo/(alphaCoNum + small)),
+        maxDi/(DiNum + small)
+    );
+
+    scalar deltaTFact = min(min(maxDeltaTFact, 1.0 + 0.1*maxDeltaTFact), 1.2);
+
+    scalar deltaT = min(deltaTFact*runTime.deltaTValue(), maxDeltaT);
+
     sources.adjustDeltaT(deltaT);
 
     runTime.setDeltaT(deltaT);

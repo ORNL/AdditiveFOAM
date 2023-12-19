@@ -92,17 +92,29 @@ Foam::heatSourceModel::heatSourceModel
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
 {
-    absorptionModel_ = absorptionModel::New(sourceName_, heatSourceDict_, mesh_);
-    movingBeam_ = movingBeam::New(sourceName_, heatSourceDict_, mesh_.time());
+    absorptionModel_ =
+        absorptionModel::New(sourceName_, heatSourceDict_, mesh_);
 
-    dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
+    movingBeam_ =
+        movingBeam::New(sourceName_, heatSourceDict_, mesh_.time());
+
+    dimensions_ =
+        heatSourceModelCoeffs_.lookup<vector>("dimensions");
+
     staticDimensions_ = dimensions_;
 
-    transient_ = heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
+    transient_ =
+        heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
 
-    isoValue_ = heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
+    isoValue_ =
+        heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
 
-    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::uniform(great));
+    nPoints_ = 
+        heatSourceModelCoeffs_.lookupOrDefault<labelVector>
+        (
+            "nPoints",
+            vector::one
+        );
 }
 
 
@@ -234,7 +246,7 @@ Foam::heatSourceModel::qDot()
     {
         const vector position_ = movingBeam_->position();
 
-        // udpate the absorbtion coefficient using the heat source aspect ratio
+        // udpate the absorbed power and heat source normalization term
         const scalar aspectRatio = 
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
@@ -245,7 +257,9 @@ Foam::heatSourceModel::qDot()
             absorptionModel_->eta(aspectRatio)*power_
         );
 
-        // calculate the weights of the distribution
+        dimensionedScalar volume = V0();
+
+        // integrate the heat source in each overlapping cell
         volScalarField weights
         (
             IOobject
@@ -260,60 +274,52 @@ Foam::heatSourceModel::qDot()
             dimensionedScalar("Zero", dimless, 0.0)          
         );
 
-        const cellList& cells = mesh_.cells();
-        const faceList& faces = mesh_.faces();
         const pointField& points = mesh_.points();
-
+        
         treeBoundBox beamBb
         (
-            position_ - 3.0*dimensions_,
-            position_ + 3.0*dimensions_
+            position_ - 1.5*dimensions_,
+            position_ + 1.5*dimensions_
         );
 
         hexMatcher hex;
 
         forAll(mesh_.cells(), celli)
         {
-            const cell& c = cells[celli];
-
             treeBoundBox cellBb(point::max, point::min);
-            forAll(c, facei)
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, i)
             {
-                const face& f = faces[c[facei]];
-                forAll(f, fp)
-                {
-                    cellBb.min() = min(cellBb.min(), points[f[fp]]);
-                    cellBb.max() = max(cellBb.max(), points[f[fp]]);
-                }
+                cellBb.min() = min(cellBb.min(), points[vertices[i]]);
+                cellBb.max() = max(cellBb.max(), points[vertices[i]]);
             }
 
             if (cellBb.overlaps(beamBb))
             {
                 if (hex.isA(mesh_, celli))
-                {                  
-                    labelVector nPoints
-                    (
-                        cmptDivide
+                {
+                    vector dx_ = cmptDivide(dimensions_, vector(nPoints_));
+                  
+                    labelVector nCellPoints =
+                        max
                         (
-                            (cellBb.span() + small*vector::one),
-                            dx_
-                        )
-                    );
+                            cmptDivide(cellBb.span() + small*vector::one, dx_),
+                            vector::one
+                        );
 
-                    // cell is finer than target resolution, evaluate at centre
-                    nPoints = max(nPoints, labelVector(1, 1, 1));
+                    dx_ = cmptDivide(cellBb.span(), vector(nCellPoints));
 
-                    vector dxi = cmptDivide(cellBb.span(), vector(nPoints));
-
-                    scalar dVi = dxi.x() * dxi.y() * dxi.z();
+                    scalar dVi = dx_.x() * dx_.y() * dx_.z();
 
                     scalar wi = 0.0;
 
-                    for (label k=0; k < nPoints.z(); ++k)
+                    for (label k=0; k < nCellPoints.z(); ++k)
                     {
-                        for (label j=0; j < nPoints.y(); ++j)
+                        for (label j=0; j < nCellPoints.y(); ++j)
                         {
-                            for (label i=0; i < nPoints.x(); ++i)
+                            for (label i=0; i < nCellPoints.x(); ++i)
                             {
                                 const point pt
                                 (
@@ -321,17 +327,16 @@ Foam::heatSourceModel::qDot()
                                   - cmptMultiply
                                     (
                                         vector(i + 0.5, j + 0.5, k + 0.5),
-                                        dxi
+                                        dx_
                                     )
                                 );
 
-                                treeBoundBox ptBb(pt - 0.5*dxi, pt + 0.5*dxi);
+                                treeBoundBox ptBb(pt - 0.5*dx_, pt + 0.5*dx_);
 
                                 // calculate weight for point in beam bound box
                                 if (beamBb.overlaps(ptBb))
                                 {
                                     point d = cmptMag(pt - position_);
-
                                     wi += weight(d) * dVi;
                                 }
                             }
@@ -350,21 +355,16 @@ Foam::heatSourceModel::qDot()
             }
         }
 
-        qDot_ = absorbedPower * weights / V0();
-
         // stabilize numerical integration errors within 95% of applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value();
+        dimensionedScalar sumWeights = fvc::domainIntegrate(weights);
+        scalar residual = (sumWeights / volume).value();
 
-        scalar relTol
-        (
-            mag(integratedPower_ - absorbedPower.value())
-          / absorbedPower.value()
-        );
-
-        if (relTol < 0.05)
+        if (mag(1 - residual) < 0.05)
         {
-            qDot_ *= absorbedPower.value() / integratedPower_;
+            volume = sumWeights;
         }
+
+        qDot_ = absorbedPower * weights / volume;
     }
 
     return tqDot;

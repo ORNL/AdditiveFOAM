@@ -34,6 +34,7 @@ beam
     {
         k               2.0;
         dimensions      (85.0e-6 85.0e-6 30e-6);
+        nPoints         (10 10 10);
     }
 }
 
