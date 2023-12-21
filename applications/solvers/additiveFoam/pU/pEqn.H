@@ -11,7 +11,7 @@ while (pimple.correct())
     (
         "phiHbyA",
         fvc::flux(HbyA)
-      + rAUf*fvc::ddtCorr(U, phi)
+      + rAUf*fvc::ddtCorr(U, phi, Uf)
       + phig
     );
     MRF.makeRelative(phiHbyA);
@@ -26,7 +26,11 @@ while (pimple.correct())
           - fvm::laplacian(rAUf, p_rgh)
         );
 
-        p_rghEqn.setReference(pRefCell, getRefCellValue(p_rgh, pRefCell));
+        p_rghEqn.setReference
+        (
+            pressureReference.refCell(),
+            pressureReference.refValue()
+        );
 
         p_rghEqn.solve();
 
@@ -51,8 +55,15 @@ while (pimple.correct())
         (
             "p",
             p.dimensions(),
-            pRefValue - getRefCellValue(p, pRefCell)
+            pressureReference.refValue()
+                - getRefCellValue(p, pressureReference.refCell())
         );
         p_rgh = p - rhok*gh;
     }
+    
+    // Correct Uf if the mesh is moving
+    fvc::correctUf(Uf, U, phi, MRF);
+
+    // Make the fluxes relative to the mesh motion
+    fvc::makeRelative(phi, U);
 }

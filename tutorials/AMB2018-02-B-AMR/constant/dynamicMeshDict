@@ -1,0 +1,62 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  11
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+topoChanger
+{
+    type    refiner;
+
+    libs    ("libfvMeshTopoChangers.so");
+
+    // How often to refine
+    refineInterval  10;
+
+    // Field to be refinement on
+    field           qDot;
+
+    // Refine field in between lower..upper
+    lowerRefineLevel 1E+10;
+    upperRefineLevel 1E+20;
+
+    // Have slower than 2:1 refinement
+    nBufferLayers   1;
+
+    // Refine cells only up to maxRefinement levels
+    maxRefinement   1;
+
+    // Stop refinement if maxCells reached
+    maxCells        200000;
+
+    // Write the refinement level as a volScalarField
+    dumpLevel       true;
+    
+    // Fluxes to adapt. For newly created faces or split faces the flux
+    // gets estimated from an interpolated volVectorField ('velocity')
+    // First is name of the flux to adapt, second is velocity that will
+    // be interpolated and inner-producted with the face area vector.
+    //correctFluxes ((phi U));
+}
+
+
+distributor
+{
+    type            distributor;
+
+    libs            ("libfvMeshDistributors.so");
+
+    redistributionInterval  5;
+}
+
+
+// ************************************************************************* //
