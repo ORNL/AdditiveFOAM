@@ -115,28 +115,14 @@ mixedTemperatureFvPatchScalarField
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::mixedTemperatureFvPatchScalarField::autoMap
+void Foam::mixedTemperatureFvPatchScalarField::map
 (
+    const fvPatchScalarField& psf,
     const fvPatchFieldMapper& m
 )
 {
-    mixedFvPatchScalarField::autoMap(m);
+    mixedFvPatchScalarField::map(psf, m);
     m(Tinf_, Tinf_);
-}
-
-
-void Foam::mixedTemperatureFvPatchScalarField::rmap
-(
-    const fvPatchScalarField& ptf,
-    const labelList& addr
-)
-{
-    mixedFvPatchScalarField::rmap(ptf, addr);
-
-    const mixedTemperatureFvPatchScalarField& tiptf =
-        refCast<const mixedTemperatureFvPatchScalarField>(ptf);
-
-    Tinf_.rmap(tiptf.Tinf_, addr);
 }
 
 

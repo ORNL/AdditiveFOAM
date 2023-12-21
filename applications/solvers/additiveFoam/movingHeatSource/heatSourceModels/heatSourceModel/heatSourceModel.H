@@ -37,11 +37,14 @@ SourceFiles
 #ifndef heatSourceModel_H
 #define heatSourceModel_H
 
+#include "labelVector.H"
+#include "hexMatcher.H"
 #include "dictionary.H"
 #include "volFields.H"
 #include "movingBeam.H"
 #include "absorptionModel.H"
 #include "labelVector.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -21,14 +21,14 @@ jobs:
        
     runs-on: ubuntu-20.04
     container:
-      image: docker.io/openfoam/openfoam10-paraview510
+      image: docker.io/openfoam/openfoam11-paraview510
       options: --user root
     steps:
       - name: Checkout AdditiveFOAM
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
+          . /opt/openfoam11/etc/bashrc
           cd applications/solvers/additiveFoam/movingHeatSource
           wmake libso
           cd -
@@ -36,7 +36,7 @@ jobs:
           wmake
       - name: Test AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
+          . /opt/openfoam11/etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created

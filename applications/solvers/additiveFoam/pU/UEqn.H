@@ -1,7 +1,3 @@
-// Solve the Momentum equation
-
-MRF.correctBoundaryVelocity(U);
-
 const volScalarField D
 (
     "D",
