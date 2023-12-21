@@ -91,22 +91,13 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::marangoniFvPatchVectorField::autoMap
+void Foam::marangoniFvPatchVectorField::map
 (
+    const fvPatchVectorField& pvf,
     const fvPatchFieldMapper& m
 )
 {
-    transformFvPatchVectorField::autoMap(m);
-}
-
-
-void Foam::marangoniFvPatchVectorField::rmap
-(
-    const fvPatchVectorField& ptf,
-    const labelList& addr
-)
-{
-    transformFvPatchVectorField::rmap(ptf, addr);
+    transformFvPatchVectorField::map(pvf, m);
 }
 
 

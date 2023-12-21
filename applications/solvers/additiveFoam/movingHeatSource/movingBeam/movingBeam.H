@@ -40,7 +40,8 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "fvCFD.H"
+#include <fstream>
+#include "fvc.H"
 #include "segment.H"
 #include "HashTable.H"
 #include "absorptionModel.H"

@@ -152,8 +152,23 @@ volScalarField rhok
 );
 
 #include "readGravitationalAcceleration.H"
-#include "readhRef.H"
-#include "gh.H"
+
+uniformDimensionedScalarField hRef
+(
+    IOobject
+    (
+        "hRef",
+        runTime.constant(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::NO_WRITE
+    ),
+    dimensionedScalar(dimLength, 0)
+);
+
+dimensionedScalar ghRef(- mag(g)*hRef);
+volScalarField gh("gh", (g & mesh.C()) - ghRef);
+surfaceScalarField ghf("ghf", (g & mesh.Cf()) - ghRef);
 
 volScalarField p
 (

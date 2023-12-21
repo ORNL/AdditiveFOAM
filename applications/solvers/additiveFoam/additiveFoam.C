@@ -31,21 +31,36 @@ Description
     
 \*---------------------------------------------------------------------------*/
 
-#include "fvCFD.H"
+#include "argList.H"
+#include "timeSelector.H"
+#include "zeroGradientFvPatchFields.H"
+#include "IFstream.H"
+#include "uniformDimensionedFields.H"
+#include "pressureReference.H"
+#include "findRefCell.H"
+
+#include "fvmDiv.H"
+#include "fvmDdt.H"
+#include "fvmLaplacian.H"
+#include "constrainPressure.H"
+#include "constrainHbyA.H"
 #include "pimpleControl.H"
 
-#include "graph.H"
-#include "Polynomial.H"
-
 #include "interpolateXY/interpolateXY.H"
+#include "graph/graph.H"
+#include "Polynomial.H"
 
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
+
+//#include "Timer.H" // for profiling, if desired
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
+    using namespace Foam;
+    
     #include "postProcess.H"
 
     #include "setRootCase.H"
@@ -55,6 +70,9 @@ int main(int argc, char *argv[])
     #include "createFields.H"
     #include "createTimeControls.H"
     #include "initContinuityErrs.H"
+    
+    // Initialize profiling timer
+    //Timers timer(runTime);
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
@@ -74,12 +92,13 @@ int main(int argc, char *argv[])
     while (runTime.run())
     {
         #include "updateProperties.H"
-
         #include "readTimeControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
+        //timer.start("Heat Source");
         sources.update();
+        //timer.stop("Heat Source");
         
         runTime++;
 
@@ -105,6 +124,9 @@ int main(int argc, char *argv[])
     }
 
     ExaCA.write();
+    
+    // Write time profiling information
+    //timer.write();
 
     return 0;
 }

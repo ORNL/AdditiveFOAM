@@ -1,3 +1,6 @@
+graph/curve.C
+graph/graph.C
+
 BCs/mixedTemperature/mixedTemperatureFvPatchScalarField.C
 BCs/marangoni/marangoniFvPatchVectorField.C
 
