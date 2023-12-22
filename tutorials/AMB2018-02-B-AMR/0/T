@@ -31,7 +31,7 @@ boundaryField
         h               10.0;
         emissivity      0.4;
         Tinf            uniform 300;
-        value           uniform 300;
+        value           $internalField;
     }
     sides
     {

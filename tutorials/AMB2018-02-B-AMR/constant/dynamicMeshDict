@@ -20,7 +20,7 @@ topoChanger
     libs    ("libfvMeshTopoChangers.so");
 
     // How often to refine
-    refineInterval  10;
+    refineInterval  5;
 
     // Field to be refinement on
     field           qDot;
@@ -40,12 +40,6 @@ topoChanger
 
     // Write the refinement level as a volScalarField
     dumpLevel       true;
-    
-    // Fluxes to adapt. For newly created faces or split faces the flux
-    // gets estimated from an interpolated volVectorField ('velocity')
-    // First is name of the flux to adapt, second is velocity that will
-    // be interpolated and inner-producted with the face area vector.
-    //correctFluxes ((phi U));
 }
 
 
