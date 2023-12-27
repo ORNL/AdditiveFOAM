@@ -45,6 +45,7 @@ Description
 #include "constrainPressure.H"
 #include "constrainHbyA.H"
 #include "pimpleControl.H"
+#include "fvCorrectPhi.H"
 
 #include "interpolateXY/interpolateXY.H"
 #include "graph/graph.H"
@@ -66,9 +67,8 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-    #include "createControl.H"
+    #include "createDyMControls.H"
     #include "createFields.H"
-    #include "createTimeControls.H"
     #include "initContinuityErrs.H"
     
     // Initialize profiling timer
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     while (runTime.run())
     {
         #include "updateProperties.H"
-        #include "readTimeControls.H"
+        #include "readDyMControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
@@ -100,16 +100,23 @@ int main(int argc, char *argv[])
         sources.update();
         //timer.stop("Heat Source");
         
+        mesh.update();
+        
         runTime++;
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         #include "solutionControls.H"
         
-        while (pimple.loop() && fluidInDomain)
+        while (pimple.loop())
         {
-            #include "pU/UEqn.H"
-            #include "pU/pEqn.H"
+            #include "moveMesh.H"
+            
+            if (fluidInDomain)
+            {
+                #include "pU/UEqn.H"
+                #include "pU/pEqn.H"    
+            }
         }
 
         #include "thermo/TEqn.H"
@@ -117,6 +124,11 @@ int main(int argc, char *argv[])
         ExaCA.update();
 
         runTime.write();
+        
+        if (runTime.writeTime())
+        {
+            sources.qDot().write();
+        }
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"

@@ -94,10 +94,10 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 void Foam::marangoniFvPatchVectorField::map
 (
     const fvPatchVectorField& pvf,
-    const fvPatchFieldMapper& m
+    const fvPatchFieldMapper& mapper
 )
 {
-    transformFvPatchVectorField::map(pvf, m);
+    transformFvPatchVectorField::map(pvf, mapper);
 }
 
 

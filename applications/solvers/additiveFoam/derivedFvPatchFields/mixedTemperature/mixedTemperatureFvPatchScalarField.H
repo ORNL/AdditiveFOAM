@@ -2,10 +2,8 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2023 OpenFOAM Foundation
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -30,14 +28,39 @@ Description
     This boundary condition provides a mixedTemperature condition,
     calculated as:
 
-SourceFiles
-    mixedTemperatureFvPatchScalarField.C
+        \f[
+            Q = h * (T - T_inf) + e * sigma * (T^4 - T_inf^$)
+        \f]
+
+    where
+    \vartable
+        h      | Convection coefficient [W/m^2/K]
+        e      | Surface emissivity [-]
+        sigma  | Stefan-Boltzmann constant [5.67e-8 W/m^2/K^4]
+    \endtable
+
+Usage
+    \table
+        Property   | Description                  | Req'd? | Default
+        h          | Uniform convection coeff     | yes    |
+        emissivity | Uniform surface emissivity   | no     | 0.0
+        Tinf       | Ambient temperature          | yes    |
+    \endtable
+
+    Example of the boundary condition specification:
+    \verbatim
+    <patchName>
+    {
+        type       mixedTemperature;
+        h          10.0;
+        emissivity 0.4;
+    }
+    \endverbatim
 
 SourceFiles
     mixedTemperatureFvPatchScalarField.C
 
 \*---------------------------------------------------------------------------*/
-
 
 #ifndef BC_H
 #define BC_H
@@ -60,13 +83,13 @@ class mixedTemperatureFvPatchScalarField
 {
     // Private Data
 
-        //- convective heat transfer coefficient [W/m^2/k]
+        //- Convective heat transfer coefficient [W/m^2/K]
         scalar h_;
-
-        //- effective emissivity of the boundary
+        
+        //- Effective emissivity of the boundary
         scalar emissivity_;
-
-        //- ambient temperature
+        
+        //- Ambient temperature
         scalarField Tinf_;
 
 
@@ -77,13 +100,6 @@ public:
 
 
     // Constructors
-
-        //- Construct from patch and internal field
-        mixedTemperatureFvPatchScalarField
-        (
-            const fvPatch&,
-            const DimensionedField<scalar, volMesh>&
-        );
 
         //- Construct from patch, internal field and dictionary
         mixedTemperatureFvPatchScalarField

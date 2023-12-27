@@ -2,10 +2,8 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2023 OpenFOAM Foundation
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -37,49 +35,20 @@ Foam::mixedTemperatureFvPatchScalarField::
 mixedTemperatureFvPatchScalarField
 (
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF
-)
-:
-    mixedFvPatchScalarField(p, iF),
-    h_(0.0),
-    emissivity_(0.0),
-    Tinf_(p.size(), Zero)
-{
-    refValue() = Zero;
-    refGrad() = Zero;
-    valueFraction() = 1;
-}
-
-
-Foam::mixedTemperatureFvPatchScalarField::
-mixedTemperatureFvPatchScalarField
-(
-    const fvPatch& p,
     const DimensionedField<scalar, volMesh>& iF,
     const dictionary& dict
 )
 :
     mixedFvPatchScalarField(p, iF),
     h_(dict.lookup<scalar>("h")),
-    emissivity_(dict.lookup<scalar>("emissivity")),
+    emissivity_(dict.lookupOrDefault<scalar>("emissivity", 0.0)),
     Tinf_("Tinf", dict, p.size())
 {
-    fvPatchScalarField::operator=(scalarField("value", dict, p.size()));
+    refGrad() = Zero;
+    valueFraction() = 0.0;
 
-    if (dict.found("refValue"))
-    {
-        // Full restart
-        refValue() = scalarField("refValue", dict, p.size());
-        refGrad() = scalarField("refGradient", dict, p.size());
-        valueFraction() = scalarField("valueFraction", dict, p.size());
-    }
-    else
-    {
-        // Start from user entered data. Assume fixedValue.
-        refValue() = *this;
-        refGrad() = 0;
-        valueFraction() = 1;
-    }
+    refValue() = scalarField("Tinf", dict, p.size());
+    fvPatchScalarField::operator=(refValue());
 }
 
 
@@ -117,12 +86,16 @@ mixedTemperatureFvPatchScalarField
 
 void Foam::mixedTemperatureFvPatchScalarField::map
 (
-    const fvPatchScalarField& psf,
-    const fvPatchFieldMapper& m
+    const fvPatchScalarField& ptf,
+    const fvPatchFieldMapper& mapper
 )
 {
-    mixedFvPatchScalarField::map(psf, m);
-    m(Tinf_, Tinf_);
+    mixedFvPatchScalarField::map(ptf, mapper);
+
+    const mixedTemperatureFvPatchScalarField& tiptf =
+        refCast<const mixedTemperatureFvPatchScalarField>(ptf);
+
+    mapper(Tinf_, tiptf.Tinf_);
 }
 
 
@@ -147,27 +120,23 @@ void Foam::mixedTemperatureFvPatchScalarField::updateCoeffs()
         return;
     }
 
-    refValue() = Tinf_;
-
+    mixedFvPatchScalarField::refValue() = (Tinf_);
+    
     const scalarField& Tp(*this);
-
+    
     const scalarField& kappa_ =
         patch().lookupPatchField<volScalarField, scalar>("kappa");
-
+        
     const scalar sigma_(5.67e-8);
     
     scalarField hEff_
     (
-        h_ + sigma_*emissivity_*(sqr(Tp) + sqr(Tinf_))*(Tp + Tinf_)
+        h_ + sigma_ * emissivity_ * (sqr(Tp) + sqr(Tinf_)) * (Tp + Tinf_)
     );
-
+    
     valueFraction() = 
-        1.0/
-        (
-            1.0
-          + kappa_*patch().deltaCoeffs()/max(hEff_, 1e-15)
-        );    
-
+        1.0 / (1.0 + kappa_ * patch().deltaCoeffs() / max(hEff_, 1e-15));
+        
     refGrad() = Zero;
 
     mixedFvPatchScalarField::updateCoeffs();

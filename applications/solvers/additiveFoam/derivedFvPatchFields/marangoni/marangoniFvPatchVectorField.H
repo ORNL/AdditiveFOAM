@@ -45,7 +45,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class marangoniFvPatchVectorField Declaration
+                  Class marangoniFvPatchVectorField Declaration
 \*---------------------------------------------------------------------------*/
 
 class marangoniFvPatchVectorField

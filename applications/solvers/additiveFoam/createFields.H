@@ -183,16 +183,8 @@ volScalarField p
     p_rgh + rhok*gh
 );
 
-label pRefCell = 0;
-scalar pRefValue = 0.0;
-setRefCell
-(
-    p,
-    p_rgh,
-    pimple.dict(),
-    pRefCell,
-    pRefValue
-);
+// Create pressure reference
+Foam::pressureReference pressureReference(p, pimple.dict());
 
 if (p_rgh.needReference())
 {
@@ -200,10 +192,32 @@ if (p_rgh.needReference())
     (
         "p",
         p.dimensions(),
-        pRefValue - getRefCellValue(p, pRefCell)
+        pressureReference.refValue()
+                - getRefCellValue(p, pressureReference.refCell())
     );
 }
 
 mesh.schemes().setFluxRequired(p_rgh.name());
 
 #include "createMRF.H"
+
+// Create surface flux field if mesh is dynamic (AMR)
+autoPtr<surfaceVectorField> Uf;
+if(mesh.dynamic() || MRF.size())
+{
+    // Ensure U has correct boundary conditions before creating Uf
+    U.correctBoundaryConditions();
+    
+    Uf = new surfaceVectorField
+    (
+        IOobject
+        (
+            "Uf",
+            runTime.name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        fvc::interpolate(U)
+    );
+}
