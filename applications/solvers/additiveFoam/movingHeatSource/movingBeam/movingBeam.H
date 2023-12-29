@@ -176,6 +176,21 @@ public:
         //- Move the beam to the provided time
         void move(const scalar time);
         
+        //- Update provided non-member position and power variables to provided
+        //  time value
+        void move
+        (
+            vector& position,
+            scalar& power,
+            const scalar time
+        );
+        
+        //- Return beam velocity at provided time
+        scalar velocity
+        (
+            const scalar time
+        );
+        
         //- Returns the path index at the provided time
         label findIndex(const scalar time);
 

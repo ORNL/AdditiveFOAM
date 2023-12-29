@@ -216,6 +216,7 @@ void Foam::heatSourceModel::updateDimensions()
     Info << "maxDepth: " << dimensions_.z() << endl;
 }
 
+
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModel::qDot()
 {

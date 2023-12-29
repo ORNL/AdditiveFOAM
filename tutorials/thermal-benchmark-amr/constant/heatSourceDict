@@ -1,0 +1,72 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          heatSourceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+sources         ( beam );
+
+beam
+{
+    pathName        "0000178.txt";
+    
+    absorptionModel     constant; //Kelly;
+    
+    constantCoeffs
+    {
+        eta             0.3;
+    }
+    
+    KellyCoeffs
+    {
+        geometry        cone;
+        eta0            0.3;
+        etaMin          0.35;
+    }
+    
+    //heatSourceModel modifiedSuperGaussian;
+    heatSourceModel superGaussian;
+    
+    modifiedSuperGaussianCoeffs
+    {
+        dimensions      ( 62.5e-6 62.5e-6 30e-6 );
+        m               3;
+        k               6;
+        transient       true;
+        isoValue        1670;
+        //dx              ( 10e-6 10e-6 10e-6 );
+    }
+    
+    superGaussianCoeffs
+    {
+        k               2.0;
+        dimensions      (85.0e-6 85.0e-6 30e-6);
+    }
+}
+
+refinementControls
+{
+    refine              true;
+    
+    resolveTail         false;
+    
+    refinementInterval  20;
+    
+    refinementLevel     1;
+    
+    fwdSteps            80;
+    
+    revSteps            10;
+}
+
+// ************************************************************************* //

@@ -1,0 +1,71 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#includeEtc     "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
+
+castellatedMesh true;
+
+snap            false;
+
+addLayers       false;
+
+geometry
+{
+    refinementBox
+    {
+        type            searchableBox;
+        min             ( 0.0650031 0.0864178 -0.0005 );
+        max             ( 0.0800164 0.100731 0 );
+    }
+}
+
+castellatedMeshControls
+{
+    features        ( );
+    refinementSurfaces
+    {
+    }
+    refinementRegions
+    {
+        refinementBox
+        {
+            mode            inside;
+            levels          ( ( 3 3 ) );
+        }
+    }
+    nCellsBetweenLevels 5;
+    locationInMesh  ( 0.0725097 0.0935744 -0.00025 );
+}
+
+snapControls
+{
+}
+
+addLayersControls
+{
+    layers
+    {
+    }
+    relativeSizes   true;
+    expansionRatio  1.2;
+    finalLayerThickness 0.5;
+    minThickness    0.001;
+}
+
+mergeTolerance  1e-08;
+
+
+// ************************************************************************* //

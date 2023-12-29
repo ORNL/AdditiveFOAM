@@ -201,7 +201,7 @@ public:
 
         //- Return the normalization volume for the integrated distribution
         virtual dimensionedScalar V0() = 0;
-
+        
         //- Read the heat source dictionary
         virtual bool read() = 0;
         

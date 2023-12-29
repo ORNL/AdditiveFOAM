@@ -65,8 +65,47 @@ private:
         //- List of individual heat sources
         wordList sourceNames_;
         
+        //- Subdictionary for refinement controls
+        dictionary refineDict_;
+        
+        //- Switch for turning on refinement field
+        bool refine_;
+        
+        //- Switch for controlling refinement in melt pool behind beam
+        bool resolveTail_;
+        
+        //- Number of time steps between refinements
+        label refinementInterval_;
+        
+        //- Max refinement level specified in dynamicMeshDict. If > 1,
+        //  mesh will be updated in successive time steps to ensure cells
+        //  newly marked for refinement are completely refined. This overcomes
+        //  the limitation of only being able to refine one level per mesh update
+        label refinementLevel_;
+        
+        //- Counter variable for next time index to refine
+        label refinementIndex_;
+        
+        //- How many time steps ahead of the beam to integrate. By setting
+        //  fwdSteps = n * refineInterval, cells ahead of the beam will go through
+        //  n refinements before the beam reaches their location. This overcomes
+        //  the limitation of the refinement function, which can only refine
+        //  one level per function call, and ensures the cells are refined
+        //  to the desired level before the beam reaches their location. This is an
+        //  alternative strategy to the refinementLevel_ control, which
+        //  refines n successive times in a row once the refinement interval is reached.
+        label fwdSteps_;
+        
+        //- How many time steps behind beam to integrate. This is generally mutually 
+        //  exclusive with the resolveTail_ control, and may be more stable than
+        //  refining based on the phase fraction
+        label revSteps_;
+        
         //- Total volumetric power of all beams
         volScalarField qDot_;
+        
+        //- Refinement marker field
+        volScalarField refinementField_;
                 
         //- Pointer list to each beam instance
         PtrList<heatSourceModel> sources_;
@@ -91,6 +130,15 @@ public:
         {
             return qDot_;
         }
+        
+        //- Return const access to the refinement marker field
+        const volScalarField& refinementField() const
+        {
+            return refinementField_;
+        }
+        
+        //- Return true if it is time to refine
+        bool refineTime();
         
         //- Adjust deltaT using the current state of each beam
         void adjustDeltaT(scalar& deltaT);

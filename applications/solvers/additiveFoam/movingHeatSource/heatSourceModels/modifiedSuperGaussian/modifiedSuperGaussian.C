@@ -83,6 +83,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::weight(const vector& d)
     }
 }
 
+
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::modifiedSuperGaussian::V0()
 {
@@ -101,6 +102,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::V0()
 
     return V0;
 }
+
 
 bool Foam::heatSourceModels::modifiedSuperGaussian::read()
 {

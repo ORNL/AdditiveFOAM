@@ -96,11 +96,17 @@ int main(int argc, char *argv[])
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
+        //- Update moving beam source term and refinement field
         //timer.start("Heat Source");
         sources.update();
         //timer.stop("Heat Source");
         
-        mesh.update();
+        //- Update mesh for topology change, mesh-to-mesh mapping
+        //  but control update using movingHeatSourceModel logic
+        if (sources.refineTime())
+        {
+            mesh.update();
+        }
         
         runTime++;
 
@@ -128,6 +134,7 @@ int main(int argc, char *argv[])
         if (runTime.writeTime())
         {
             sources.qDot().write();
+            sources.refinementField().write();
         }
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"

@@ -193,6 +193,68 @@ void Foam::movingBeam::move(const scalar time)
 }
 
 
+void Foam::movingBeam::move
+(
+    vector& position,
+    scalar& power,
+    const scalar time
+)
+{
+    //- Get index of path at provided time
+    const label i = findIndex(time);
+ 
+    //- Update dummy beam position
+    if (path_[i].mode() == 1)
+    {
+        position = path_[i].position();
+    }
+    else
+    {
+        vector displacement = vector::zero;
+
+        scalar dt = path_[i].time() - path_[i-1].time();
+
+        if (dt > 0)
+        {
+            const vector dx = path_[i].position() - path_[i-1].position();
+            displacement = dx*(time - path_[i-1].time())/dt;
+        }
+
+        position = path_[i-1].position() + displacement;
+    }
+    
+    //- Update dummy power variable
+    if ((time - path_[i-1].time()) > eps)
+    {
+        power = path_[i].power();
+    }
+    else
+    {
+        power = path_[i-1].power();
+    }
+}
+
+
+Foam::scalar
+Foam::movingBeam::velocity
+(
+    const scalar time
+)
+{
+    // update the current index of the path
+    const label i = findIndex(time);
+
+    if (path_[i].mode() == 1)
+    {
+        return 0.0;
+    }
+    else
+    {
+        return path_[i].parameter();
+    }
+}
+
+
 Foam::label
 Foam::movingBeam::findIndex(const scalar time)
 {
