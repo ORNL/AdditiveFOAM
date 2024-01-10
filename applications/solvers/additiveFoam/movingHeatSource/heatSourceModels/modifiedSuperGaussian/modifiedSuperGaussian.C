@@ -95,7 +95,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::V0()
         "V0",
         dimVolume,
         s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 2.0/k_)
-      * Foam::tgamma(1.0 + 2.0/m_)*Foam::tgamma(1.0 + 2.0/k_)
+      * Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
       / Foam::tgamma(1.0 + 3.0/m_)
     );
 
