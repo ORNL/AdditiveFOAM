@@ -89,6 +89,8 @@ public:
         inline virtual scalar weight(const vector& d);
 
         inline virtual dimensionedScalar V0();
+        
+        inline virtual scalar D2sigma() const;
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

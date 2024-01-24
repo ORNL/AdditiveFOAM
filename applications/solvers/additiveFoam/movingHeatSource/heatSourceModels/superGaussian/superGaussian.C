@@ -69,6 +69,7 @@ Foam::heatSourceModels::superGaussian::weight(const vector& d)
     return Foam::exp(-x);
 }
 
+
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::superGaussian::V0()
 {
@@ -83,6 +84,14 @@ Foam::heatSourceModels::superGaussian::V0()
 
     return V0;
 }
+
+
+inline Foam::scalar
+Foam::heatSourceModels::superGaussian::D2sigma() const
+{
+    return max(dimensions_.x(), dimensions_.y());
+}
+
 
 bool Foam::heatSourceModels::superGaussian::read()
 {
@@ -100,6 +109,5 @@ bool Foam::heatSourceModels::superGaussian::read()
         return false;
     }
 }
-
 
 // ************************************************************************* //
