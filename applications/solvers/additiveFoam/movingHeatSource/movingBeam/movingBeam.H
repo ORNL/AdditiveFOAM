@@ -150,7 +150,7 @@ public:
 
     // Member Functions
     
-        //- Return current position of the moving beam
+        //- Return current position of the moving beam at current time
         inline vector position() const
         {
             return position_;
@@ -166,18 +166,39 @@ public:
         {
             return deltaT_;
         }
+        
+        //- Return position at specified time
+        inline vector position(const scalar time) const;
+        
+        //- Return power at specified time
+        inline scalar power(const scalar time) const;
+        
+        //- Return beam mode at specified time
+        inline scalar mode(const scalar time) const;
+        
+        //- Return beam parameter at specified time
+        inline scalar parameter(const scalar time) const;
+        
+        //- Return beam velocity at specified time
+        inline scalar velocity(const scalar time) const;
+        
+        //- Return time of next path start
+        scalar timeToNextPath(const scalar time) const;
 
         //- Read the path file
         void readPath();
         
         //- Returns true if the simulation time is less than path endTime
-        bool activePath();
+        bool activePath() const;
+        
+        //- Returns true if the provided time is less than the path end time
+        bool activePath(const scalar time) const;
         
         //- Move the beam to the provided time
         void move(const scalar time);
         
         //- Returns the path index at the provided time
-        label findIndex(const scalar time);
+        label findIndex(const scalar time) const;
 
         //- Adjust solution time step to hit pathInterval
         void adjustDeltaT(scalar& dt);

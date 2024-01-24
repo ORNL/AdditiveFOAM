@@ -83,6 +83,7 @@ Foam::heatSourceModels::modifiedSuperGaussian::weight(const vector& d)
     }
 }
 
+
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::modifiedSuperGaussian::V0()
 {
@@ -102,6 +103,14 @@ Foam::heatSourceModels::modifiedSuperGaussian::V0()
     return V0;
 }
 
+
+inline Foam::scalar
+Foam::heatSourceModels::modifiedSuperGaussian::D2sigma() const
+{
+    return max(dimensions_.x(), dimensions_.y());
+}
+
+
 bool Foam::heatSourceModels::modifiedSuperGaussian::read()
 {
     if (heatSourceModel::read())
@@ -119,6 +128,5 @@ bool Foam::heatSourceModels::modifiedSuperGaussian::read()
         return false;
     }
 }
-
 
 // ************************************************************************* //

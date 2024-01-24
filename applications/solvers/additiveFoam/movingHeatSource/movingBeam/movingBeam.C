@@ -86,6 +86,148 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+inline Foam::vector
+Foam::movingBeam::position(const scalar time) const
+{
+    if (activePath(time))
+    {
+        const label i = findIndex(time);
+        
+        if (path_[i].mode() == 1)
+        {
+            return path_[i].position();
+        }
+        else
+        {
+            vector displacement = vector::zero;
+
+            scalar dt = path_[i].time() - path_[i-1].time();
+
+            if (dt > 0)
+            {
+                const vector dx = path_[i].position() - path_[i-1].position();
+                displacement = dx*(time - path_[i-1].time())/dt;
+            }
+
+            return path_[i-1].position() + displacement;
+        }
+    }
+    else
+    {
+        return vector::max;
+    }
+}
+
+
+inline Foam::scalar
+Foam::movingBeam::power(const scalar time) const
+{
+    if (activePath(time))
+    {
+        const label i = findIndex(time);
+        
+        if ((time - path_[i-1].time()) > eps)
+        {
+            return path_[i].power();
+        }
+        else
+        {
+            return path_[i-1].power();
+        }
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+
+inline Foam::scalar
+Foam::movingBeam::mode(const scalar time) const
+{
+    if (activePath(time))
+    {
+        const label i = findIndex(time);
+        
+        return path_[i].mode();
+    }
+    else
+    {
+        return 1.0;
+    }
+}
+
+
+inline Foam::scalar
+Foam::movingBeam::parameter(const scalar time) const
+{
+    if (activePath(time))
+    {
+        const label i = findIndex(time);
+        
+        return path_[i].parameter();
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+
+inline Foam::scalar
+Foam::movingBeam::velocity(const scalar time) const
+{
+    if (activePath(time))
+    {
+        const label i = findIndex(time);
+        
+        if (path_[i].mode() == 1)
+        {
+            return 0.0;
+        }
+        
+        else
+        {
+            return path_[i].parameter();
+        }
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+
+Foam::scalar
+Foam::movingBeam::timeToNextPath(const scalar time) const
+{
+    if (activePath(time))
+    {
+        label i = findIndex(time);
+        
+        scalar timeToNextPath = 0;
+
+        while (timeToNextPath < eps)
+        {
+            timeToNextPath = max(0, path_[i].time() - time);
+
+            i++;
+
+            if (i == path_.size()) 
+            {
+                break;
+            }
+        }
+        
+        return timeToNextPath;
+    }
+    else
+    {
+        return GREAT;
+    }
+}
+
+
 void Foam::movingBeam::readPath()
 {
     const word pName_(beamDict_.lookup("pathName"));
@@ -148,9 +290,15 @@ void Foam::movingBeam::readPath()
 }
 
 
-bool Foam::movingBeam::activePath()
+bool Foam::movingBeam::activePath() const
 {
     return ((endTime_ - runTime_.value()) > eps);
+}
+
+
+bool Foam::movingBeam::activePath(const scalar time) const
+{
+    return ((endTime_ - time) > eps);
 }
 
 
@@ -194,7 +342,7 @@ void Foam::movingBeam::move(const scalar time)
 
 
 Foam::label
-Foam::movingBeam::findIndex(const scalar time)
+Foam::movingBeam::findIndex(const scalar time) const
 {
     label i = index_;
 
@@ -229,28 +377,14 @@ void Foam::movingBeam::adjustDeltaT(scalar& dt)
 {
     if (activePath() && hitPathIntervals_)
     {
-        scalar timeToNextPath = 0;
-        label i = index_;
-
-        while (timeToNextPath < eps)
-        {
-            timeToNextPath = max(0, path_[i].time() - runTime_.value());
-
-            i++;
-
-            if (i == path_.size()) 
-            {
-                break;
-            }
-        }
-
-        const scalar nSteps = timeToNextPath/dt;
+        const scalar dtMax = timeToNextPath(runTime_.value());
+        const scalar nSteps = dtMax/dt;
                 
         if (nSteps < labelMax)
         {
             // allow time step to dilate 1% to hit target path time
             const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
-            dt = min(timeToNextPath/nStepsToNextPath, dt);
+            dt = min(dtMax/nStepsToNextPath, dt);
         }
     }
 }
