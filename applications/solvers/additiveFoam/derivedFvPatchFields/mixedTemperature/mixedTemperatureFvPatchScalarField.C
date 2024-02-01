@@ -41,8 +41,8 @@ mixedTemperatureFvPatchScalarField
 )
 :
     mixedFvPatchScalarField(p, iF),
-    h_(0.0),
-    emissivity_(0.0),
+    h_(0),
+    emissivity_(0),
     Tinf_(p.size(), Zero)
 {
     refValue() = Zero;
@@ -60,22 +60,20 @@ mixedTemperatureFvPatchScalarField
 )
 :
     mixedFvPatchScalarField(p, iF),
-    h_(dict.lookup<scalar>("h")),
-    emissivity_(dict.lookup<scalar>("emissivity")),
+    h_(dict.get<scalar>("h")),
+    emissivity_(dict.get<scalar>("emissivity")),
     Tinf_("Tinf", dict, p.size())
 {
     fvPatchScalarField::operator=(scalarField("value", dict, p.size()));
 
     if (dict.found("refValue"))
     {
-        // Full restart
         refValue() = scalarField("refValue", dict, p.size());
         refGrad() = scalarField("refGradient", dict, p.size());
         valueFraction() = scalarField("valueFraction", dict, p.size());
     }
     else
     {
-        // Start from user entered data. Assume fixedValue.
         refValue() = *this;
         refGrad() = 0;
         valueFraction() = 1;
@@ -95,7 +93,20 @@ mixedTemperatureFvPatchScalarField
     mixedFvPatchScalarField(ptf, p, iF, mapper),
     h_(ptf.h_),
     emissivity_(ptf.emissivity_),
-    Tinf_(mapper(ptf.Tinf_))
+    Tinf_(ptf.Tinf_, mapper)
+{}
+
+
+Foam::mixedTemperatureFvPatchScalarField::
+mixedTemperatureFvPatchScalarField
+(
+    const mixedTemperatureFvPatchScalarField& ptf
+)
+:
+    mixedFvPatchScalarField(ptf),
+    h_(ptf.h_),
+    emissivity_(ptf.emissivity_),
+    Tinf_(ptf.Tinf_)
 {}
 
 
@@ -121,7 +132,7 @@ void Foam::mixedTemperatureFvPatchScalarField::autoMap
 )
 {
     mixedFvPatchScalarField::autoMap(m);
-    m(Tinf_, Tinf_);
+    Tinf_.autoMap(m);
 }
 
 
@@ -137,20 +148,6 @@ void Foam::mixedTemperatureFvPatchScalarField::rmap
         refCast<const mixedTemperatureFvPatchScalarField>(ptf);
 
     Tinf_.rmap(tiptf.Tinf_, addr);
-}
-
-
-void Foam::mixedTemperatureFvPatchScalarField::reset
-(
-    const fvPatchScalarField& ptf
-)
-{
-    mixedFvPatchScalarField::reset(ptf);
-
-    const mixedTemperatureFvPatchScalarField& tiptf =
-        refCast<const mixedTemperatureFvPatchScalarField>(ptf);
-
-    Tinf_.reset(tiptf.Tinf_);
 }
 
 
@@ -194,10 +191,10 @@ void Foam::mixedTemperatureFvPatchScalarField::write
 ) const
 {
     fvPatchScalarField::write(os);
-    writeEntry(os, "h", h_);
-    writeEntry(os, "emissivity", emissivity_);
-    writeEntry(os, "Tinf", Tinf_);
-    writeEntry(os, "value", *this);
+    os.writeEntry("h", h_);
+    os.writeEntry("emissivity", emissivity_);
+    Tinf_.writeEntry("Tinf", os);
+    fvPatchScalarField::writeValueEntry(os);
 }
 
 

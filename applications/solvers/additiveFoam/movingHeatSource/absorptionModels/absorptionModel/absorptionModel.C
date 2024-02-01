@@ -49,7 +49,7 @@ Foam::IOobject Foam::absorptionModel::createIOobject
     const fvMesh& mesh
 ) const
 {
-    typeIOobject<IOdictionary> io
+    IOobject io
     (
         dict.name(),
         mesh.time().timeName(),
@@ -58,16 +58,16 @@ Foam::IOobject Foam::absorptionModel::createIOobject
         IOobject::NO_WRITE
     );
 
-    if (io.headerOk())
+    if (io.typeHeaderOk<IOdictionary>(true))
     {
         io.readOpt() = IOobject::MUST_READ_IF_MODIFIED;
-        return io;
     }
     else
     {
         io.readOpt() = IOobject::NO_READ;
-        return io;
     }
+
+    return io;
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //

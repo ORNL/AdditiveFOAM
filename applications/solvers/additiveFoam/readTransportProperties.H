@@ -15,21 +15,20 @@ const dictionary& solidDict(transportProperties.subDict("solid"));
 const dictionary& liquidDict(transportProperties.subDict("liquid"));
 const dictionary& powderDict(transportProperties.subDict("powder"));
 
+Polynomial<PolySize> kappa1(solidDict.get<Polynomial<PolySize>>("kappa"));
+Polynomial<PolySize> kappa2(liquidDict.get<Polynomial<PolySize>>("kappa"));
+Polynomial<PolySize> kappa3(powderDict.get<Polynomial<PolySize>>("kappa"));
 
-Polynomial<PolySize> kappa1(solidDict.lookup("kappa"));
-Polynomial<PolySize> kappa2(liquidDict.lookup("kappa"));
-Polynomial<PolySize> kappa3(powderDict.lookup("kappa"));
-
-Polynomial<PolySize> Cp1(solidDict.lookup("Cp"));
-Polynomial<PolySize> Cp2(liquidDict.lookup("Cp"));
-Polynomial<PolySize> Cp3(powderDict.lookup("Cp"));
+Polynomial<PolySize> Cp1(solidDict.get<Polynomial<PolySize>>("Cp"));
+Polynomial<PolySize> Cp2(liquidDict.get<Polynomial<PolySize>>("Cp"));
+Polynomial<PolySize> Cp3(powderDict.get<Polynomial<PolySize>>("Cp"));
 
 // Reference density [kg]
 const dimensionedScalar rho
 (
-    "mu",
+    "rho",
     dimDensity,
-    transportProperties.lookup("rho")
+    transportProperties.get<dimensionedScalar>("rho").value()
 );
 
 // Thermal expansion coefficient [1/K]
@@ -37,7 +36,7 @@ const dimensionedScalar beta
 (
     "beta",
     dimless/dimTemperature,
-    transportProperties.lookup("beta")
+    transportProperties.get<dimensionedScalar>("beta").value()
 );
 
 //- Length scale of mushy zone [m]
@@ -45,7 +44,7 @@ const dimensionedScalar DAS
 (
     "DAS",
     dimLength,
-    transportProperties.lookup("DAS")
+    transportProperties.get<dimensionedScalar>("DAS").value()
 );
 
 //- Latent heat of fusion [J/kg]
@@ -53,7 +52,7 @@ const dimensionedScalar Lf
 (
     "Lf", 
     dimEnergy/dimMass, 
-    transportProperties.lookup("Lf")
+    transportProperties.get<dimensionedScalar>("Lf").value()
 );
 
 //- Liquid dynamic viscosity [m^2/(kg s)]
@@ -61,7 +60,7 @@ const dimensionedScalar mu
 (
     "mu",
     dimDynamicViscosity,
-    transportProperties.lookup("mu")
+    transportProperties.get<dimensionedScalar>("mu").value()
 );
 
 //- Liquid kinematic viscosity [m^2/s]

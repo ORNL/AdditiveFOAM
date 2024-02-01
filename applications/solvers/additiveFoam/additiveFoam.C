@@ -36,8 +36,8 @@ Description
 
 #include "graph.H"
 #include "Polynomial.H"
-
 #include "interpolateXY/interpolateXY.H"
+#include "IFstream.H"
 
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         #include "solutionControls.H"
-        
+       
         while (pimple.loop() && fluidInDomain)
         {
             #include "pU/UEqn.H"

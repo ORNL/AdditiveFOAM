@@ -83,7 +83,7 @@ Foam::foamToExaCA::foamToExaCA
 {
     if (this->headerOk())
     {
-        execute_ = this->lookup<Switch>("execute");
+        execute_ = this->get<Switch>("execute");
     }
 
     initialize();
@@ -98,9 +98,9 @@ void Foam::foamToExaCA::initialize()
         return;
     }
 
-    box_ = this->lookup("box");
-    iso_ = this->lookup<scalar>("isotherm");
-    dx_  = this->lookup<scalar>("dx");
+    box_ = this->get<boundBox>("box");
+    iso_ = this->get<scalar>("isotherm");
+    dx_  = this->get<scalar>("dx");
 
     treeBoundBox bb(box_);
 

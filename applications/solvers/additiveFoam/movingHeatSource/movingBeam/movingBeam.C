@@ -73,7 +73,7 @@ Foam::movingBeam::movingBeam
     //- Find the beam end time
     for (label i = path_.size() - 1; i > 0; i--)
     {
-        if (path_[i].power() > small)
+        if (path_[i].power() > SMALL)
         {
             endTime_ = min(path_[i].time(), runTime_.endTime().value());
             break;

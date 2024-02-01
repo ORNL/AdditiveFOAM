@@ -49,7 +49,7 @@ Foam::absorptionModels::Kelly::Kelly
 )
 :
     absorptionModel(typeName, sourceName, dict, mesh),
-    geometry_(absorptionModelCoeffs_.lookup<word>("geometry")),
+    geometry_(absorptionModelCoeffs_.lookup("geometry")),
     eta0_("eta0", dimless, absorptionModelCoeffs_),
     etaMin_("etaMin", dimless, absorptionModelCoeffs_)
 {

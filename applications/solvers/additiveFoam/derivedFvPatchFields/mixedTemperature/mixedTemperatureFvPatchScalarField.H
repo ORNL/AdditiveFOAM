@@ -24,20 +24,25 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    marangoniFvPatchVectorField
+    Foam::mixedTemperatureFvPatchScalarField
 
 Description
+    This boundary condition provides a mixedTemperature condition,
+    calculated as:
 
 SourceFiles
-    marangoniFvPatchVectorField.C
+    mixedTemperatureFvPatchScalarField.C
+
+SourceFiles
+    mixedTemperatureFvPatchScalarField.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef BC_H
-#define BC_H
+#ifndef mixedTemperatureFvPatchScalarField_H
+#define mixedTemperatureFvPatchScalarField_H
 
-#include "fvPatchFields.H"
-#include "transformFvPatchFields.H"
+#include "mixedFvPatchFields.H"
+#include "Function1.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,76 +50,88 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class marangoniFvPatchVectorField Declaration
+     Class mixedTemperatureFvPatchScalarField Declaration
 \*---------------------------------------------------------------------------*/
 
-class marangoniFvPatchVectorField
+class mixedTemperatureFvPatchScalarField
 :
-    public transformFvPatchVectorField
+    public mixedFvPatchScalarField
 {
     // Private Data
 
-        //- slope of surface tension w.r.t. temperature
-        scalar dSigmadT_;
+        //- convective heat transfer coefficient [W/m^2/k]
+        scalar h_;
 
-        //- maximum temperature used in surface tension calculation (optional)
-        scalar Tmax_;
+        //- effective emissivity of the boundary
+        scalar emissivity_;
+
+        //- ambient temperature
+        scalarField Tinf_;
+
 
 public:
 
     //- Runtime type information
-    TypeName("marangoni");
+    TypeName("mixedTemperature");
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        marangoniFvPatchVectorField
+        mixedTemperatureFvPatchScalarField
         (
             const fvPatch&,
-            const DimensionedField<vector, volMesh>&
+            const DimensionedField<scalar, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        marangoniFvPatchVectorField
+        mixedTemperatureFvPatchScalarField
         (
             const fvPatch&,
-            const DimensionedField<vector, volMesh>&,
+            const DimensionedField<scalar, volMesh>&,
             const dictionary&
         );
 
-        //- Construct by mapping given mixedTypeFvPatchField
-        //  onto a new patch
-        marangoniFvPatchVectorField
+        //- Construct by mapping onto a new patch
+        mixedTemperatureFvPatchScalarField
         (
-            const marangoniFvPatchVectorField&,
+            const mixedTemperatureFvPatchScalarField&,
             const fvPatch&,
-            const DimensionedField<vector, volMesh>&,
+            const DimensionedField<scalar, volMesh>&,
             const fvPatchFieldMapper&
         );
 
-        //- Disallow copy without setting internal field reference
-        marangoniFvPatchVectorField
+        //- Copy construct
+        mixedTemperatureFvPatchScalarField
         (
-            const marangoniFvPatchVectorField&
-        ) = delete;
+            const mixedTemperatureFvPatchScalarField&
+        );
 
-        //- Copy constructor setting internal field reference
-        marangoniFvPatchVectorField
+        //- Construct and return a clone
+        virtual tmp<fvPatchScalarField> clone() const
+        {
+            return tmp<fvPatchScalarField>
+            (
+                new mixedTemperatureFvPatchScalarField(*this)
+            );
+        }
+
+        //- Construct as copy setting internal field reference
+        mixedTemperatureFvPatchScalarField
         (
-            const marangoniFvPatchVectorField&,
-            const DimensionedField<vector, volMesh>&
+            const mixedTemperatureFvPatchScalarField&,
+            const DimensionedField<scalar, volMesh>&
         );
 
         //- Construct and return a clone setting internal field reference
-        virtual tmp<fvPatchVectorField> clone
+        virtual tmp<fvPatchScalarField> clone
         (
-            const DimensionedField<vector, volMesh>& iF
+            const DimensionedField<scalar, volMesh>& iF
         ) const
         {
-            return tmp<fvPatchVectorField>
+            return tmp<fvPatchScalarField>
             (
-                new marangoniFvPatchVectorField(*this, iF)
+                new mixedTemperatureFvPatchScalarField(*this, iF)
             );
         }
 
@@ -124,35 +141,27 @@ public:
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
-            //  Used to update fields following mesh topology change
-            virtual void autoMap(const fvPatchFieldMapper&);
+            virtual void autoMap
+            (
+                const fvPatchFieldMapper&
+            );
 
             //- Reverse map the given fvPatchField onto this fvPatchField
-            //  Used to reconstruct fields
-            virtual void rmap(const fvPatchVectorField&, const labelList&);
-
-            //- Reset the fvPatchField to the given fvPatchField
-            //  Used for mesh to mesh mapping
-            virtual void reset(const fvPatchVectorField&);
+            virtual void rmap
+            (
+                const fvPatchScalarField&,
+                const labelList&
+            );
 
 
         // Evaluation functions
 
-            //- Return gradient at boundary
-            virtual tmp<vectorField> snGrad() const;
+            //- Update the coefficients associated with the patch field
+            virtual void updateCoeffs();
 
-            //- Evaluate the patch field
-            virtual void evaluate
-            (
-                const Pstream::commsTypes commsType =
-                    Pstream::commsTypes::blocking
-            );
-
-            //- Return face-gradient transform diagonal
-            virtual tmp<vectorField> snGradTransformDiag() const;
 
         //- Write
-        virtual void write(Ostream&) const;
+        virtual void write(Ostream& os) const;
 };
 
 

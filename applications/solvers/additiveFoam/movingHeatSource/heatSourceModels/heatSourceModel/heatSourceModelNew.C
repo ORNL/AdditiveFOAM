@@ -47,8 +47,7 @@ Foam::autoPtr<Foam::heatSourceModel> Foam::heatSourceModel::New
 
     //- Look up model type from runtime selection table and throw error
     //  if it doesn't exist
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    const auto cstrIter = dictionaryConstructorTablePtr_->find(modelType);
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
