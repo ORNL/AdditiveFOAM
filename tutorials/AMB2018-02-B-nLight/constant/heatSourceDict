@@ -1,0 +1,59 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      heatSourceProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+sources (beam);
+
+beam
+{
+    pathName            scanPath;    
+
+    absorptionModel     constant;
+    
+    constantCoeffs
+    {
+        eta             0.3;
+    }
+    
+    heatSourceModel     nLight;
+    
+    // Parameters for nLight VBPP 5 profile
+    nLightCoeffs
+    {
+        // Blending factor
+        alpha           0.2;
+        
+        // Spot parameters
+        dimensions      (50.0e-6 50.0e-6 30e-6);
+        
+        spotCoeffs
+        {
+            k           2.0;
+            m           2.0;
+        }
+        
+        // Ring parameters
+        ringCoeffs
+        {
+            R           100e-6;
+            r           50e-6;
+            k           2.0;
+            m           2.0;
+        }
+    }
+}
+
+// ************************************************************************* //
