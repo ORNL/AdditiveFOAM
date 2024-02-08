@@ -57,8 +57,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             mesh_.time().timeName(),
             mesh_,
             IOobject::READ_IF_PRESENT,
-            //IOobject::NO_WRITE
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)

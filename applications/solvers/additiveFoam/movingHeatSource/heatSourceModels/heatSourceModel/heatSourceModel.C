@@ -358,8 +358,6 @@ Foam::heatSourceModel::qDot()
         // stabilize numerical integration errors within 95% of applied power
         dimensionedScalar sumWeights = fvc::domainIntegrate(weights);
         scalar residual = (sumWeights / volume).value();
-        
-        Info << "Residual = " << residual << endl;
 
         if (mag(1 - residual) < 0.05)
         {
