@@ -83,11 +83,11 @@ class nLight
         //- Spot geometric shape coefficient
         scalar ms_;
         
-        //- Spot volume
-        scalar Vs_;
-        
         //- Spot dimensions
         vector ds_;
+        
+        //- Spot area
+        scalar As_;
         
         //- Dictionary for ring shape parameters
         const dictionary& ringCoeffs_;
@@ -104,8 +104,8 @@ class nLight
         //- Ring half width
         scalar r_;
         
-        //- Ring volume
-        scalar Vr_;
+        //- Ring area
+        scalar Ar_;
 
 
 public:
@@ -136,9 +136,10 @@ public:
 
         inline virtual dimensionedScalar V0();
         
-        inline virtual dimensionedScalar Vs();
-        
-        inline virtual dimensionedScalar Vr();
+        // Normalization factors for spot and ring integration
+        // NOTE: THESE DO NOT INCLUDE THE BEAM DEPTH!
+        inline virtual dimensionedScalar As();
+        inline virtual dimensionedScalar Ar();
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

@@ -33,7 +33,10 @@ beam
     // Parameters for nLight VBPP 5 profile
     nLightCoeffs
     {
-        // Blending factor
+        // Points for sub-grid integration of heat source
+        nPoints         (5 5 5);
+        
+        // Blending factor (alpha = 1.0 --> 100% spot)
         alpha           0.2;
         
         // Spot parameters

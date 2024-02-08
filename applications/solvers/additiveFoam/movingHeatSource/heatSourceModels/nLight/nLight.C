@@ -61,12 +61,14 @@ Foam::heatSourceModels::nLight::nLight
     ks_ = spotCoeffs_.lookup<scalar>("k");
     ms_ = spotCoeffs_.lookup<scalar>("m");
     ds_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
+    As_ = As().value();
     
     //- Ring parameters
     kr_ = ringCoeffs_.lookup<scalar>("k");
     mr_ = ringCoeffs_.lookup<scalar>("m");
     R_ = ringCoeffs_.lookup<scalar>("R");
     r_ = ringCoeffs_.lookup<scalar>("r");
+    Ar_ = Ar().value();
     
     //- Overwrite the dimensions used by the base class
     dimensions_ = vector(R_ + r_, R_ + r_, ds_.z());
@@ -125,8 +127,8 @@ Foam::heatSourceModels::nLight::weight(const vector& d)
             );
 
         // Return weights with power split and volume factored in
-        return alpha_ / Vs().value() * Foam::exp(-xs) 
-            + (1.0 - alpha_) / Vr().value() * Foam::exp(-xr);
+        return alpha_ / As_ / dimensions_.z() * Foam::exp(-xs) 
+            + (1.0 - alpha_) / Ar_ / dimensions_.z() * Foam::exp(-xr);
     }
     else
     {
@@ -143,9 +145,9 @@ Foam::heatSourceModels::nLight::V0()
 }
 
 inline Foam::dimensionedScalar
-Foam::heatSourceModels::nLight::Vs()
+Foam::heatSourceModels::nLight::As()
 {
-    const scalar a = Foam::pow(2.0, 1.0/ks_);
+    const scalar a = Foam::pow(2.0, 1.0 / ks_);
 
     const vector s =
         cmptDivide
@@ -154,22 +156,22 @@ Foam::heatSourceModels::nLight::Vs()
             vector(a, a, 1.0)
         );
 
-    const dimensionedScalar Vs
+    const dimensionedScalar As
     (
-        "Vs",
-        dimVolume,
-        s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 2.0/ks_)
-      * Foam::tgamma(1.0 + 1.0/ms_)*Foam::tgamma(1.0 + 2.0/ms_)
-      / Foam::tgamma(1.0 + 3.0/ms_)
+        "As",
+        dimArea,
+        s.x() * s.y() * pi * Foam::tgamma(1.0 + 2.0 / ks_)
+      * Foam::tgamma(1.0 + 1.0 / ms_) * Foam::tgamma(1.0 + 2.0 / ms_)
+      / Foam::tgamma(1.0 + 3.0 / ms_)
     );
 
-    return Vs;
+    return As;
 }
 
 inline Foam::dimensionedScalar
-Foam::heatSourceModels::nLight::Vr()
+Foam::heatSourceModels::nLight::Ar()
 {
-    const scalar a = Foam::pow(2.0, 1.0/kr_);
+    const scalar a = Foam::pow(2.0, 1.0 / kr_);
     
     const vector s =
         cmptDivide
@@ -178,16 +180,16 @@ Foam::heatSourceModels::nLight::Vr()
             vector(a, a, 1.0)
         );
     
-    const dimensionedScalar Vr
+    const dimensionedScalar Ar
     (
-        "Vr",
-        dimVolume,
-        4.0 * pi * R_ * s.x() * s.z() * pi / kr_ // this kr is in original nLight impl but not sure where it comes from
+        "Ar",
+        dimArea,
+        4.0 * pi * R_ * s.x() * Foam::tgamma(1.0 + 1.0 / kr_) 
       * Foam::tgamma(1.0 + 1.0 / mr_) * Foam::tgamma(1.0 + 1.0 / mr_)
-      * Foam::tgamma(1.0 + 1.0 / kr_) / Foam::tgamma(1.0 + 2.0 / mr_)
+      / Foam::tgamma(1.0 + 2.0 / mr_)
     );
     
-    return Vr;
+    return Ar;
 }
 
 bool Foam::heatSourceModels::nLight::read()
