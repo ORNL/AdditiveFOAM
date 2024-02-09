@@ -54,7 +54,7 @@ Description
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
 
-//#include "Timer.H" // for profiling, if desired
+#include "utils/Timer.H" // for profiling, if desired
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     #include "initContinuityErrs.H"
     
     // Initialize profiling timer
-    //Timers timer(runTime);
+    Timers timer(runTime);
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
@@ -96,11 +96,17 @@ int main(int argc, char *argv[])
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
-        //timer.start("Heat Source");
+        timer.start("Heat Source");
         sources.update();
-        //timer.stop("Heat Source");
+        timer.stop("Heat Source");
         
-        mesh.update();
+        timer.start("Refinement Control and Mesh Update");
+        if (sources.refinementControl().update())
+        {
+            Info << "Calling mesh.update()" << endl;
+            mesh.update();
+        }
+        timer.stop("Refinement Control and Mesh Update");
         
         runTime++;
 
@@ -119,7 +125,9 @@ int main(int argc, char *argv[])
             }
         }
 
+        timer.start("TEqn");
         #include "thermo/TEqn.H"
+        timer.stop("TEqn");
         
         ExaCA.update();
 
@@ -138,7 +146,7 @@ int main(int argc, char *argv[])
     ExaCA.write();
     
     // Write time profiling information
-    //timer.write();
+    timer.write();
 
     return 0;
 }

@@ -86,7 +86,7 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-inline Foam::vector
+Foam::vector
 Foam::movingBeam::position(const scalar time) const
 {
     if (activePath(time))
@@ -119,7 +119,7 @@ Foam::movingBeam::position(const scalar time) const
 }
 
 
-inline Foam::scalar
+Foam::scalar
 Foam::movingBeam::power(const scalar time) const
 {
     if (activePath(time))
@@ -142,7 +142,7 @@ Foam::movingBeam::power(const scalar time) const
 }
 
 
-inline Foam::scalar
+Foam::scalar
 Foam::movingBeam::mode(const scalar time) const
 {
     if (activePath(time))
@@ -158,7 +158,7 @@ Foam::movingBeam::mode(const scalar time) const
 }
 
 
-inline Foam::scalar
+Foam::scalar
 Foam::movingBeam::parameter(const scalar time) const
 {
     if (activePath(time))
@@ -174,7 +174,7 @@ Foam::movingBeam::parameter(const scalar time) const
 }
 
 
-inline Foam::scalar
+Foam::scalar
 Foam::movingBeam::velocity(const scalar time) const
 {
     if (activePath(time))
@@ -302,7 +302,7 @@ bool Foam::movingBeam::activePath(const scalar time) const
 }
 
 
-void Foam::movingBeam::move(const scalar time)
+void Foam::movingBeam::move(const scalar time) const
 {
     // update the current index of the path
     index_ = findIndex(time);
@@ -373,7 +373,7 @@ Foam::movingBeam::findIndex(const scalar time) const
 }
 
 
-void Foam::movingBeam::adjustDeltaT(scalar& dt)
+void Foam::movingBeam::adjustDeltaT(scalar& dt) const
 {
     if (activePath() && hitPathIntervals_)
     {

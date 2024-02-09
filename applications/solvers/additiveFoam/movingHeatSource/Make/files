@@ -12,6 +12,10 @@ heatSourceModels/heatSourceModel/heatSourceModelNew.C
 heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
 
+refinementControllers/refinementController/refinementController.C
+refinementControllers/refinementController/refinementControllerNew.C
+refinementControllers/uniformIntervals/uniformIntervals.C
+
 movingHeatSourceModel/movingHeatSourceModel.C
 
 LIB = $(FOAM_USER_LIBBIN)/libmovingBeamModels

@@ -24,94 +24,91 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::movingHeatSourceModel
+    Foam::refinementControllers::uniformIntervals
 
 Description
-    Class for multiple moving beam heat sources
+    This refinement control scheme divides the simulation into an even
+    number of intervals equal to the simulation end time divided by the
+    number of intervals. Refinement for each beam is carried out on each
+    interval.
 
 SourceFiles
-    movingHeatSourceModel.C
-    calculateQDot.C
+    uniformIntervals.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef movingHeatSourceModel_H
-#define movingHeatSourceModel_H
+#ifndef uniformIntervals_H
+#define uniformIntervals_H
+
+#include "refinementController.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "heatSourceModel.H"
-#include "movingBeam.H"
-#include "refinementController.H"
-
 namespace Foam
+{
+namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class movingHeatSourceModel Declaration
+                             Class uniformIntervals
 \*---------------------------------------------------------------------------*/
 
-class movingHeatSourceModel
+class uniformIntervals
+:
+    public refinementController
 {
-private:
-
-    // Private data
-
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
+    // Private Data
+    
+        //- Dictionary
+        dictionary coeffs_;
         
-        //- Main movingHeatSourceDict
-        IOdictionary dict_;
+        //- Number of intervals
+        int intervals_;
         
-        //- List of individual heat sources
-        wordList sourceNames_;
+        //- Bounding box size for beam (multiples of D1sigma)
+        scalar boundingBox_;
         
-        //- Total volumetric power of all beams
-        volScalarField qDot_;
-                
-        //- Pointer list to each beam instance
-        PtrList<heatSourceModel> sources_;
+        //- Time duration of each interval
+        scalar intervalSize_;
         
-        //- Pointer to refinement controller
-        autoPtr<refinementController> refinementController_;
+        //- Time for next update
+        scalar updateTime_;
 
 public:
 
+    //- Runtime type information
+    TypeName("uniformIntervals");
+
+
     // Constructors
 
-        // Construct from time and dictionary
-        movingHeatSourceModel
+        //- Construct from components
+        uniformIntervals
         (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
             const fvMesh& mesh
         );
 
+
     //- Destructor
-    ~movingHeatSourceModel();
+    virtual ~uniformIntervals()
+    {}
+
 
     // Member Functions
-    
-        //- Return const access to the total volumetric heating
-        const volScalarField& qDot() const
-        {
-            return qDot_;
-        }
-        
-        //- Return pointer to the refinement controller
-        refinementController& refinementControl()
-        {
-            return refinementController_();
-        }
-        
-        //- Adjust deltaT using the current state of each beam
-        void adjustDeltaT(scalar& deltaT);
-        
-        //- Update total qDot field
-        void update();
+
+        //- Update the refinement marker field and return true at each interval
+        virtual bool update();
+
+        //- Read the heatSourceProperties dictionary
+        virtual bool read();
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace refinementControllers
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -119,4 +116,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

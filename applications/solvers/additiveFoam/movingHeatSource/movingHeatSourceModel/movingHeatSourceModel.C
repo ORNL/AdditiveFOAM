@@ -61,7 +61,8 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         ),
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)
-    )    
+    ),
+    refinementController_(nullptr)  
 {
     sources_.resize(sourceNames_.size());
         
@@ -80,6 +81,9 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             ).ptr()
         );
     }
+    
+    refinementController_ =
+        refinementController::New(sources_, dict_, mesh_);
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //

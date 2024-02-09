@@ -1,0 +1,47 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  11
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      decomposeParDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+numberOfSubdomains 4;
+
+//decomposer      scotch;
+decomposer      hierarchical;
+distributor     zoltan;
+libs            ("libzoltanDecomp.so");
+
+hierarchicalCoeffs
+{
+    n               (2 2 1);
+    order           xyz;
+}
+
+zoltanCoeffs
+{
+    lb_method       rcb;
+    lb_approach     repartition;
+}
+
+constraints
+{
+   refinementHistory
+   {
+       //- Decompose cells such that all cell originating from single cell
+       //  end up on same processor
+       type    refinementHistory;
+   }
+}
+
+
+// ************************************************************************* //

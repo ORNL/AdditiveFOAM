@@ -77,13 +77,13 @@ private:
         DynamicList<segment> path_;
         
         //- Index of path
-        label index_;
+        mutable label index_;
         
         //- Position of beam
-        vector position_;
+        mutable vector position_;
         
         //- Power of beam
-        scalar power_;
+        mutable scalar power_;
         
         //- End time of path
         scalar endTime_;
@@ -168,19 +168,19 @@ public:
         }
         
         //- Return position at specified time
-        inline vector position(const scalar time) const;
+        vector position(const scalar time) const;
         
         //- Return power at specified time
-        inline scalar power(const scalar time) const;
+        scalar power(const scalar time) const;
         
         //- Return beam mode at specified time
-        inline scalar mode(const scalar time) const;
+        scalar mode(const scalar time) const;
         
         //- Return beam parameter at specified time
-        inline scalar parameter(const scalar time) const;
+        scalar parameter(const scalar time) const;
         
         //- Return beam velocity at specified time
-        inline scalar velocity(const scalar time) const;
+        scalar velocity(const scalar time) const;
         
         //- Return time of next path start
         scalar timeToNextPath(const scalar time) const;
@@ -195,13 +195,13 @@ public:
         bool activePath(const scalar time) const;
         
         //- Move the beam to the provided time
-        void move(const scalar time);
+        void move(const scalar time) const;
         
         //- Returns the path index at the provided time
         label findIndex(const scalar time) const;
 
         //- Adjust solution time step to hit pathInterval
-        void adjustDeltaT(scalar& dt);
+        void adjustDeltaT(scalar& dt) const;
 };
 
 
