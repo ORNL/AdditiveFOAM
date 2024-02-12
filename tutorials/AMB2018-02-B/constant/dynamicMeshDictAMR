@@ -20,20 +20,20 @@ topoChanger
     libs    ("libfvMeshTopoChangers.so");
 
     // How often to refine
-    refineInterval  5;
+    refineInterval  1;
 
     // Field to be refinement on
-    field           qDot;
+    field           refinementField;
 
     // Refine field in between lower..upper
-    lowerRefineLevel 1E+10;
-    upperRefineLevel 1E+20;
+    lowerRefineLevel 0.1;
+    upperRefineLevel 10.0;
 
     // Have slower than 2:1 refinement
     nBufferLayers   1;
 
     // Refine cells only up to maxRefinement levels
-    maxRefinement   1;
+    maxRefinement   2;
 
     // Stop refinement if maxCells reached
     maxCells        200000;

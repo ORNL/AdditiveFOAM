@@ -1,10 +1,19 @@
 #!/bin/sh
+
+# AMB2018-02-B
+# Reference: https://www.nist.gov/ambench/amb2018-01-description
+# Single track scan
+
 cd ${0%/*} || exit 1    # Run from this directory
 
 # Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 application=`getApplication`
+
+# Activate AMR by renaming the dynamicMeshDict
+# Note: see also comments in decomposeParDict
+#cp dynamicMeshDictAMR dynamicMeshDict
 
 runApplication blockMesh
 runApplication decomposePar

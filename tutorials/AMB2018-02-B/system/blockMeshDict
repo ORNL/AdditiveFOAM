@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  11
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -35,7 +35,7 @@ vertices
 
 blocks
 (
-    hex (0 1 2 3 4 5 6 7) (150 25 15) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) (75 13 8) simpleGrading (1 1 1)
 );
 
 edges
@@ -70,6 +70,11 @@ boundary
             (1 5 4 0)
             (3 7 6 2)
         );
+    }
+    internal
+    {
+        type internal;
+        faces ();
     }
 );
 
