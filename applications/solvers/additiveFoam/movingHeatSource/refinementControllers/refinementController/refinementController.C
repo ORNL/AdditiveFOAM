@@ -85,7 +85,7 @@ Foam::refinementController::refinementController
     heatSourceDict_(dict),
     mesh_(mesh),
     refinementDict_(heatSourceDict_.optionalSubDict("refinementControl")),
-    refine_(refinementDict_.lookup<bool>("refine")),
+    refine_((type != "none") ? refinementDict_.lookup<bool>("refine") : false),
     refinementField_
     (
         IOobject
@@ -117,7 +117,7 @@ Foam::refinementController::refinementController
         dimensionedScalar(dimless, -GREAT)
     ),
     lastRefinementIndex_(0),
-    nLevels_(refinementDict_.lookup<label>("nLevels"))
+    nLevels_((type != "none") ? refinementDict_.lookup<label>("nLevels") : 0)
 {
 }
 

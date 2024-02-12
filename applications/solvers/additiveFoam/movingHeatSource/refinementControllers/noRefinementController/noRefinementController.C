@@ -25,49 +25,30 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "refinementController.H"
+#include "noRefinementController.H"
+#include "addToRunTimeSelectionTable.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-Foam::autoPtr<Foam::refinementController> Foam::refinementController::New
+namespace Foam
+{
+namespace refinementControllers
+{
+    defineTypeNameAndDebug(noRefinementController, 0);
+    addToRunTimeSelectionTable(refinementController, noRefinementController, dictionary);
+}
+}
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::refinementControllers::noRefinementController::noRefinementController
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
-{
-    //- Initialize modelType to a non-model word
-    word modelType("none");
-    
-    //- Get model type from refinement control subdict
-    dictionary refinementControlDict(dict.optionalSubDict("refinementControl"));
-    
-    modelType =
-        refinementControlDict.lookupOrDefault<word>
-        (
-            "refinementController",
-            "none"
-        );
-
-    Info<< "Selecting refinement control model " << modelType << endl;
-
-    //- Look up model type from runtime selection table and throw error
-    //  if it doesn't exist
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
-
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
-    {
-        FatalErrorInFunction
-            << "Unknown " << refinementController::typeName<< " type "
-            << modelType << nl << nl
-            << "Valid  refinementControllers are : " << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
-            << exit(FatalError);
-    }
-
-    return autoPtr<refinementController>(cstrIter()(sources, dict, mesh));
-}
-
+:
+    refinementController(typeName, sources, dict, mesh)
+{}
 
 // ************************************************************************* //

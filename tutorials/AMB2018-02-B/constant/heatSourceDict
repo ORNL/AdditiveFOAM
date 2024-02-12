@@ -46,7 +46,8 @@ refinementControl
     resolveTail             true;
     persistence             1e-4;
     
-    refinementController    uniformIntervals;
+    refinementController    none;
+    //refinementController    uniformIntervals;
     
     uniformIntervalsCoeffs
     {

@@ -103,7 +103,6 @@ int main(int argc, char *argv[])
         timer.start("Refinement Control and Mesh Update");
         if (sources.refinementControl().update())
         {
-            Info << "Calling mesh.update()" << endl;
             mesh.update();
         }
         timer.stop("Refinement Control and Mesh Update");
