@@ -1,6 +1,3 @@
-graph/curve.C
-graph/graph.C
-
 derivedFvPatchFields/mixedTemperature/mixedTemperatureFvPatchScalarField.C
 derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
 

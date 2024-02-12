@@ -1,0 +1,9 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+wclean libso utilities
+#wclean libso sampling
+wclean libso movingHeatSource
+wclean
+
+#------------------------------------------------------------------------------
