@@ -12,6 +12,6 @@ In addition to compiling Zoltan, the following changes must be made from the sta
 
 `$ cp -r constant/dynamicMeshDictAMR constant/dynamicMeshDict`
 
-3) In the `constant/heatSourceModels` file, change the `refinementController` entry from `none` to `uniformIntervals`.
+2) In the `constant/heatSourceModels` file, change the `refinementController` entry from `none` to `uniformIntervals`.
 
-4) In the `system/decomposeParDict` file, use the `hierachical` decomposer combined with the `zoltan` distributor. The `scotch` decomposer entry should be commented or removed. Be sure to include the `libzoltanDecomp.so` file and define appropriate entries for the decomposer and distributor. The `refinementHistory` constrain will ensure that all refined cells originating from a single parent cell remain on the same processor throughout the load distribution process.
+3) In the `system/decomposeParDict` file, use the `hierachical` decomposer combined with the `zoltan` distributor. The `scotch` decomposer entry should be commented or removed. Be sure to include the `libzoltanDecomp.so` file and define appropriate entries for the decomposer and distributor. The `refinementHistory` constrain will ensure that all refined cells originating from a single parent cell remain on the same processor throughout the load distribution process.
