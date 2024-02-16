@@ -66,9 +66,11 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 bool Foam::refinementControllers::uniformIntervals::update()
 {
     //- Update refinement field at update time
-    if ((refinementController::update())
-        &&
-        (mesh_.time().value() >= updateTime_))
+    if 
+    (
+        refinementController::update()
+     && (mesh_.time().value() >= updateTime_)
+    )
     {
         //- Update refinement index
         lastRefinementIndex_ = mesh_.time().timeIndex();
@@ -79,17 +81,37 @@ bool Foam::refinementControllers::uniformIntervals::update()
             lastRefinementIndex_ = 1;
         }
         
-        //- Initialize refinement marker field in base class
-        refinementController::initializeRefinementField();
+        //- Set initial refinement field in base class
+        refinementController::setRefinementField();
     
         //- Update next refinement time
         const scalar currTime = mesh_.time().value();
         updateTime_ = currTime + intervalSize_;
         
-        //- Buffer for bounding box calculations
-        const vector extend = 1e-10 * vector::one;
+        //- Calculate the bounding box for each cell
+        List<treeBoundBox> cellBbs(mesh_.nCells());
         
         const pointField& points = mesh_.points();
+
+        const vector extend = 1e-10 * vector::one;
+
+        forAll(mesh_.cells(), celli)
+        {
+            treeBoundBox cellBb(point::max, point::min);
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, j)
+            {
+                cellBb.min()
+                    = min(cellBb.min(), points[vertices[j]] - extend);
+                cellBb.max()
+                    = max(cellBb.max(), points[vertices[j]] + extend);
+            }
+
+            cellBbs[celli] = cellBb;
+        }
+
         
         //- Update refinement marker field
         forAll(sources_, i)
@@ -110,33 +132,21 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 //  refinement
                 vector beamDims = sources_[i].dimensions();
                 vector currPos = sources_[i].beam().position(beamTime);
+
                 treeBoundBox beamBb
                 (
-                    currPos - boundingBox_ * beamDims,
-                    currPos + boundingBox_ * beamDims
+                    currPos - boundingBox_*beamDims,
+                    currPos + boundingBox_*beamDims
                 );
                 
-                forAll(mesh_.C(), celli)
+                forAll(mesh_.cells(), celli)
                 {
-                    //- Don't redo checks if cell is already marked
                     if (refinementField_[celli] > 0.0)
                     {
                         continue;
                     }
-                    
-                    treeBoundBox cellBb(point::max, point::min);
-                    
-                    const labelList& vertices = mesh_.cellPoints()[celli];
-                    
-                    forAll(vertices, j)
-                    {
-                        cellBb.min()
-                            = min(cellBb.min(), points[vertices[j]] - extend);
-                        cellBb.max()
-                            = max(cellBb.max(), points[vertices[j]] + extend);
-                    }
-                    
-                    if (cellBb.overlaps(beamBb))
+
+                    if (cellBbs[celli].overlaps(beamBb))
                     {
                         refinementField_[celli] = 1.0;
                     }
@@ -180,7 +190,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
             }            
         }
         
-        refinementField_ = pos(refinementField_);
+        refinementField_ = pos0(refinementField_ - 0.001);
         
         //- Return true to call mesh.update()
         return true;

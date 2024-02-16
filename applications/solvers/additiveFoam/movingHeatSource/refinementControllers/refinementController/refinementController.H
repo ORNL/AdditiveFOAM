@@ -88,16 +88,7 @@ protected:
         
         //- Marker field for refinement operations
         volScalarField refinementField_;
-        
-        //- Switch to fully resolve melt pool
-        const bool resolveTail_;
-        
-        //- Time after solidification to maintain resolved mesh
-        const scalar persistence_;
-        
-        //- Time field to track solidification time
-        volScalarField solidificationTime_;
-        
+
         //- Time index of last refinement operation
         label lastRefinementIndex_;
         
@@ -164,8 +155,8 @@ public:
             return refinementField_;
         };
         
-        //- Initialize refinement field from melt pool data
-        virtual void initializeRefinementField();
+        //- Set initial refinement field from melt pool data
+        virtual void setRefinementField();
     
         //- Update refinementField and return true at specified time
         virtual bool update() = 0;

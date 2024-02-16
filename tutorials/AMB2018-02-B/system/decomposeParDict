@@ -17,13 +17,13 @@ FoamFile
 numberOfSubdomains 2;
 
 // Use Scotch for non-AMR cases
-decomposer      scotch;
+//decomposer      scotch;
 
 // Use hierarchical decomposition with Zoltan load balancing for AMR cases
 // Note: must have OF compiled with Zoltan
-//decomposer      hierarchical;
-//distributor     zoltan;
-//libs            ("libzoltanDecomp.so");
+decomposer      hierarchical;
+distributor     zoltan;
+libs            ("libzoltanDecomp.so");
 
 hierarchicalCoeffs
 {

@@ -43,11 +43,11 @@ refinementControl
     refine                  true;
     nLevels                 2;
     
-    resolveTail             true;
+    resolveTail             false;//true;
     persistence             1e-4;
     
-    refinementController    none;
-    //refinementController    uniformIntervals;
+    //refinementController    none;
+    refinementController    uniformIntervals;
     
     uniformIntervalsCoeffs
     {

@@ -151,6 +151,8 @@ void Foam::movingHeatSourceModel::update()
             qDot_ += qDoti;
         }
     }
+
+    qDot_.correctBoundaryConditions();
 }
 
 // ************************************************************************* //

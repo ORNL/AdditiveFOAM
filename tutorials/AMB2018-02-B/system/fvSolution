@@ -31,6 +31,14 @@ solvers
         relTol          0;
     }
 
+    "pcorr.*"
+    {
+        solver          GAMG;
+        smoother        GaussSeidel;
+        tolerance       0.02;
+        relTol          0;
+    }
+
     "T.*"
     {
         solver          PBiCGStab;

@@ -1,9 +1,7 @@
 {
-    scalarField xvals(thermo.x());
+    const scalarField& xvals(thermo.x());
     const scalarField& yvals(thermo.y());
     label n = xvals.size();
-
-    const scalar slope = 1e10;
 
     forAll(mesh.cells(), celli)
     {
@@ -11,7 +9,7 @@
         alpha10[celli] = alpha1[celli];
 
         // update slope and temperature estimates
-        const scalar x(T[celli]);
+        const scalar& x(T[celli]);
 
         if ((x < Tliq.value()) && (x > Tsol.value()))
         {
@@ -51,16 +49,6 @@
 
             T0[celli] = xvals[lo] + (alpha10[celli] - yvals[lo])/dFdT[celli];
         }
-        else if ((x >= Tliq.value()) && (alpha10[celli] > 0.0))
-        {
-            dFdT[celli] = slope;
-            T0[celli] = Tliq.value() - thermoTol;
-        }
-        else if ((x <= Tsol.value()) && (alpha10[celli] < 1.0))
-        {
-            dFdT[celli] = slope;
-            T0[celli] = Tsol.value() + thermoTol;
-        }
         else
         {
             dFdT[celli] = 0.0;
@@ -68,11 +56,8 @@
         }
     }
 
-
     // update boundary conditions
     alpha10.correctBoundaryConditions();
-
     dFdT.correctBoundaryConditions();
-
     T0.correctBoundaryConditions();
 }

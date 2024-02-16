@@ -69,4 +69,13 @@
             break;
         }
     }
+
+    // set solid fraction consistent with temperature
+    forAll(mesh.cells(), cellI)
+    {
+        scalar alpha1_ = interpolateXY(T[cellI], thermo.x(), thermo.y());
+        alpha1[cellI] = min(max(alpha1_, 0.0), 1.0);
+    }
+
+    alpha1.correctBoundaryConditions();
 }

@@ -79,8 +79,6 @@ int main(int argc, char *argv[])
 
     scalar alphaCoNum = 0.0;
 
-    //foamToExaCA ExaCA(T);
-
     movingHeatSourceModel sources(mesh);
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -126,16 +124,12 @@ int main(int argc, char *argv[])
         #include "thermo/TEqn.H"
         timer.stop("TEqn");
         
-        //ExaCA.update();
-
         runTime.write();
         
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-
-    //ExaCA.write();
 
     // Write time profiling information
     timer.write();

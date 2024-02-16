@@ -99,23 +99,6 @@ Foam::refinementController::refinementController
         mesh_,
         dimensionedScalar(dimless, 0.0)
     ),
-    resolveTail_(refine_ ? refinementDict_.lookupOrDefault<bool>("resolveTail", false) : false),
-    persistence_(refine_ ? refinementDict_.lookupOrDefault<scalar>("persistence", 0.0) : 0.0),
-    solidificationTime_
-    (
-        IOobject
-        (
-            "solidificationTime",
-            mesh_.time().timeName(),
-            mesh_,
-            persistence_ > 0.0
-                ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
-            persistence_ > 0.0
-                ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
-        ),
-        mesh_,
-        dimensionedScalar(dimless, -GREAT)
-    ),
     lastRefinementIndex_(0),
     nLevels_((type != "none") ? refinementDict_.lookup<label>("nLevels") : 0)
 {
@@ -126,54 +109,32 @@ Foam::refinementController::refinementController
 
 bool Foam::refinementController::update()
 {
-    //- Update solidification time field at every time step
-    if (persistence_ > 0.0)
-    {
-        const scalar currTime = mesh_.time().value();
-    
-        const volScalarField& alphaSol
-            = mesh_.lookupObject<volScalarField>("alpha.solid");
-            
-        const volScalarField& alphaSol0 = alphaSol.oldTime();
-        
-        forAll(mesh_.C(), celli)
-        {
-            if ((alphaSol[celli] > 0.99) && (alphaSol0[celli] < 0.99))
-            {
-                solidificationTime_[celli] = currTime;
-            }
-        }
-    }
-    
     return true;
 }
 
-void Foam::refinementController::initializeRefinementField()
+void Foam::refinementController::setRefinementField()
 {
-    //- Initialize refinement field to capture melt pool
-    if (resolveTail_)
+    // New AMR-scheme based on mushy zone info (values hard-coded for now)
+    const volScalarField& T
+        = mesh_.lookupObject<volScalarField>("T");
+
+    volScalarField G = mag(fvc::grad(T));
+
+    forAll(mesh_.cells(), celli)
     {
-        const volScalarField& alphaSol
-            = mesh_.lookupObject<volScalarField>("alpha.solid");
-        
-        refinementField_ = pos(1.0 - alphaSol);
-        
-        if (persistence_ > 0.0)
+        const scalar dx = pow(mesh_.V()[celli], 1.0/3.0);
+
+        if ((T[celli] >= 1420) || (G[celli] > GREAT / dx))
         {
-            const scalar currTime = mesh_.time().value();
-            
-            //- Ensure recently solidified regions stay refined
-            //  for persistence time
-            refinementField_
-                += pos(solidificationTime_ + persistence_ - currTime);
-        }        
+            refinementField_[celli] = 1;
+        }
+        else
+        {
+            refinementField_[celli] = 0;
+        }
     }
-    
-    //- Reset refinement field if no tail capturing is desired
-    else
-    {
-        refinementField_ = dimensionedScalar(dimless, 0.0);
-    }
+
+    refinementField_.correctBoundaryConditions();
 }
 
 bool Foam::refinementController::read()

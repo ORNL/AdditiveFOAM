@@ -365,6 +365,8 @@ Foam::heatSourceModel::qDot()
         qDot_ = absorbedPower * weights / volume;
     }
 
+    qDot_.correctBoundaryConditions();
+
     return tqDot;
 }
 
