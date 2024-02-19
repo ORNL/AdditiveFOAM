@@ -42,13 +42,14 @@ refinementControl
 {
     refine                  true;
     nLevels                 2;
+    refinementTemperature   1400;
         
     //refinementController    none;
     refinementController    uniformIntervals;
     
     uniformIntervalsCoeffs
     {
-        intervals   10;
+        intervals   5;
     }
 }
 

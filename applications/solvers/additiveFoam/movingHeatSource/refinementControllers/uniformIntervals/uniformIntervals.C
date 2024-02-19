@@ -84,10 +84,10 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
-    //- Update refinement field at update time
+    //- Update refinement field near update time
     if 
     (
-        (mesh_.time().value() >= updateTime_)
+        ((updateTime_ - mesh_.time().value()) < small)
      && refinementController::update()
     )
     {
@@ -99,13 +99,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
         updateTime_ = mesh_.time().value() + intervalTime_;
 
         //- Set initial refinement field in base class
-        //refinementController::setRefinementField();
-
-        forAll(mesh_.cells(), celli)
-        {
-            refinementField_[celli] = 0.0;
-        }
-        refinementField_.correctBoundaryConditions();
+        refinementController::setRefinementField();
         
         //- Calculate the bounding box for each cell
         List<treeBoundBox> cellBbs(mesh_.nCells());
@@ -144,35 +138,39 @@ bool Foam::refinementControllers::uniformIntervals::update()
 
             while ((updateTime_ - time_) > small)
             {
+                // stop scan path based refinement near path end time
+                if ((beam_.endTime() - time_) < small)
+                {
+                    break;
+                }
+
                 vector position_ = beam_.position(time_);
 
-                treeBoundBox beamBb(position_ - offset_, position_ + offset_);
+                treeBoundBox beamBb
+                (
+                    position_ - min(offset_, boundingBox_.min()),
+                    position_ + max(offset_, boundingBox_.max())
+                );
                 
                 forAll(mesh_.cells(), celli)
                 {
-                    if (refinementField_[celli] > 0.0)
+                    if (refinementField_[celli] > 0)
                     {
                         // Do nothing, cell already marked for refiment
                     }
                     else if (cellBbs[celli].overlaps(beamBb))
                     {
-                        refinementField_[celli] = 1.0;
+                        refinementField_[celli] = 1;
                     }
                 }
                 refinementField_.correctBoundaryConditions();
-
-                // stop scan path based refinement after path ends
-                if ((beam_.endTime() - time_) < small)
-                {
-                    break;
-                }
 
                 // Calculate time step required to resolve beam motion on mesh
                 label index_ = beam_.findIndex(time_);
                 segment path_ = beam_.getSegment(index_);
                 scalar timeToNextPath_ = path_.time() - time_;
 
-                // if the path end time is directly hit, step to next
+                // if the path end time is directly hit, step to next path
                 while (timeToNextPath_ < small)
                 {
                     index_ = index_ + 1;

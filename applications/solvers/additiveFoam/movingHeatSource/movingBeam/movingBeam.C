@@ -113,8 +113,11 @@ Foam::movingBeam::position(const scalar time) const
 
         if (pathTime_ > 0)
         {
-            const vector dx = path_[i].position() - path_[i-1].position();
-            const vector displacement = dx*(time - path_[i-1].time())/pathTime_;
+            const vector displacement
+            (
+                min(max(0, (time - path_[i-1].time()) / pathTime_), 1)
+               *(path_[i].position() - path_[i-1].position())
+            );
 
             return position_ = path_[i-1].position() + displacement;
         }

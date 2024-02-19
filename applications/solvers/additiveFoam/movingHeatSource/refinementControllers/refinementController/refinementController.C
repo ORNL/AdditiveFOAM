@@ -97,6 +97,12 @@ Foam::refinementController::refinementController
       ? refinementDict_.lookup<label>("nLevels")
       : 0
     ),
+    refinementTemperature_
+    (
+        (type != "none")
+      ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
+      : GREAT
+    ),
     lastRefinementIndex_(0),
     refinementField_
     (
@@ -112,6 +118,7 @@ Foam::refinementController::refinementController
         dimensionedScalar(dimless, 0.0)
     )
 {
+    Info << "REFINE: " << refinementTemperature_ << endl;
 }
 
 
@@ -124,17 +131,12 @@ bool Foam::refinementController::update()
 
 void Foam::refinementController::setRefinementField()
 {
-    // AMR-scheme based on mushy zone info (values hard-coded for now)
-    const volScalarField& T
-        = mesh_.lookupObject<volScalarField>("T");
-
-    volScalarField G = mag(fvc::grad(T));
+    // TODO: Add gradient based criteria
+    const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
 
     forAll(mesh_.cells(), celli)
     {
-        const scalar dx = pow(mesh_.V()[celli], 1.0/3.0);
-
-        if ((T[celli] >= 1420))// || (G[celli] > 210.0 / dx))
+        if (T[celli] >= refinementTemperature_)
         {
             refinementField_[celli] = 1;
         }

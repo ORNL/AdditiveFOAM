@@ -89,6 +89,9 @@ protected:
         //- Number of refinement levels
         label nLevels_;
 
+        //- Temperature above which refinement occurs
+        scalar refinementTemperature_;
+
         //- Time index of last refinement operation
         label lastRefinementIndex_;
 
