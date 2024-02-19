@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains 2;
+numberOfSubdomains 4;
 
 // Use Scotch for non-AMR cases
 //decomposer      scotch;
@@ -27,7 +27,7 @@ libs            ("libzoltanDecomp.so");
 
 hierarchicalCoeffs
 {
-    n               (2 1 1);
+    n               (4 1 1);
     order           xyz;
 }
 

@@ -82,10 +82,22 @@ Foam::refinementController::refinementController
     IOdictionary(createIOobject(dict, mesh)),
 
     sources_(sources),
-    heatSourceDict_(dict),
     mesh_(mesh),
+    heatSourceDict_(dict),
     refinementDict_(heatSourceDict_.optionalSubDict("refinementControl")),
-    refine_((type != "none") ? refinementDict_.lookup<bool>("refine") : false),
+    refine_
+    (
+        (type != "none")
+      ? refinementDict_.lookup<bool>("refine")
+      : false
+    ),
+    nLevels_
+    (
+        (type != "none")
+      ? refinementDict_.lookup<label>("nLevels")
+      : 0
+    ),
+    lastRefinementIndex_(0),
     refinementField_
     (
         IOobject
@@ -98,9 +110,7 @@ Foam::refinementController::refinementController
         ),
         mesh_,
         dimensionedScalar(dimless, 0.0)
-    ),
-    lastRefinementIndex_(0),
-    nLevels_((type != "none") ? refinementDict_.lookup<label>("nLevels") : 0)
+    )
 {
 }
 
@@ -114,7 +124,7 @@ bool Foam::refinementController::update()
 
 void Foam::refinementController::setRefinementField()
 {
-    // New AMR-scheme based on mushy zone info (values hard-coded for now)
+    // AMR-scheme based on mushy zone info (values hard-coded for now)
     const volScalarField& T
         = mesh_.lookupObject<volScalarField>("T");
 
@@ -124,7 +134,7 @@ void Foam::refinementController::setRefinementField()
     {
         const scalar dx = pow(mesh_.V()[celli], 1.0/3.0);
 
-        if ((T[celli] >= 1420) || (G[celli] > GREAT / dx))
+        if ((T[celli] >= 1420))// || (G[celli] > 210.0 / dx))
         {
             refinementField_[celli] = 1;
         }

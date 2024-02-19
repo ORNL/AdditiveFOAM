@@ -63,13 +63,14 @@ class uniformIntervals
         dictionary coeffs_;
         
         //- Number of intervals
-        int intervals_;
+        label intervals_;
         
-        //- Bounding box size for beam (multiples of D1sigma)
-        scalar boundingBox_;
+        //- User-defined bounding box for refinement around moving beam
+        //- Defaults to an inverted bounding box that is updated for each beam
+        boundBox boundingBox_;
         
         //- Time duration of each interval
-        scalar intervalSize_;
+        scalar intervalTime_;
         
         //- Time for next update
         scalar updateTime_;

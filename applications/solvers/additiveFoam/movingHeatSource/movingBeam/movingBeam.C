@@ -58,19 +58,18 @@ Foam::movingBeam::movingBeam
     deltaT_(GREAT),
     hitPathIntervals_(true)
 {
-    //- Get beam parameters
-    deltaT_ = beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
-    hitPathIntervals_ = beamDict_.lookupOrDefault<bool>("hitPathIntervals", true);
-    
-    //- Read scan path file
+    deltaT_ =
+        beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
+
+    hitPathIntervals_ =
+        beamDict_.lookupOrDefault<bool>("hitPathIntervals", false);
+
     readPath();
-    
-    //- Initialize the path index
+
     index_ = findIndex(runTime_.value());
     
     Info << "Initial path index: " << index_ << endl;
-    
-    //- Find the beam end time
+
     for (label i = path_.size() - 1; i > 0; i--)
     {
         if (path_[i].power() > small)
@@ -86,130 +85,90 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+bool Foam::movingBeam::activePath() const
+{
+    return ((endTime_ - runTime_.value()) > eps);
+}
+
+
+Foam::segment Foam::movingBeam::getSegment(const label index) const
+{
+    return path_[min(max(index, 0), path_.size() - 1)];
+}
+
+
 Foam::vector
 Foam::movingBeam::position(const scalar time) const
 {
-    if (activePath(time))
+    const label i = findIndex(time, 0);
+
+    // update the beam position at the current time
+    if (path_[i].mode() == 1)
     {
-        const label i = findIndex(time);
-        
-        if (path_[i].mode() == 1)
+        return path_[i].position();
+    }
+    else
+    {
+        scalar pathTime_ = max(0, path_[i].time() - path_[i-1].time());
+
+        if (pathTime_ > 0)
         {
-            return path_[i].position();
+            const vector dx = path_[i].position() - path_[i-1].position();
+            const vector displacement = dx*(time - path_[i-1].time())/pathTime_;
+
+            return position_ = path_[i-1].position() + displacement;
         }
         else
         {
-            vector displacement = vector::zero;
-
-            scalar dt = path_[i].time() - path_[i-1].time();
-
-            if (dt > 0)
-            {
-                const vector dx = path_[i].position() - path_[i-1].position();
-                displacement = dx*(time - path_[i-1].time())/dt;
-            }
-
-            return path_[i-1].position() + displacement;
+            return position_ = path_[i-1].position();
         }
-    }
-    else
-    {
-        return vector::max;
     }
 }
 
 
-Foam::scalar
-Foam::movingBeam::power(const scalar time) const
+Foam::label
+Foam::movingBeam::findIndex(const scalar time, const label seedIndex) const
 {
-    if (activePath(time))
+    // use seedIndex if one is provided
+    label i = (seedIndex == -1) ? index_ : seedIndex;
+
+    const label n = path_.size() - 1;
+
+    // step back path index for safe updating
+    for (i = i; i > 0 && path_[i].time() > time; --i)
+    {}
+
+    // update the path index to the provided time
+    for (i = i; i < n && path_[i].time() < time; ++i)
+    {}
+
+    // skip any point sources with zero time
+    while (i < n)
     {
-        const label i = findIndex(time);
-        
-        if ((time - path_[i-1].time()) > eps)
+        if (path_[i].mode() == 1 && path_[i].parameter() == 0)
         {
-            return path_[i].power();
+            ++i;
         }
         else
         {
-            return path_[i-1].power();
+            break;
         }
     }
-    else
-    {
-        return 0.0;
-    }
+
+    return min(max(i, 0), n);
 }
 
 
-Foam::scalar
-Foam::movingBeam::mode(const scalar time) const
+void Foam::movingBeam::adjustDeltaT(scalar& dt) const
 {
-    if (activePath(time))
+    if (activePath() && hitPathIntervals_)
     {
-        const label i = findIndex(time);
-        
-        return path_[i].mode();
-    }
-    else
-    {
-        return 1.0;
-    }
-}
-
-
-Foam::scalar
-Foam::movingBeam::parameter(const scalar time) const
-{
-    if (activePath(time))
-    {
-        const label i = findIndex(time);
-        
-        return path_[i].parameter();
-    }
-    else
-    {
-        return 0.0;
-    }
-}
-
-
-Foam::scalar
-Foam::movingBeam::velocity(const scalar time) const
-{
-    if (activePath(time))
-    {
-        const label i = findIndex(time);
-        
-        if (path_[i].mode() == 1)
-        {
-            return 0.0;
-        }
-        
-        else
-        {
-            return path_[i].parameter();
-        }
-    }
-    else
-    {
-        return 0.0;
-    }
-}
-
-
-Foam::scalar
-Foam::movingBeam::timeToNextPath(const scalar time) const
-{
-    if (activePath(time))
-    {
-        label i = findIndex(time);
-        
         scalar timeToNextPath = 0;
+        label i = index_;
 
         while (timeToNextPath < eps)
         {
-            timeToNextPath = max(0, path_[i].time() - time);
+            timeToNextPath = max(0, path_[i].time() - runTime_.value());
 
             i++;
 
@@ -218,12 +177,54 @@ Foam::movingBeam::timeToNextPath(const scalar time) const
                 break;
             }
         }
-        
-        return timeToNextPath;
+
+        const scalar nSteps = timeToNextPath/dt;
+                
+        if (nSteps < labelMax)
+        {
+            // allow time step to dilate 1% to hit target path time
+            const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
+            dt = min(timeToNextPath/nStepsToNextPath, dt);
+        }
+    }
+}
+
+void Foam::movingBeam::move(const scalar time) const
+{
+    // update the current index of the path
+    index_ = findIndex(time);
+
+    const label i = index_;
+
+    // update the beam position at the current time
+    if (path_[i].mode() == 1)
+    {
+        position_ = path_[i].position();
     }
     else
     {
-        return GREAT;
+        scalar pathTime_ = max(0, path_[i].time() - path_[i-1].time());
+
+        if (pathTime_ > 0)
+        {
+            const vector dx = path_[i].position() - path_[i-1].position();
+            const vector displacement = dx*(time - path_[i-1].time())/pathTime_;
+            position_ = path_[i-1].position() + displacement;
+        }
+        else
+        {
+            position_ = path_[i-1].position();
+        }
+    }
+
+    // update the beam power at the current time
+    if ((time - path_[i-1].time()) > eps)
+    {
+        power_ = path_[i].power();
+    }
+    else
+    {
+        power_ = path_[i-1].power();
     }
 }
 
@@ -286,106 +287,6 @@ void Foam::movingBeam::readPath()
         }
 
         Info << i << tab << path_[i].time() << endl;
-    }
-}
-
-
-bool Foam::movingBeam::activePath() const
-{
-    return ((endTime_ - runTime_.value()) > eps);
-}
-
-
-bool Foam::movingBeam::activePath(const scalar time) const
-{
-    return ((endTime_ - time) > eps);
-}
-
-
-void Foam::movingBeam::move(const scalar time) const
-{
-    // update the current index of the path
-    index_ = findIndex(time);
-
-    const label i = index_;
-
-    // update the beam center
-    if (path_[i].mode() == 1)
-    {
-        position_ = path_[i].position();
-    }
-    else
-    {
-        vector displacement = vector::zero;
-
-        scalar dt = path_[i].time() - path_[i-1].time();
-
-        if (dt > 0)
-        {
-            const vector dx = path_[i].position() - path_[i-1].position();
-            displacement = dx*(time - path_[i-1].time())/dt;
-        }
-
-        position_ = path_[i-1].position() + displacement;
-    }
-
-    // update the beam power
-    if ((time - path_[i-1].time()) > eps)
-    {
-        power_ = path_[i].power();
-    }
-    else
-    {
-        power_ = path_[i-1].power();
-    }
-}
-
-
-Foam::label
-Foam::movingBeam::findIndex(const scalar time) const
-{
-    label i = index_;
-
-    const label n = path_.size() - 1;
-
-    // step back path index for safe updating
-    for (i = i; i > 0 && path_[i].time() > time; --i)
-    {}
-
-    // update the path index to the provided time
-    for (i = i; i < n && path_[i].time() < time; ++i)
-    {}
-
-    // skip any point sources with zero time
-    while (i < n)
-    {
-        if (path_[i].mode() == 1 && path_[i].parameter() == 0)
-        {
-            ++i;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    return min(max(i, 0), n);
-}
-
-
-void Foam::movingBeam::adjustDeltaT(scalar& dt) const
-{
-    if (activePath() && hitPathIntervals_)
-    {
-        const scalar dtMax = timeToNextPath(runTime_.value());
-        const scalar nSteps = dtMax/dt;
-                
-        if (nSteps < labelMax)
-        {
-            // allow time step to dilate 1% to hit target path time
-            const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
-            dt = min(dtMax/nStepsToNextPath, dt);
-        }
     }
 }
 

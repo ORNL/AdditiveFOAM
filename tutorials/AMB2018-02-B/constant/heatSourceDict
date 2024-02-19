@@ -42,10 +42,7 @@ refinementControl
 {
     refine                  true;
     nLevels                 2;
-    
-    resolveTail             false;//true;
-    persistence             1e-4;
-    
+        
     //refinementController    none;
     refinementController    uniformIntervals;
     

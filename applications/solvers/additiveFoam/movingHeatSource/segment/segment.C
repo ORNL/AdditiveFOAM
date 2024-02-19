@@ -49,7 +49,7 @@ void Foam::segment::setPosition(point position)
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-// construct default segment as a zero point source
+// Construct default segment as a zero point source
 Foam::segment::segment()
 :
     mode_(1),
@@ -60,7 +60,7 @@ Foam::segment::segment()
 {
 }
 
-// set the segement properties given a space-delimited string
+// Construct the segement properties given a space-delimited string
 Foam::segment::segment(std::string line)
 {
     std::stringstream lineStream(line);

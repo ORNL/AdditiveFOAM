@@ -148,60 +148,58 @@ public:
     virtual ~movingBeam()
     {}
 
-    // Member Functions
+    // Member Functions - Return
     
-        //- Return current position of the moving beam at current time
+        //- Return position of the moving beam at current simulation time
         inline vector position() const
         {
             return position_;
         }
 
-        //- Return current power of the moving beam
+        //- Return power of the moving beam at current simulation time
         inline scalar power() const
         {
             return power_;
         }
         
-        scalar deltaT() const
+        inline scalar deltaT() const
         {
             return deltaT_;
         }
-        
+
+        //- Return path end time
+        inline scalar endTime() const
+        {
+            return endTime_;
+        }
+
+
+    // Member Functions - Calculated
+
+        //- Returns true if current simulation time is less than path endTime
+        bool activePath() const;
+
         //- Return position at specified time
         vector position(const scalar time) const;
-        
-        //- Return power at specified time
-        scalar power(const scalar time) const;
-        
-        //- Return beam mode at specified time
-        scalar mode(const scalar time) const;
-        
-        //- Return beam parameter at specified time
-        scalar parameter(const scalar time) const;
-        
-        //- Return beam velocity at specified time
-        scalar velocity(const scalar time) const;
-        
-        //- Return time of next path start
-        scalar timeToNextPath(const scalar time) const;
 
-        //- Read the path file
-        void readPath();
+        //- Returns the path segment at the provided index
+        segment getSegment(const label index) const;
         
-        //- Returns true if the simulation time is less than path endTime
-        bool activePath() const;
-        
-        //- Returns true if the provided time is less than the path end time
-        bool activePath(const scalar time) const;
-        
-        //- Move the beam to the provided time
-        void move(const scalar time) const;
-        
-        //- Returns the path index at the provided time
-        label findIndex(const scalar time) const;
+        //- Returns the path index at provided time with optional index seed
+        label findIndex
+        (
+            const scalar time,
+            const label seedIndex = -1
+        ) const;
 
         //- Adjust solution time step to hit pathInterval
         void adjustDeltaT(scalar& dt) const;
+
+        //- Move the beam to the provided time and update beam parameters
+        void move(const scalar time) const;
+
+        //- Read the path file
+        void readPath();
 };
 
 
