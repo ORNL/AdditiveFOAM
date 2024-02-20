@@ -1,5 +1,0 @@
-graph/curve.C
-graph/graph.C
-Timer/Timer.C
-
-LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamUtilities

@@ -21,9 +21,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-#include "interpolateXY.H"
-#include "primitiveFields.H"
-#include "labelPair.H"
+#include "interpolateXY/interpolateXY.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

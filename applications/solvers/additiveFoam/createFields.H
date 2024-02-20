@@ -13,6 +13,21 @@ volScalarField T
 );
 
 Info<< "Setting auxiliary fields for solidification model\n" << endl;
+volScalarField alpha3
+(
+    IOobject
+    (
+        IOobject::groupName("alpha", "powder"),
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("alpha.powder", dimless, 0.0),
+    zeroGradientFvPatchScalarField::typeName
+);
+
 volScalarField alpha1
 (
     IOobject
@@ -21,7 +36,7 @@ volScalarField alpha1
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
-        IOobject::AUTO_WRITE
+        IOobject::NO_WRITE
     ),
     mesh,
     dimensionedScalar("alpha.solid", dimless, 0.0),
@@ -52,7 +67,7 @@ dimensionedScalar Tsol
     interpolateXY(1.0, thermo.y(), thermo.x())
 );
 
-// set solid fraction consistent with temperature
+// set solid fraction field consistent with temperature
 forAll(mesh.cells(), cellI)
 {
     scalar alpha1_ = interpolateXY(T[cellI], thermo.x(), thermo.y());
@@ -60,21 +75,6 @@ forAll(mesh.cells(), cellI)
 }
 
 alpha1.correctBoundaryConditions();
-
-volScalarField alpha3
-(
-    IOobject
-    (
-        IOobject::groupName("alpha", "powder"),
-        runTime.timeName(),
-        mesh,
-        IOobject::READ_IF_PRESENT,
-        IOobject::NO_WRITE
-    ),
-    mesh,
-    dimensionedScalar("alpha.powder", dimless, 0.0),
-    zeroGradientFvPatchScalarField::typeName
-);
 
 #include "readTransportProperties.H"
 

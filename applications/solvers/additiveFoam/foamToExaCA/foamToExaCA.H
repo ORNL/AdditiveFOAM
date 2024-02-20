@@ -24,99 +24,106 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementControllers::uniformIntervals
+    Foam::foamToExaca
 
 Description
-    This refinement control scheme divides the simulation into an even
-    number of intervals equal to the simulation end time divided by the
-    number of intervals. Refinement for each beam is carried out on each
-    interval.
+    A utility for interpolating temperature data to a uniform cartestian grid
+    and writes the data in the ExaCA data format.
 
 SourceFiles
-    uniformIntervals.C
+    foamToExaca.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef uniformIntervals_H
-#define uniformIntervals_H
-
-#include "refinementController.H"
+#ifndef foamToExaCA_H
+#define foamToExaCA_H
+    
+#include "IOdictionary.H"
+#include "volFields.H"
+#include "volPointInterpolation.H"
+#include "meshSearch.H"
+#include "treeBoundBox.H"
+#include "OSspecific.H"
+#include "argList.H"
+#include "OFstream.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace refinementControllers
-{
 
 /*---------------------------------------------------------------------------*\
-                             Class uniformIntervals
+         Class foamToExaca Declaration
 \*---------------------------------------------------------------------------*/
 
-class uniformIntervals
+class foamToExaCA
 :
-    public refinementController
+    public IOdictionary
 {
-    // Private Data
-    
-        //- Dictionary
-        dictionary coeffs_;
-        
-        //- Number of intervals
-        label intervals_;
-        
-        //- User-defined bounding box for refinement around moving beam
-        //- Defaults to an inverted bounding box that is updated for each beam
-        boundBox boundingBox_;
-        
-        //- Time duration of each interval
-        scalar intervalTime_;
-        
-        //- Time for next update
-        scalar updateTime_;
+private:
+    // Private data
 
-        //- Last refinement time, beyond which, no refinement occurs
-        scalar endTime_;       
+        const fvMesh& mesh_;
+
+        const Time& runTime_;
+
+        const volScalarField& T_;
+
+        mutable pointScalarField Tp_;
+
+        List<DynamicList<label>> pointsInCell;
+
+        DynamicList<point> positions;
+        DynamicList<scalarField> weights;
+
+        DynamicList<label> compactCells;
+
+        DynamicList<List<scalar>> events;
+
+        Switch    execute_;
+
+        boundBox  box_;
+
+        scalar    iso_;
+
+        scalar    dx_;
 
 public:
+    TypeName("foamToExaCA");
 
-    //- Runtime type information
-    TypeName("uniformIntervals");
-
-
-    // Constructors
-
-        //- Construct from components
-        uniformIntervals
-        (
-            const PtrList<heatSourceModel>& sources,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
+    // Construct from temperature field
+    foamToExaCA(const volScalarField& T);
 
     //- Destructor
-    virtual ~uniformIntervals()
+    virtual ~foamToExaCA()
     {}
 
-
     // Member Functions
+    virtual void initialize();
 
-        //- Update the refinement marker field and return true at each interval
-        virtual bool update();
+    virtual void update();
 
-        //- Read the heatSourceProperties dictionary
-        virtual bool read();
+    virtual void write();
+
+    virtual void mapPoints(const meshSearch& searchEngine);
+
+    virtual void interpolatePoints();
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace refinementControllers
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "foamToExaCA/foamToExaCA.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 
 // ************************************************************************* //
+

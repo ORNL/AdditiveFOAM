@@ -1,10 +1,8 @@
 // Taken from: Foam::solvers::incompressibleFluid::moveMesh()
-//if (pimple.firstPimpleIter() || pimple.moveMeshOuterCorrectors())
+if (pimple.firstPimpleIter() || pimple.moveMeshOuterCorrectors())
 {
     // Move the mesh
-    Info << "about to move mesh" << endl;
     mesh.move();
-    Info << "just moved mesh" << endl;
 
     if (mesh.changing())
     {

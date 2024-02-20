@@ -35,7 +35,12 @@ namespace Foam
 namespace refinementControllers
 {
     defineTypeNameAndDebug(uniformIntervals, 0);
-    addToRunTimeSelectionTable(refinementController, uniformIntervals, dictionary);
+    addToRunTimeSelectionTable
+    (
+        refinementController,
+        uniformIntervals,
+        dictionary
+    );
 }
 }
 
@@ -49,9 +54,8 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 )
 :
     refinementController(typeName, sources, dict, mesh),
-    
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    intervals_(coeffs_.lookup<int>("intervals")),
+    intervals_(coeffs_.lookup<label>("intervals")),
     boundingBox_
     (
         coeffs_.lookupOrDefault<boundBox>
@@ -61,17 +65,24 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
         )
     ),
     intervalTime_(0.0),
-    updateTime_(0.0)
+    updateTime_(0.0),
+    endTime_(0.0)
 {
-    // set end time for AMR update to minimum of solution time and max beam time
-    scalar endTime_ = 0.0;
+    // TODO: interval time and update time need to be relative to start time
 
+    // set end time for AMR update to minimum of solution time and max beam time
     forAll(sources_, i)
     {
         endTime_ = max(sources_[i].beam().endTime(), endTime_);
     }
 
-    intervalTime_ = min(endTime_, mesh.time().endTime().value()) / intervals_;
+    endTime_ = min(endTime_, mesh.time().endTime().value());
+
+    Info << "endTime: " << endTime_ << endl;
+
+    // set interval time to the number of intervals between start and end
+    intervalTime_ =
+        max(0, endTime_ - mesh.time().startTime().value()) / intervals_;
 
     Info<< "AMR time interval: " << intervalTime_ << " s" << endl;
 
@@ -86,15 +97,26 @@ bool Foam::refinementControllers::uniformIntervals::update()
     //- Refine if OK with base class
     if (refinementController::update())
     {
-        if (mesh_.time().value() >= updateTime_)
+        if ((updateTime_ - mesh_.time().value()) < small)
         {
-            // update last refinement index and next refinement time
+            // update refinement index and next refinement time
             lastRefinementIndex_ = mesh_.time().timeIndex();
+
+            // TODO: evaluate if this time update is the desired behavior...
+            // If we want to refine AT some specified time,
+            // we would need to use to mesh time plus the calculated time step
             updateTime_ = mesh_.time().value() + intervalTime_;
 
             //- Set initial refinement field in base class
             refinementController::setRefinementField();
-            
+
+            // Continue to check for possible coarsening at select intervals
+            if ((endTime_ - mesh_.time().value()) < small)
+            {
+                Info << "continuing checks for possible mesh coarsening" << endl;
+                return true;
+            }
+
             //- Calculate the bounding box for each cell
             List<treeBoundBox> cellBbs(mesh_.nCells());    
             const pointField& points = mesh_.points();
@@ -128,14 +150,8 @@ bool Foam::refinementControllers::uniformIntervals::update()
 
                 vector offset_ = 1.5*sources_[i].dimensions();
 
-                while ((updateTime_ - time_) > small)
+                while ((min(beam_.endTime(), updateTime_) - time_) > small)
                 {
-                    // stop scan path based refinement near path end time
-                    if ((beam_.endTime() - time_) < small)
-                    {
-                        break;
-                    }
-
                     vector position_ = beam_.position(time_);
 
                     treeBoundBox beamBb

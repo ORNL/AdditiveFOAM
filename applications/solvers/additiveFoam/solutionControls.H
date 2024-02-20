@@ -24,7 +24,7 @@ if (!(beamOn || fluidInDomain))
 Switch explicitSolve =
     pimple.dict().lookupOrDefault<Switch>("explicitSolve", false);
 
-if (explicitSolve && !(sources.refinementControl().update()))
+if (explicitSolve)
 {
     const volScalarField::Internal DiNumvf
     (

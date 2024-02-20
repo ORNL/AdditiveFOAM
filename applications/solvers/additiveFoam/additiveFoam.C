@@ -46,20 +46,22 @@ Description
 #include "constrainHbyA.H"
 #include "pimpleControl.H"
 #include "fvCorrectPhi.H"
+
+#include "interpolateXY/interpolateXY.H"
+#include "graph/graph.H"
 #include "Polynomial.H"
 
-// additiveFoam specific headers
 #include "movingHeatSourceModel.H"
-#include "graph.H"
-#include "interpolateXY.H"
-#include "Timer.H"
+#include "foamToExaCA/foamToExaCA.H"
+
+#include "utils/Timer.H" // for profiling, if desired
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
     using namespace Foam;
-
+    
     #include "postProcess.H"
 
     #include "setRootCase.H"
@@ -68,7 +70,7 @@ int main(int argc, char *argv[])
     #include "createDyMControls.H"
     #include "createFields.H"
     #include "initContinuityErrs.H"
-
+    
     // Initialize profiling timer
     Timers timer(runTime);
 
@@ -78,6 +80,8 @@ int main(int argc, char *argv[])
     scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
+
+    foamToExaCA ExaCA(T);
 
     movingHeatSourceModel sources(mesh);
 
@@ -97,13 +101,8 @@ int main(int argc, char *argv[])
         timer.stop("Heat Source");
         
         timer.start("Refinement Control and Mesh Update");
-        //bool updated = sources.refinementControl().update();
-
-        //Info << "updated: " << updated << endl;
-
         if (sources.refinementControl().update())
         {
-            Info << "updating refinement control" << endl;
             mesh.update();
         }
         timer.stop("Refinement Control and Mesh Update");
@@ -129,13 +128,22 @@ int main(int argc, char *argv[])
         #include "thermo/TEqn.H"
         timer.stop("TEqn");
         
+        ExaCA.update();
+
         runTime.write();
         
+        if (runTime.writeTime())
+        {
+            sources.qDot().write();
+        }
+
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
 
+    ExaCA.write();
+    
     // Write time profiling information
     timer.write();
 

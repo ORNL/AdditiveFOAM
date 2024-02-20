@@ -29,10 +29,6 @@ SourceFiles
 #ifndef interpolateXY_H
 #define interpolateXY_H
 
-#include "scalar.H"
-#include "primitiveFieldsFwd.H"
-#include "labelPair.H"
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -63,7 +59,7 @@ labelPair interpolateXYLabels
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "interpolateXY.C"
+    #include "interpolateXY/interpolateXY.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

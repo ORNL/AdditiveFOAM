@@ -50,9 +50,10 @@ adjustTimeStep  yes;
 maxCo           0.5;
 maxDi           1;
 maxAlphaCo      1;
-
+/*
 functions
 {
     #includeFunc ExaCA
 }
+*/
 // ************************************************************************* //
