@@ -118,7 +118,7 @@ Foam::refinementController::refinementController
         dimensionedScalar(dimless, 0.0)
     )
 {
-    Info << "REFINE: " << refinementTemperature_ << endl;
+    Info << "refinement temperature: " << refinementTemperature_ << endl;
 }
 
 
@@ -126,7 +126,14 @@ Foam::refinementController::refinementController
 
 bool Foam::refinementController::update()
 {
-    return true;
+    if (mesh_.time().timeIndex() == 0)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 void Foam::refinementController::setRefinementField()

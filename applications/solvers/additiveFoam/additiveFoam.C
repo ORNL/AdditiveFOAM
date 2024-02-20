@@ -97,8 +97,13 @@ int main(int argc, char *argv[])
         timer.stop("Heat Source");
         
         timer.start("Refinement Control and Mesh Update");
+        //bool updated = sources.refinementControl().update();
+
+        //Info << "updated: " << updated << endl;
+
         if (sources.refinementControl().update())
         {
+            Info << "updating refinement control" << endl;
             mesh.update();
         }
         timer.stop("Refinement Control and Mesh Update");
