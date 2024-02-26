@@ -55,19 +55,38 @@ Foam::heatSourceModels::nLight::nLight
     spotCoeffs_(heatSourceModelCoeffs_.optionalSubDict("spotCoeffs")),
     ringCoeffs_(heatSourceModelCoeffs_.optionalSubDict("ringCoeffs"))
 {
-    alpha_ = heatSourceModelCoeffs_.lookup<scalar>("alpha");
+    // Select parameters from specified mode
+    mode_ = heatSourceModelCoeffs_.lookup<label>("mode");
+
+    List<scalar> alphas_ =
+        {0.99, 0.83, 0.7, 0.54, 0.33, 0.21, 0.29};
+
+    List<scalar> spot4Sigma_ =
+        {78.5e-6, 79.12e-6, 82.66e-6, 91.14e-6, 90.58e-6, 107.31e-6, 201.02e-6};
+
+    List<scalar> ring4Sigma_ =
+        {24.25e-6, 56.08e-6, 58.03e-6, 67.66e-6, 58.37e-6, 56.23e-6, 58.31e-6};
+
+    dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
+
+    alpha_ = alphas_[mode_];
+
+    Info<< "Parameters for mode: " << mode_ << endl
+        << "\talpha: " << alpha_ << endl
+        << "\tD4s (spot): " << spot4Sigma_[mode_] << endl
+        << "\tD4s (ring): " << ring4Sigma_[mode_] << endl;
     
     //- Spot parameters
     ks_ = spotCoeffs_.lookup<scalar>("k");
     ms_ = spotCoeffs_.lookup<scalar>("m");
-    ds_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
+    ds_ = vector(0.5*spot4Sigma_[mode_], 0.5*spot4Sigma_[mode_], dimensions_[2]);
     As_ = As().value();
-    
+
     //- Ring parameters
     kr_ = ringCoeffs_.lookup<scalar>("k");
     mr_ = ringCoeffs_.lookup<scalar>("m");
-    R_ = ringCoeffs_.lookup<scalar>("R");
-    r_ = ringCoeffs_.lookup<scalar>("r");
+    R_ = 152e-6;
+    r_ = 0.5 * ring4Sigma_[mode_];
     Ar_ = Ar().value();
     
     //- Overwrite the dimensions used by the base class
@@ -184,7 +203,7 @@ Foam::heatSourceModels::nLight::Ar()
     (
         "Ar",
         dimArea,
-        4.0 * pi * R_ * s.x() * Foam::tgamma(1.0 + 1.0 / kr_) 
+        4.0 * pi * R_ * s.x() * Foam::tgamma(1.0 + 1.0 / kr_)
       * Foam::tgamma(1.0 + 1.0 / mr_) * Foam::tgamma(1.0 + 1.0 / mr_)
       / Foam::tgamma(1.0 + 2.0 / mr_)
     );

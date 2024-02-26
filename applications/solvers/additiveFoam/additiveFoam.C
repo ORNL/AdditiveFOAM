@@ -42,6 +42,8 @@ Description
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
 
+#include "interface/interfacePoints.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
@@ -67,12 +69,16 @@ int main(int argc, char *argv[])
 
     movingHeatSourceModel sources(mesh);
 
+    DynamicList<List<scalar>> interfaceData;
+
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< "\nStarting time loop\n" << endl;
 
     while (runTime.run())
     {
+        volScalarField R("R", mag(fvc::ddt(T)));
+
         #include "updateProperties.H"
 
         #include "readTimeControls.H"
@@ -94,6 +100,8 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
+
+        #include "interface/interface.H"
         
         ExaCA.update();
 
@@ -103,6 +111,8 @@ int main(int argc, char *argv[])
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
+
+    #include "interface/interfaceWrite.H"
 
     ExaCA.write();
 

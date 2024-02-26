@@ -239,7 +239,7 @@ Foam::heatSourceModel::qDot()
     );
     volScalarField& qDot_ = tqDot.ref();
 
-    // sample gaussian distribution at desired resolution
+    // sample distribution at desired resolution
     const scalar power_ = movingBeam_->power();
 
     if (power_ > small)
@@ -247,7 +247,7 @@ Foam::heatSourceModel::qDot()
         const vector position_ = movingBeam_->position();
 
         // udpate the absorbed power and heat source normalization term
-        const scalar aspectRatio = 
+        const scalar aspectRatio =
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
         dimensionedScalar absorbedPower
@@ -275,7 +275,7 @@ Foam::heatSourceModel::qDot()
         );
 
         const pointField& points = mesh_.points();
-        
+
         treeBoundBox beamBb
         (
             position_ - 1.5*dimensions_,

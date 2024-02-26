@@ -76,7 +76,10 @@ class nLight
         
         //- Dictionary for spot shape parameters
         const dictionary& spotCoeffs_;
-        
+    
+        //- Laser mode [0-6]
+        scalar mode_;
+    
         //- Spot distribution shape coefficient
         scalar ks_;
 
