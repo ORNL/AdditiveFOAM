@@ -39,32 +39,29 @@ beam
         nPoints         (10 10 10);
     }
     
-    // Parameters for nLight VBPP5 profile
+    heatSourceModel     nLight;
+
+    // Profiles for nLight AFX-1000 lasers, supported modes 0-6.
     nLightCoeffs
     {
-        // Points for sub-grid integration of heat source
-        nPoints         (5 5 5);
-        
-        // Blending factor (alpha = 1.0 --> 100% spot)
-        alpha           0.2;
-        
-        // Spot parameters
-        dimensions      (50.0e-6 50.0e-6 30e-6);
+        mode            5;
+        nPoints         (10 10 10);
+        dimensions      (78.5e-6 78.5e-6 20e-6);
         
         spotCoeffs
         {
             k           2.0;
-            m           2.0;
-        }
+            m           3.0;
         
-        // Ring parameters
+        }
         ringCoeffs
         {
-            R           100e-6;
-            r           50e-6;
             k           2.0;
-            m           2.0;
+            m           3.0;
         }
+
+        transient       true;
+        isoValue        1726;
     }
 }
 
