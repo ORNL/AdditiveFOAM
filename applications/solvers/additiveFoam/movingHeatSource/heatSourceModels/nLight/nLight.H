@@ -88,10 +88,7 @@ class nLight
         
         //- Spot dimensions
         vector ds_;
-        
-        //- Spot area
-        scalar As_;
-        
+                
         //- Dictionary for ring shape parameters
         const dictionary& ringCoeffs_;
         
@@ -106,9 +103,6 @@ class nLight
         
         //- Ring half width
         scalar r_;
-        
-        //- Ring area
-        scalar Ar_;
 
 
 public:

@@ -62,10 +62,10 @@ Foam::heatSourceModels::nLight::nLight
         {0.99, 0.83, 0.7, 0.54, 0.33, 0.21, 0.29};
 
     List<scalar> spot4Sigma_ =
-        {78.5e-6, 79.12e-6, 82.66e-6, 91.14e-6, 90.58e-6, 107.31e-6, 201.02e-6};
+        {156.99e-6, 158.23e-6, 165.31e-6, 182.28e-6, 181.15e-6, 214.63e-6, 402.04e-6};
 
     List<scalar> ring4Sigma_ =
-        {24.25e-6, 56.08e-6, 58.03e-6, 67.66e-6, 58.37e-6, 56.23e-6, 58.31e-6};
+        {48.49e-6, 112.15e-6, 116.07e-6, 135.32e-6, 116.74e-6, 112.46e-6, 116.62e-6};
 
     dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
 
@@ -80,17 +80,22 @@ Foam::heatSourceModels::nLight::nLight
     ks_ = spotCoeffs_.lookup<scalar>("k");
     ms_ = spotCoeffs_.lookup<scalar>("m");
     ds_ = vector(0.5*spot4Sigma_[mode_], 0.5*spot4Sigma_[mode_], dimensions_[2]);
-    As_ = As().value();
 
     //- Ring parameters
     kr_ = ringCoeffs_.lookup<scalar>("k");
     mr_ = ringCoeffs_.lookup<scalar>("m");
     R_ = 152e-6;
     r_ = 0.5 * ring4Sigma_[mode_];
-    Ar_ = Ar().value();
+
+    // Calculated using second moment method from fitted profiles
+    List<scalar> D4sigma_ =
+        {162.12e-6, 235.39e-6, 283.97e-6, 283.97e-6,
+         340.0e-6, 385.18e-6, 413.13e-6, 438.85e-6};
     
+    scalar R2sigma_ = 0.5*D4sigma_[mode_];    
+
     //- Overwrite the dimensions used by the base class
-    dimensions_ = vector(R_ + r_, R_ + r_, ds_.z());
+    dimensions_ = vector(R2sigma_, R2sigma_, ds_.z());
     staticDimensions_ = dimensions_;
 }
 
@@ -146,8 +151,8 @@ Foam::heatSourceModels::nLight::weight(const vector& d)
             );
 
         // Return weights with power split and volume factored in
-        return alpha_ / As_ / dimensions_.z() * Foam::exp(-xs) 
-            + (1.0 - alpha_) / Ar_ / dimensions_.z() * Foam::exp(-xr);
+        return alpha_ / As().value() / dimensions_.z() * Foam::exp(-xs) 
+            + (1.0 - alpha_) / Ar().value() / dimensions_.z() * Foam::exp(-xr);
     }
     else
     {
