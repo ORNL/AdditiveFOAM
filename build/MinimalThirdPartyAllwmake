@@ -1,0 +1,207 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     |
+#   \\  /    A nd           | Copyright (C) 2011-2021 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     Allwmake
+#
+# Description
+#     Build script for ThirdParty
+#
+#------------------------------------------------------------------------------
+# run from third-party directory only
+cd ${0%/*} || exit 1
+wmakeCheckPwd "$WM_THIRD_PARTY_DIR" || {
+    echo "Error: Current directory is not \$WM_THIRD_PARTY_DIR"
+    echo "    The environment variables are inconsistent with the installation."
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+[ -n "$FOAM_EXT_LIBBIN" ] || {
+    echo "Error: FOAM_EXT_LIBBIN not set"
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+. etc/tools/ThirdPartyFunctions
+#------------------------------------------------------------------------------
+
+# export WM settings in a form that GNU configure recognizes
+[ -n "$WM_CC" ]         &&  export CC="$WM_CC"
+[ -n "$WM_CXX" ]        &&  export CXX="$WM_CXX"
+[ -n "$WM_CFLAGS" ]     &&  export CFLAGS="$WM_CFLAGS"
+[ -n "$WM_CXXFLAGS" ]   &&  export CXXFLAGS="$WM_CXXFLAGS"
+[ -n "$WM_LDFLAGS" ]    &&  export LDFLAGS="$WM_LDFLAGS"
+
+echo
+echo ========================================
+echo Start Minimal ThirdParty Allwmake
+echo ========================================
+echo
+
+
+echo ========================================
+echo Assuming MPI is present on system.
+echo ========================================
+echo
+
+# get SCOTCH_VERSION, SCOTCH_ARCH_PATH
+if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config.sh/scotch`
+then
+    . $settings
+else
+    echo
+    echo "Error: no config.sh/scotch settings"
+    echo
+fi
+
+# building scotch is still a bit of a pain
+echo ========================================
+echo "Build Scotch decomposition library $SCOTCH_VERSION"
+echo "    $SCOTCH_ARCH_PATH"
+
+# this needs generalizing for any compiler, since it's hard-coded to GCC
+scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.i686_pc_linux2.shlib-OpenFOAM
+
+if [ -f $SCOTCH_ARCH_PATH/include/scotch.h \
+  -a -r $FOAM_EXT_LIBBIN/libscotch.so \
+  -a -r $FOAM_EXT_LIBBIN/libscotcherrexit.so ]
+then
+    echo "    scotch header in $SCOTCH_ARCH_PATH/include"
+    echo "    scotch libs   in $FOAM_EXT_LIBBIN"
+    echo
+else
+(
+    set -x
+    cd $SCOTCH_VERSION/src || exit 1
+
+    prefixDIR=$SCOTCH_ARCH_PATH
+    libDIR=$FOAM_EXT_LIBBIN
+
+    mkdir -p $prefixDIR 2>/dev/null
+    mkdir -p $libDIR 2>/dev/null
+
+    configOpt="prefix=$prefixDIR libdir=$libDIR"
+
+    if [ -f $scotchMakefile ]
+    then
+        rm -f Makefile.inc
+        ln -s $scotchMakefile Makefile.inc
+    fi
+
+    [ -f Makefile.inc ] || {
+        echo " Error: scotch needs an appropriate Makefile.inc"
+        exit 1
+    }
+
+    # handle non-gcc compilers
+    unset configEnv
+    [ "${WM_CC:-gcc}" != gcc ] && configEnv="CC=$WM_CC CCS=$WM_CC"
+
+    make realclean 2>/dev/null  # for safety
+
+    make -j $WM_NCOMPPROCS $configEnv scotch \
+    && make $configOpt install
+
+    # cleanup, could also remove Makefile.inc
+    make realclean 2>/dev/null
+)
+fi
+
+# verify existence of scotch include
+[ -f $SCOTCH_ARCH_PATH/include/scotch.h ] || {
+    echo
+    echo "    WARNING: required include file 'scotch.h' not found!"
+    echo
+}
+
+
+# build ptscotch if MPI (ThirdParty or system) is available
+if [ "${FOAM_MPI:-dummy}" != dummy ]
+then
+    echo ========================================
+    echo "Build PTScotch decomposition library $SCOTCH_VERSION (uses MPI)"
+    echo "    $SCOTCH_ARCH_PATH"
+    echo
+
+    if [ -f $SCOTCH_ARCH_PATH/include/$FOAM_MPI/ptscotch.h \
+      -a -r $FOAM_EXT_LIBBIN/$FOAM_MPI/libptscotch.so \
+      -a -r $FOAM_EXT_LIBBIN/$FOAM_MPI/libptscotcherrexit.so ]
+    then
+        echo "    ptscotch header in $SCOTCH_ARCH_PATH/include/$FOAM_MPI"
+        echo "    ptscotch libs   in $FOAM_EXT_LIBBIN/$FOAM_MPI"
+        echo
+    else
+    (
+        set -x
+        cd $SCOTCH_VERSION/src || exit 1
+
+        prefixDIR=$SCOTCH_ARCH_PATH
+        libDIR=$FOAM_EXT_LIBBIN/$FOAM_MPI
+        incDIR=$SCOTCH_ARCH_PATH/include/$FOAM_MPI
+
+        mkdir -p $prefixDIR 2>/dev/null
+        mkdir -p $libDIR 2>/dev/null
+
+        configOpt="prefix=$prefixDIR libdir=$libDIR includedir=$incDIR"
+
+        if [ -f $scotchMakefile ]
+        then
+            rm -f Makefile.inc
+            ln -s $scotchMakefile Makefile.inc
+        fi
+
+        [ -f Makefile.inc ] || {
+            echo " Error: scotch needs an appropriate Makefile.inc"
+            exit 1
+        }
+
+        # handle non-gcc compilers
+        unset configEnv
+        [ "${WM_CC:-gcc}" != gcc ] && configEnv="CC=$WM_CC CCS=$WM_CC"
+
+        make realclean 2>/dev/null  # for safety
+
+        make -j $WM_NCOMPPROCS $configEnv ptscotch \
+        && make $configOpt install
+
+        # cleanup, could also remove Makefile.inc
+        make realclean 2>/dev/null
+    )
+    fi
+
+    # verify existence of scotch include
+    [ -f $SCOTCH_ARCH_PATH/include/$FOAM_MPI/ptscotch.h ] || {
+        echo
+        echo "    WARNING: required include file 'ptscotch.h' not found!"
+        echo
+    }
+fi
+
+echo
+echo ========================================
+echo Done Minimal ThirdParty Allwmake
+echo ========================================
+echo
+
+
+#------------------------------------------------------------------------------
