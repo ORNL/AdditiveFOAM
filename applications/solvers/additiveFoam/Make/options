@@ -2,6 +2,7 @@ EXE_INC = \
     -I. \
     -ImovingHeatSource/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/randomProcesses/lnInclude
 
 EXE_LIBS = \
