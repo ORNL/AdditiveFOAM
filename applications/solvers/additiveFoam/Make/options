@@ -1,13 +1,23 @@
 EXE_INC = \
     -I. \
     -ImovingHeatSource/lnInclude \
-    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/MomentumTransportModels/momentumTransportModels/lnInclude \
+    -I$(LIB_SRC)/MomentumTransportModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/physicalProperties/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/randomProcesses/lnInclude
 
 EXE_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
     -lmovingBeamModels \
+    -lmomentumTransportModels \
+    -lincompressibleMomentumTransportModels \
+    -lphysicalProperties \
     -lfiniteVolume \
+    -lfvModels \
+    -lfvConstraints \
+    -lsampling \
     -lmeshTools \
     -lrandomProcesses
