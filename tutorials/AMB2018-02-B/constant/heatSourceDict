@@ -29,12 +29,39 @@ beam
     }
     
     heatSourceModel     superGaussian;
+    //heatSourceModel     nLight;
     
+    // Standard super-Gaussian spot profile
     superGaussianCoeffs
     {
         k               2.0;
         dimensions      (85.0e-6 85.0e-6 30e-6);
         nPoints         (10 10 10);
+    }
+    
+    heatSourceModel     nLight;
+
+    // Profiles for nLight AFX-1000 lasers, supported modes 0-6.
+    nLightCoeffs
+    {
+        mode            5;
+        nPoints         (10 10 10);
+        dimensions      (78.5e-6 78.5e-6 20e-6);
+        
+        spotCoeffs
+        {
+            k           2.0;
+            m           3.0;
+        
+        }
+        ringCoeffs
+        {
+            k           2.0;
+            m           3.0;
+        }
+
+        transient       true;
+        isoValue        1726;
     }
 }
 
