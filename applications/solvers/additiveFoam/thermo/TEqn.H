@@ -29,7 +29,7 @@
     {
         FatalErrorInFunction
             << "Unsupported ddtScheme " << ddtScheme
-            << ". Choose either Euler or backwards."
+            << ". Choose either Euler or backward."
             << abort(FatalError);
     }
     else if (ddtScheme == "backward")
