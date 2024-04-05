@@ -136,4 +136,9 @@ AdditiveFOAM is free software: you can redistribute it and/or modify it under th
 ## Contact
 For any questions, issues, or suggestions regarding AdditiveFOAM, you can reach out to the project maintainers through the GitHub repository's issue tracker or by contacting the development team in the **Contributors** links above.
 
+## Contributing
+
+We encourage you to contribute to AdditiveFOAM! Please check the
+[guidelines](CONTRIBUTING.md) on how to do so.
+
 We appreciate your interest in AdditiveFOAM and look forward to your contributions!
