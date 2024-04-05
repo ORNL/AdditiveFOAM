@@ -76,7 +76,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
 
    - `constant/`: Contains configuration and settings that define geometric and material conditions, including:
 
-      - `transportProperties`: Sets the transport properties of the material. The thermal conductivity **kappa** and specific heat **Cp** are given as temperature dependent second-order polynomials for each phase in the material.
+      - `transportProperties`: Sets the transport properties of the material. The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for each phase in the material.
       
          The available phases are:
          - solid
@@ -95,7 +95,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
          - constant
          - [Kelly](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272)
       
-         Each heat source model has the ability to be update the depth of the heat source for keyhole modeling, by setting the **transient** flag to **True** and defining an **isoValue** to track the depth of an isotherm contained within the heat source radius. An example of this usage is provided in the [multiBeam](tutorials/multiBeam) tutorial.
+         Each heat source model has the ability to be update the depth of the heat source for keyhole modeling, by setting the `transient` flag to `True` and defining an `isoValue` to track the depth of an isotherm contained within the heat source radius. An example of this usage is provided in the [multiBeam](tutorials/multiBeam) tutorial.
 
    - `0/`: Contains the initial fields. The available fields are provided in the files:
       - `T`:            temperature
@@ -107,7 +107,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    - `system/`: Contains simulation configuration files.
       - `controlDict`: Set simulation time settings and numerical parameters.
       - `fvSchemes`: Set the discretization schemes used to solve the governing equations
-      - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting **nOuterCorrectors** to **0** in the **PIMPLE** dictionary.
+      - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
       
 3. Run the simulation:
 An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
@@ -128,7 +128,7 @@ AdditiveFOAM supports a scan path file format that decomposes the laser path int
 | Column 6 | For a line (mode = 0), this is the velocity of the laser in meters/second. <br>For a point (mode = 1), this is the dwell time of the laser in seconds                         |
 
 ### Exporting ExaCA Data
-One feature of AdditiveFOAM is its ability to export thermal information to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. This feature is enabled using the **execute** flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified **isotherm** is tracked in the represenative volume element defined by **box** and a resolution defined by **dx**. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may cause a significant load-balancing issues if the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
+One feature of AdditiveFOAM is its ability to export thermal information to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may cause a significant load-balancing issues if the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
 
 ## License
 AdditiveFOAM is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the file `LICENSE` in this directory or http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
