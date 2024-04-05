@@ -27,7 +27,7 @@ Polynomial<PolySize> Cp3(powderDict.lookup("Cp"));
 // Reference density [kg]
 const dimensionedScalar rho
 (
-    "mu",
+    "rho",
     dimDensity,
     transportProperties.lookup("rho")
 );
