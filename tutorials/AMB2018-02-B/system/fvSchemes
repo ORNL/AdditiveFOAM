@@ -32,13 +32,13 @@ divSchemes
 
 laplacianSchemes
 {
-    default         Gauss linear corrected;
+    default             Gauss linear corrected;
+    laplacian(kappa,T)	Gauss harmonic corrected;
 }
 
 interpolationSchemes
 {
     default         linear;
-    interpolate(kappa)  harmonic;
 }
 
 snGradSchemes
