@@ -14,7 +14,7 @@ forAll(mesh.cells(), cellI)
     scalar T1 = min(max(T[cellI], 300.0), Tsol.value());
     scalar T2 = min(max(T[cellI], Tliq.value()), 2.0*Tliq.value());
 
-    //- Update solid-liquid-powder mixture properties    
+    // update solid-liquid-powder mixture properties    
     kappa[cellI] = 
         (1.0 - alpha3_)*(alpha1_*kappa1.value(T1) + alpha2_*kappa2.value(T2))
       + alpha3_*kappa3.value(T1);
