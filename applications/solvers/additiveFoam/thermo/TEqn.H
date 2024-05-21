@@ -1,42 +1,5 @@
 {
-    fvScalarMatrix TEqn(T, dimPower);
-
-    if (explicitSolve)
-    {
-        TEqn =
-        (
-            rho*Cp*(fvm::ddt(T) + fvc::div(phi, T))
-          - fvc::laplacian(kappa, T)
-          - sources.qDot()
-        );
-    }
-    else
-    {
-        TEqn =
-        (
-            rho*Cp*(fvm::ddt(T) + fvm::div(phi, T))
-          - fvm::laplacian(kappa, T)
-          - sources.qDot()
-        );
-    }
-           
-    //- set source term linearization weights for time discretization scheme  
-    scalar coefft = 1;
-    const dimensionedScalar deltaT  = runTime.deltaT();
-    
-    const word ddtScheme = mesh.schemes().ddt(T.name());
-    if ((ddtScheme != "Euler") && (ddtScheme != "backward"))
-    {
-        FatalErrorInFunction
-            << "Unsupported ddtScheme " << ddtScheme
-            << ". Choose either Euler or backward."
-            << abort(FatalError);
-    }
-    else if (ddtScheme == "backward")
-    {
-        const dimensionedScalar deltaT0 = runTime.deltaT0();
-        coefft += (deltaT/(deltaT + deltaT0)).value();    
-    }
+    #include "thermo/thermoScheme.H"
 
     //- solve thermodynamic coupling using root-finding algorithm
     volScalarField dFdT
@@ -62,7 +25,7 @@
         (
             TEqn
          ==
-            coefft*rho*Lf/deltaT*(fvm::Sp(dFdT, T) - dFdT*T0)
+            rDeltaT*rho*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
           + rho*Lf*fvc::ddt(alpha1)
         );
 
