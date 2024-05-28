@@ -42,6 +42,8 @@ Description
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
 
+#include "CrankNicolsonDdtScheme.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
