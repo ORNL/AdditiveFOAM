@@ -1,4 +1,4 @@
-//- Construct the temperature equation for the time integration scheme
+//- Construct the temperature equation for the chosen time integration scheme
 fvScalarMatrix TEqn(T, dimPower);
 dimensionedScalar rDeltaT = 1.0 / runTime.deltaT();
 
@@ -57,6 +57,8 @@ else
 
         coefft = 1.0 + ocCoeff;
     }
+    
+    Info << "thero time coefficient (coefft): " << coefft << endl;
     
     rDeltaT *= coefft;
 }
