@@ -2,8 +2,8 @@
 
 /* Override the primary color */
 :root {
-  --theme-primary: #28a745; /* Green color */
-  --theme-primary-rgb: 40, 167, 69; /* RGB values of green color */
+  --theme-primary: #008542; /* ORNL Green */
+  --theme-primary-rgb: 0, 133, 66; /* RGB values of ORNL Green */
 }
 
 /* If needed, override other related colors */
