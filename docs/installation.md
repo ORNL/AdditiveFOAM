@@ -1,5 +1,5 @@
 ---
-title: Installation - AdditiveFOAM Documentation
+title: Installation
 ---
 
 # Installation

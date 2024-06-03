@@ -1,5 +1,5 @@
 ---
-title: Usage - AdditiveFOAM Documentation
+title: Usage
 ---
 
 # Usage

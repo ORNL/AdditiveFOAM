@@ -1,6 +1,6 @@
 ---
 layout: home
-title: Welcome
+title: AdditiveFoam
 nav_order: 1
 ---
 
@@ -8,7 +8,7 @@ nav_order: 1
 This is the documentation site for AdditiveFOAM.
 
 ## Documentation
-Visit our [documentation](docs/index.html) to learn more.
+Visit our [User Guide](docs/index.html) to learn more.
 
 ## GitHub Repository
 Check out our [GitHub Repository](https://github.com/ORNL/AdditiveFOAM).
