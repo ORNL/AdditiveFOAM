@@ -6,6 +6,8 @@ description: "AdditiveFOAM is an open-source CFD solver for additive manufacturi
 permalink: /
 ---
 
+AdditiveFOAM is an open-source CFD solver for additive manufacturing built on OpenFOAM
+
 [User Guide](docs/index.html){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub][AdditiveFOAM repo]{: .btn .fs-5 .mb-4 .mb-md-0 }
 
