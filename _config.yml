@@ -1,0 +1,6 @@
+title: AdditiveFOAM Documentation
+description: Documentation for the AdditiveFOAM project.
+baseurl: "/AdditiveFOAM"
+url: "https://ORNL.github.io"
+theme: minima
+markdown: kramdown
