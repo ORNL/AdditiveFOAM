@@ -6,3 +6,7 @@ markdown: kramdown
 remote_theme: just-the-docs/just-the-docs
 plugins:
   - jekyll-remote-theme
+  - jekyll-seo-tag
+assets:
+css:
+- /assets/css/custom.css

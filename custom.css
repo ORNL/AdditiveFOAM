@@ -1,0 +1,12 @@
+/* assets/css/custom.css */
+
+/* Override the primary color */
+:root {
+  --theme-primary: #28a745; /* Green color */
+  --theme-primary-rgb: 40, 167, 69; /* RGB values of green color */
+}
+
+/* If needed, override other related colors */
+.navbar-brand, .navbar-nav .nav-link.active, .navbar-nav .nav-link:hover, .sidebar .sidebar-nav .nav-link.active, .sidebar .sidebar-nav .nav-link:hover{
+  color: var(--theme-primary) !important;
+}
