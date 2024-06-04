@@ -32,6 +32,6 @@ aux_links_new_tab: false
 # Enable callouts in markdown
 callouts_level: quiet # or loud
 callouts:
-  custom_note:
+  custom:
     title: Note
     color: ornl_green
