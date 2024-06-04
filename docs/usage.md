@@ -66,14 +66,25 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
 
 
 ### Scan Path Files
-AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources or b) point sources.
+AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources (mode = 0) or b) point sources (mode = 1).
+
+An example scan path file is:
+```
+Mode    X       Y       Z     Power   Param
+1       0.000   0.000   0.0   0.0     0.0
+0       0.002   0.000   0.0   195.0   0.8
+0       0.002   1.e-4   0.0   0.0     0.8
+0       0.000   1.e-4   0.0   195.0   0.8
+```
 
 | Column   | Description                                                                                                                 |
 |----------|-----------------------------------------------------------------------------------------------------------------------------|
-| Column 1 | mode = 0 for line source, mode = 1 for point source                                                                               |
-| Columns 2-4 | (x,y,z) coordinates in meters. <br>For a line (mode = 0), this is the final position of the line raster. <br>For a spot (mode = 1), this is the constant position of the laser |
+| Column 1 | Mode = 0: line source, <br>Mode = 1: point source                                                                               |
+| Columns 2-4 | (x,y,z) coordinates in meters. <br>Mode = 0: the final position of the beam. <br>Mode = 1: the current position of the beam |
 | Column 5 | Value for laser power in watts                                                                                               |
-| Column 6 | For a line (mode = 0), this is the velocity of the laser in meters/second. <br>For a point (mode = 1), this is the dwell time of the laser in seconds                         |
+| Column 6 | Mode = 0: the velocity of the beam in meters/second. <br>Mode = 1:, the time the beam remains at its current position in seconds                         |
 
 ## Exporting ExaCA Data
-One feature of AdditiveFOAM is its ability to export thermal information to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may cause a significant load-balancing issues if the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
+AdditiveFOAM is able to export thermal data to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. 
+
+This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may cause a significant load-balancing issues if the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
