@@ -1,12 +1,11 @@
+# Site settings
 title: AdditiveFOAM
-
-description: Documentation for the AdditiveFOAM project.
-
+description: AdditiveFOAM documentation
 baseurl: "/AdditiveFOAM"
-
 url: "https://ORNL.github.io"
+repository: ORNL/AdditiveFOAM
 
-markdown: kramdown
+permalink: pretty
 
 remote_theme: just-the-docs/just-the-docs
 
@@ -14,7 +13,7 @@ plugins:
   - jekyll-remote-theme
   - jekyll-seo-tag
 
-# Override default purple scheme with ornl_green
+# Override purple (default) to ORNL green
 color_scheme: ornl_green
 
 # External navigation links
