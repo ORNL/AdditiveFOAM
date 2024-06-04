@@ -67,7 +67,9 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    - `system/`: Contains simulation configuration files.
       - `controlDict`: Set simulation time settings and numerical parameters.
       - `fvSchemes`: Set the discretization schemes used to solve the governing equations
-      - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
+      - `fvSolution`: Set solution algorithms and convergence criterias.
+      {: .note }
+      Fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
 
 
 ### Scan Path Files

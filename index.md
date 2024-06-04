@@ -28,7 +28,7 @@ We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](ht
 - [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
 
 
-## Citation
+## Citing
 If you use AdditiveFoam in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
 ```
 @software{AdditiveFOAM_1.0.0,
