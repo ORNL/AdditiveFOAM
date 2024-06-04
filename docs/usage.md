@@ -13,7 +13,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    cd userCase
    ```
 
-2. Modify the necessary input files according to your simulation requirements. These files are described below.
+2. Modify the necessary input files according to your simulation requirements. These files are described in [Case Files](#case-files).
 
 3. Run the simulation:
 
