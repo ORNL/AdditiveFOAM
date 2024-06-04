@@ -68,21 +68,25 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
 ### Scan Path Files
 AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources (mode = 0) or b) point sources (mode = 1).
 
-An example scan path file is:
+An example scan path file for a bi-directional raster with a hatch-spacing of 100 $$\mu m$$ is:
 ```
-Mode    X       Y       Z     Power   Param
+Mode    X       Y       Z     Power   Parameter
 1       0.000   0.000   0.0   0.0     0.0
 0       0.002   0.000   0.0   195.0   0.8
 0       0.002   1.e-4   0.0   0.0     0.8
 0       0.000   1.e-4   0.0   195.0   0.8
 ```
 
+The beam starts at (0, 0, 0) $$m$$ and moves horizontally to (0.002, 0, 0.0) $$m$$ with a power of 195 $$W$$ and speed of 0.8 $$m/s$$. Then, the laser turns off and moves vertically to (0.002, 0.0001, 0.0) $$m$$ at a speed of 0.8 $$m/s$$. Finally, the laser moves horizontally to (0.002, 0.0001, 0.0) $$m$$ with a power of 195 $$W$$ and speed of 0.8 $$m/s$$. At this point, the laser turns off for the remainder of the simulation.
+
+A summary of the entries defining a path segment for the scan path is provided in the following table:
+
 | Column   | Description                                                                                                                 |
 |----------|-----------------------------------------------------------------------------------------------------------------------------|
 | Column 1 | Mode = 0: line source, <br>Mode = 1: point source                                                                               |
 | Columns 2-4 | (x,y,z) coordinates in meters. <br>Mode = 0: the final position of the beam. <br>Mode = 1: the current position of the beam |
 | Column 5 | Value for laser power in watts                                                                                               |
-| Column 6 | Mode = 0: the velocity of the beam in meters/second. <br>Mode = 1:, the time the beam remains at its current position in seconds                         |
+| Column 6 | Mode = 0: the speed of the beam in meters/second. <br>Mode = 1: the time the beam remains at its current position in seconds                         |
 
 ## Exporting ExaCA Data
 AdditiveFOAM is able to export thermal data to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. 
