@@ -20,9 +20,23 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
 
 2. Modify the necessary input files according to your simulation requirements. These files are described in [Case Files](#case-files).
 
-3. Run the simulation:
+3. Run the simulation using shell scripting. Examples are provided in the `Allrun` scripts in each tutorial which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI.
 
-   An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
+   ```bash
+   #!/bin/sh
+   cd ${0%/*} || exit 1    # Run from this directory
+   
+   # Source tutorial run functions
+   . $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+   application=`getApplication`
+   
+   runApplication blockMesh
+   runApplication decomposePar
+   runParallel $application
+
+   runApplication reconstructPar
+   ```
 
 4. Visualize and post-process the results using **ParaView**
    ```bash
