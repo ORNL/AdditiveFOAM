@@ -1,6 +1,7 @@
 ---
 title: Usage
 nav_order: 5
+usemathjax: true
 ---
 
 # Run AdditiveFOAM
@@ -84,7 +85,7 @@ A summary of the entries defining a path segment for the scan path is provided i
 | Column   | Description                                                                                                                 |
 |----------|-----------------------------------------------------------------------------------------------------------------------------|
 | Column 1 | Mode = 0: line source, <br>Mode = 1: point source                                                                               |
-| Columns 2-4 | (x,y,z) coordinates in meters. <br>Mode = 0: the final position of the beam. <br>Mode = 1: the current position of the beam |
+| Columns 2-4 | Mode = 0: the final (x,y,z) position of the beam in meters. <br>Mode = 1: the current (x,y,z) position of the beam in meters |
 | Column 5 | Value for laser power in watts                                                                                               |
 | Column 6 | Mode = 0: the speed of the beam in meters/second. <br>Mode = 1: the time the beam remains at its current position in seconds                         |
 
