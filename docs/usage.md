@@ -13,7 +13,21 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    cd userCase
    ```
 
-2. Modify the necessary input files according to your simulation requirements. These files include:
+2. Modify the necessary input files according to your simulation requirements. These files are described below.
+
+3. Run the simulation:
+
+   An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
+
+4. Visualize and post-process the results using **ParaView**
+   ```bash
+   touch case.foam
+   paraview case.foam
+   ```
+   
+## AdditiveFOAM File Structure
+
+### Case Files
 
   - `constant/`: Contains configuration and settings that define geometric and material conditions, including:
 
@@ -49,19 +63,9 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
       - `controlDict`: Set simulation time settings and numerical parameters.
       - `fvSchemes`: Set the discretization schemes used to solve the governing equations
       - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
-      
-3. Run the simulation:
-
-   An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
-
-4. Visualize and post-process the results using **ParaView**
-   ```bash
-   touch case.foam
-   paraview case.foam
-   ```
 
 
-## Creating Scan Path Files
+## Scan Path Files
 AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources or b) point sources.
 
 | Column   | Description                                                                                                                 |
