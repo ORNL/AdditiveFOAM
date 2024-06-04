@@ -37,12 +37,11 @@ callouts:
   important:
     title: Important
     color: blue
-  callout:
-    title: ""
-    color: #008542
+  custom:
+    color: ornl_green
   note:
     title: Note
-    color: #008542
+    color: ornl_green
   warning:
     title: Warning
     color: red
