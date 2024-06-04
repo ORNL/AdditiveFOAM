@@ -1,5 +1,8 @@
 ---
+layout: page
 title: Theory
+nav_order: 1
+usemathjax: true
 ---
 
 ## Governing equations
