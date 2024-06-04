@@ -17,9 +17,25 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 ---
 
 ## Citation
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034097.svg)](https://doi.org/10.5281/zenodo.8034097)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098)
 
-If you use AdditiveFoam in your work, please cite the [source code](https://github.com/ORNL/AdditiveFOAM/blob/main/CITATION.bib).
+If you use AdditiveFoam in your work, please cite Zenodo DOI of the version you used as a software citation:
+```
+@software{AdditiveFOAM_1.0.0,
+  author       = {John Coleman and
+                  Kellis Kincaid and
+                  Gerald L. Knapp and
+                  Benjamin Stump and
+                  Alexander J. Plotkowski},
+  title        = {AdditiveFOAM: Release 1.0},
+  month        = jun,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {1.0.0},
+  doi          = {10.5281/zenodo.8034098},
+  url          = {https://doi.org/10.5281/zenodo.8034098}
+}
+```
 
 ## Contributing
 We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](https://github.com/ORNL/AdditiveFOAM/blob/main/CONTRIBUTING.md) on how to do so.
