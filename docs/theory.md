@@ -6,12 +6,13 @@ usemathjax: true
 
 # Theory
 
+---
+
 ## Governing equations
 ### Assumptions
 We make the following assumptions:
 * Incompressibility (constant density)
 
----
 
 #### Energy Equation
 The heat equation without phase change is given by:

@@ -6,6 +6,8 @@ usemathjax: true
 
 # Usage
 
+---
+
 ## Running a simulation
 To run an AdditiveFOAM simulation, it is recommended to perform the following steps:
 1. Prepare the case directory structure using a provided template:
