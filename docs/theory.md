@@ -13,7 +13,7 @@ We make the following assumptions:
 The heat equation without phase change is given by:
 
 $$
-\rho C_p(T) \frac{\partial T}{\partial t} - \nabla \cdot \left(k(T)\nabla T\right) = Q,
+\rho c_p \frac{\partial T}{\partial t} - \rho c \nabla \cdot \left(\bm{u} T\right) \nabla \cdot \left(k\nabla T\right) = Q,
 $$
 
 where $$\rho$$ is the density, $$C_p$$ is the specific heat at constant pressure, $$T$$, is the
