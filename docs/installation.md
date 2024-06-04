@@ -4,10 +4,11 @@ title: Installation
 
 # Installation
 [![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
+
 AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
 
 ## Spack install
-[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack-dev)
+[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
 
 The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedocs.io/en/latest/):  
 ```
