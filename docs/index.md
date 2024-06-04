@@ -1,6 +1,6 @@
 ---
 title: AdditiveFOAM User Guide
-nav_order: 1
+nav_order: 2
 ---
 
 # AdditiveFOAM User Guide
