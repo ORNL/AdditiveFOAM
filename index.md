@@ -16,8 +16,8 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 
 ---
 
+{: .callout }
 If you use AdditiveFoam in your work, please cite the [source code](https://github.com/ORNL/AdditiveFOAM/blob/main/CITATION.bib).
-{: .note }
 
 
 ## Contributing
