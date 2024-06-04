@@ -4,7 +4,7 @@ title: Installation
 
 # Installation
 
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is *OpenFOAM-10*.
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
 
 ## Spack install
 [spack](https://spack.readthedocs.io/en/latest/) provides a simple way to install OpenFOAM-10 and AdditiveFOAM. spack `develop` is currently required and can be used:
