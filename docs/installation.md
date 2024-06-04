@@ -4,30 +4,42 @@ title: Installation
 
 # Installation
 
-## Prerequisites
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is *OpenFOAM-10*.
 
-Make sure you have the following installed:
+## Spack install
+[spack](https://spack.readthedocs.io/en/latest/) provides a simple way to install OpenFOAM-10 and AdditiveFOAM. spack `develop` is currently required and can be used:
+```
+spack install additivefoam
+```
 
-- Git
-- CMake
-- GCC
-- OpenFOAM
+## Docker install
+Alternatively, a Docker container with pre-built OpenFOAM-10 can be used:
+```
+docker pull openfoam/openfoam10-paraview510
+docker run -it openfoam/openfoam10-paraview510
+```
 
-## Steps
+## Manual install
+OpenFOAM-10 can be compiled from source code following the steps provided in the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/ORNL/AdditiveFOAM.git
-    ```
+Once *OpenFOAM-10* is available on your system, perform the following steps:
 
-2. Navigate to the project directory:
-    ```bash
-    cd AdditiveFOAM
-    ```
+1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_USER_DIR`:
+   ```bash
+   cd $WM_PROJECT_USER_DIR
+   git clone https://github.com/ORNL/AdditiveFOAM.git
+   ```
 
-3. Build the project:
-    ```bash
-    mkdir build && cd build
-    cmake ..
-    make
-    ```
+   If `git` is not available on your system (in the case of the OpenFOAM docker container) you can instead use:
+   ```bash
+   wget https://github.com/ORNL/AdditiveFOAM/archive/refs/heads/main.tar.gz
+   mkdir AdditiveFOAM
+   tar xzvf main.tar.gz -C AdditiveFOAM --strip-components=1
+   ```
+2. Build the `movingHeatSource` library and the `additiveFoam` executable:
+   ```bash
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
+   wmake libso
+   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
+   wmake
+   ```
