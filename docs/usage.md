@@ -12,9 +12,10 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
    cd userCase
    ```
+
 2. Modify the necessary input files according to your simulation requirements. These files include:
 
-   - `constant/`: Contains configuration and settings that define geometric and material conditions, including:
+  - `constant/`: Contains configuration and settings that define geometric and material conditions, including:
 
   - `transportProperties`: Sets the transport properties of the material. The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for each phase in the material.
   
@@ -50,7 +51,8 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
       - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
       
 3. Run the simulation:
-An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
+
+   An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
 
 4. Visualize and post-process the results using **ParaView**
    ```bash
