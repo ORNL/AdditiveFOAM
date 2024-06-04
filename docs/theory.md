@@ -4,6 +4,8 @@ nav_order: 3
 usemathjax: true
 ---
 
+# Theory
+
 ## Governing equations
 ### Assumptions
 We make the following assumptions:
