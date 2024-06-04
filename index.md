@@ -16,6 +16,18 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 
 ---
 
+## Contributing
+We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](https://github.com/ORNL/AdditiveFOAM/blob/main/CONTRIBUTING.md) on how to do so.
+
+#### Contributors
+- [John Coleman](https://www.ornl.gov/staff-profile/john-s-coleman)
+- [Kellis Kincaid](https://www.ornl.gov/staff-profile/kellis-c-kincaid)
+- [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
+- [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
+- [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
+- [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
+
+
 ## Citation
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098)
 
@@ -36,16 +48,5 @@ If you use AdditiveFoam in your work, please cite Zenodo DOI of the version you 
   url          = {https://doi.org/10.5281/zenodo.8034098}
 }
 ```
-
-## Contributing
-We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](https://github.com/ORNL/AdditiveFOAM/blob/main/CONTRIBUTING.md) on how to do so.
-
-#### Contributors
-- [John Coleman](https://www.ornl.gov/staff-profile/john-s-coleman)
-- [Kellis Kincaid](https://www.ornl.gov/staff-profile/kellis-c-kincaid)
-- [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
-- [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
-- [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
-- [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
 
 [AdditiveFOAM repo]: https://github.com/ORNL/AdditiveFOAM
