@@ -41,7 +41,7 @@ callouts:
     color: ornl_green
   note:
     title: Note
-    color: blue
+    color: ornl_green
   warning:
     title: Warning
     color: red
