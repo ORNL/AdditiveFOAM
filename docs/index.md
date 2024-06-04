@@ -9,3 +9,4 @@ AdditiveFOAM is a free, open source heat and mass transfer software for simulati
 
 - [Installation](installation.md)
 - [Usage](usage.md)
+- [Theory](theory.md)
