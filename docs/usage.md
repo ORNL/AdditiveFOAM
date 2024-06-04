@@ -73,14 +73,16 @@ An AdditiveFOAM case directory has a typical organization like:
 |   +-- ..
 ```
 
-- `0/`: Contains the initial fields. The available fields are provided in the files:
+#### `0/` 
+Contains the initial fields. The available fields are provided in the files:
   - `T`:            temperature
   - `U`:            velocity
   - `p_rgh`:        reduced pressure
   - `alpha.solid`:  solid volume fraction
   - `alpha.powder`: powder volume fraction
 
-- `constant/`: Contains configuration and settings that define geometric and material conditions, including:
+#### `constant/`
+Contains configuration and settings that define geometric and material conditions, including:
 
   - `transportProperties`: Sets the transport properties of the material. The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for each phase in the material.
   
@@ -103,7 +105,8 @@ An AdditiveFOAM case directory has a typical organization like:
   
      Each heat source model has the ability to be update the depth of the heat source for keyhole modeling, by setting the `transient` flag to `True` and defining an `isoValue` to track the depth of an isotherm contained within the heat source radius. An example of this usage is provided in the [multiBeam](tutorials/multiBeam) tutorial.
 
-- `system/`: Contains simulation configuration files.
+#### `system/`
+Contains simulation configuration files.
   - `controlDict`: Set simulation time settings and numerical parameters.
   - `fvSchemes`: Set the discretization schemes used to solve the governing equations
   - `fvSolution`: Set solution algorithms and convergence criterias.
