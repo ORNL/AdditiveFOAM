@@ -19,4 +19,12 @@ color_scheme: ornl_green
 # External navigation links
 nav_external_links:
   - title: AdditiveFOAM on GitHub
-    url: https://github.com/ORNL/AdditiveFOAM
+    url: "https://github.com/ORNL/AdditiveFOAM"
+
+# Aux links for the upper right navigation
+aux_links:
+  "AdditiveFOAM on GitHub":
+    - "https://github.com/ORNL/AdditiveFOAM"
+
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: false
