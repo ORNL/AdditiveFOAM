@@ -14,6 +14,7 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 [User Guide](docs/index.html){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub][AdditiveFOAM repo]{: .btn .fs-5 .mb-4 .mb-md-0 }
 
+---
 
 If you use AdditiveFoam in your work, please cite the [source code](https://github.com/ORNL/AdditiveFOAM/blob/main/CITATION.bib).
 {: .note }
