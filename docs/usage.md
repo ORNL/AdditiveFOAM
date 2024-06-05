@@ -108,7 +108,6 @@ An AdditiveFOAM case directory has a typical organization like:
     DAS     [0 1 0 0 0 0 0]     10e-6;     // dendrite arm spacing (for drag)
     Lf      [0  2 -2  0 0 0 0]  2.1754e5;  // latent heat of fusion
     ```
-
    The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for the `solid`, `liquid`, and `powder` phases. The remaining transport properties are all assumed to be constant during the simulation.
 
   - `heatSourceDict`: File that defines the number and mathematical form of moving heat sources in the simulation. An example of this file is:
