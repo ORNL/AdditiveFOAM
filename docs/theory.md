@@ -20,8 +20,8 @@ $$
 \rho\left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u}\right) = \nabla \cdot (\mu \nabla \mathbf{u}) - \nabla p +  \rho _{k} \mathbf{g} - D\mathbf{u}
 $$
 
-where $\rho$ denotes density, $t$ denotes time, $\mathbf{u}$ denotes the mixture velocity vector, $\mu$ denotes the dynamic viscosity, and $p$ denotes pressusure. The source terms in the momentum equation represnt bouyancy induced from density variations due to temperature changes in the fluid and drag induced from coalesced solid.
- $\rho_{k}$ denotes the temperature-dependent density.
+where $$\rho$$ denotes density, $$t$$ denotes time, $$\mathbf{u}$$ denotes the mixture velocity vector, $$\mu$$ denotes the dynamic viscosity, and $$p$$ denotes pressusure. The source terms in the momentum equation represnt bouyancy induced from density variations due to temperature changes in the fluid and drag induced from coalesced solid.
+ $$\rho_{k}$$ denotes the temperature-dependent density.
 
 #### Energy Conservation
 The heat equation without phase change is given by:
