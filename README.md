@@ -47,7 +47,7 @@ If you use AdditiveFOAM in your work, please cite the Zenodo DOI [![DOI](https:/
 ```
 
 ## License
-[![GNU](https://img.shields.io/badge/GNU-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![GPL](https://img.shields.io/badge/GPL-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 
 AdditiveFOAM is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the file `LICENSE` in this directory or http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
 
