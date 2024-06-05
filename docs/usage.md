@@ -73,25 +73,43 @@ An AdditiveFOAM case directory has a typical organization like:
 |   +-- ..
 ```
 
-#### 0/
-Contains the initial fields. The available fields are provided in the files:
-  - `T`:            temperature
-  - `U`:            velocity
-  - `p_rgh`:        reduced pressure
-  - `alpha.solid`:  solid volume fraction
-  - `alpha.powder`: powder volume fraction
+- `0`: Directory containing the initial conditions and boundary conditions for each field. The fields are specified by their file name:
+  - `T`:            temperature             (required)
+  - `U`:            velocity                (optional)
+  - `p_rgh`:        reduced pressure        (optional)
+  - `alpha.solid`:  solid volume fraction   (optional)
+  - `alpha.powder`: powder volume fraction  (optional)
 
-#### constant/
-Contains configuration and settings that define geometric and material conditions, including:
+- `constant`: Directory containing the definitions for material conditions, including:
 
-  - `transportProperties`: Sets the transport properties of the material. The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for each phase in the material.
-  
-     The available phases are:
-     - solid
-     - liquid
-     - powder
-  
-     The remaining properties are all assumed constant throughout the simulation.
+  - `transportProperties`: File that defines the transport properties of the material. An exmaple of this file is provided for IN625:
+    ```cpp
+    solid
+    {
+        kappa   (8.275  0.01472   0.0);
+        Cp      (579.28 0.0       0.0);
+    }
+
+    liquid
+    {
+        kappa   (4.889    0.014743  0.0);
+        Cp      (750.65   0.0       0.0);
+    }
+
+    powder
+    {
+        kappa   (-0.07707   0.00075   0.0);
+        Cp      (747.568    0.0       0.0);
+    }
+
+    rho     [1 -3 0 0 0 0 0]    7569.92;
+    mu      [1 -1 -1  0 0 0 0]  0.003032;
+    beta    [0 0 0 -1 0 0 0]    1.2e-4;
+    DAS     [0 1 0 0 0 0 0]     10e-6;
+    Lf      [0  2 -2  0 0 0 0]  2.1754e5;
+    ```
+
+   The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for the `solid`, `liquid`, and `powder` phases. The remaining transport properties are all assumed to be constant during the simulation.
 
   - `heatSourceDict`: Defines number, types, and paths of moving heat sources in the simulation.
 
