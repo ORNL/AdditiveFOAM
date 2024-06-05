@@ -20,7 +20,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
 
 2. Modify the necessary input files according to your simulation requirements. These files are described in [Case Files](#case-files).
 
-3. Run the simulation using shell scripting. Examples are provided in the `Allrun` scripts in each tutorial which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI.
+3. Run the simulation using shell scripting. Examples are provided in the `Allrun` scripts in each tutorial which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using [MPI](https://www.mpi-forum.org/).
 
    ```bash
    #!/bin/sh
@@ -38,7 +38,7 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    runApplication reconstructPar
    ```
 
-4. Visualize and post-process the results using **ParaView**
+4. Visualize and post-process the results using [ParaView](https://www.paraview.org/)
    ```bash
    touch case.foam
    paraview case.foam
@@ -82,7 +82,7 @@ An AdditiveFOAM case directory has a typical organization like:
 
 - `constant`: Directory containing the definitions for material conditions, including:
 
-  - `transportProperties`: File that defines the transport properties of the material. An exmaple of this file is provided for IN625:
+  - `transportProperties`: File that defines the transport properties of the material. An example of this file for IN625 is:
     ```cpp
     solid
     {
@@ -102,26 +102,50 @@ An AdditiveFOAM case directory has a typical organization like:
         Cp      (747.568    0.0       0.0);
     }
 
-    rho     [1 -3 0 0 0 0 0]    7569.92;
-    mu      [1 -1 -1  0 0 0 0]  0.003032;
-    beta    [0 0 0 -1 0 0 0]    1.2e-4;
-    DAS     [0 1 0 0 0 0 0]     10e-6;
-    Lf      [0  2 -2  0 0 0 0]  2.1754e5;
+    rho     [1 -3 0 0 0 0 0]    7569.92;   // reference density
+    mu      [1 -1 -1  0 0 0 0]  0.003032;  // dynamic viscosity
+    beta    [0 0 0 -1 0 0 0]    1.2e-4;    // coefficient of thermal expansion
+    DAS     [0 1 0 0 0 0 0]     10e-6;     // dendrite arm spacing (for drag)
+    Lf      [0  2 -2  0 0 0 0]  2.1754e5;  // latent heat of fusion
     ```
 
    The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for the `solid`, `liquid`, and `powder` phases. The remaining transport properties are all assumed to be constant during the simulation.
 
-  - `heatSourceDict`: Defines number, types, and paths of moving heat sources in the simulation.
+  - `heatSourceDict`: File that defines the number and mathematical form of moving heat sources in the simulation. An example of this file is:
+    ```cpp
+    sources (beam);
 
-     The available heat sources are:
+    beam
+    {
+        pathName            scanPath;    
+
+        absorptionModel     constant;
+        
+        constantCoeffs
+        {
+            eta             0.3;
+        }
+        
+        heatSourceModel     superGaussian;
+        
+        superGaussianCoeffs
+        {
+            k               2.0;
+            dimensions      (85.0e-6 85.0e-6 30e-6);
+            nPoints         (10 10 10);
+        }
+    }
+    ```
+     The available entries for the heatSourceModel are:
      - superGaussian
      - modifiedSuperGaussian
 
-     The available absorption models are:
+     The available entries for the absorption models are:
      - constant
      - [Kelly](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272)
   
-     Each heat source model has the ability to be update the depth of the heat source for keyhole modeling, by setting the `transient` flag to `True` and defining an `isoValue` to track the depth of an isotherm contained within the heat source radius. An example of this usage is provided in the [multiBeam](tutorials/multiBeam) tutorial.
+     {: .note }
+     Each heat source model can dynamically update its depth to a specified isotherm depth to simulate keyholes by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature.
 
 #### system/
 Contains simulation configuration files.
