@@ -147,6 +147,14 @@ An AdditiveFOAM case directory has a typical organization like:
      {: .custom }
      Each heat source model can dynamically update its depth to the a specified isotherm position by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature for simulating keyhole formation.
 
+  - `themoPath`: File the tabulates the temperature-solid fraction relationship. An example path for a linear transition between the eutetic and liquidus temperatures for IN625 is:
+    ```
+    (
+        1410.0000    1.0000
+        1620.0000    0.0000
+    )
+   ```
+
 - `system`: Directory containing simulation configuration files.
   - `controlDict`: File that sets simulation time settings and numerical parameters.
   - `fvSchemes`: File that sets the discretization schemes used to solve the governing equations.
@@ -173,7 +181,6 @@ An AdditiveFOAM case directory has a typical organization like:
         explicitSolve       true;
     }
     ```
-
 
 ### Scan Path Files
 AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources (mode = 0) or b) point sources (mode = 1).
