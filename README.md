@@ -11,6 +11,8 @@ AdditiveFOAM is a free, open source heat and mass transfer software for simulati
 ## Documentation
 [![Documentation Status][docs-badge]][docs-url]
 
+The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.github.io/AdditiveFOAM/).
+
 ## Installation and Dependencies
 [![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
 
@@ -23,7 +25,7 @@ The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedo
 spack install additivefoam
 ```
 
-Other options for building `AdditiveFOAM` are provided in the [Installation Section of the User Guide](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation).
+See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
 
 ## Citing
 If you use AdditiveFoam in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
@@ -45,10 +47,12 @@ If you use AdditiveFoam in your work, please cite the Zenodo DOI [![DOI](https:/
 ```
 
 ## License
+[![GNU](https://img.shields.io/badge/GNU-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+
 AdditiveFOAM is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the file `LICENSE` in this directory or http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
 
 ## Contact
-For any questions, issues, or suggestions regarding AdditiveFOAM, you can reach out to the project maintainers through the GitHub repository's issue tracker or by contacting the [development team](#contributors).
+For any questions, issues, or suggestions regarding AdditiveFOAM, you can reach out to the project maintainers through the GitHub repository's issue tracker or by contacting the development team directly.
 
 ## Contributing
 
