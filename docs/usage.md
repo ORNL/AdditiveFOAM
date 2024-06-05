@@ -44,9 +44,9 @@ To run an AdditiveFOAM simulation, it is recommended to perform the following st
    paraview case.foam
    ```
    
-## AdditiveFOAM File Structure
+## AdditiveFOAM file structure
 
-### Case Files
+### case files
 
 An AdditiveFOAM case directory has a typical organization like:
 ```
@@ -182,7 +182,7 @@ An AdditiveFOAM case directory has a typical organization like:
     }
     ```
 
-### Scan Path Files
+### Scan path file
 AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources (mode = 0) or b) point sources (mode = 1).
 
 An example scan path file for a bi-directional raster with a hatch-spacing of 100 $$\mu m$$ is:
@@ -205,9 +205,9 @@ A summary of the entries defining a path segment for the scan path is provided i
 | Column 5 | Value for laser power in watts                                                                                               |
 | Column 6 | Mode = 0: the speed of the beam in meters/second. <br>Mode = 1: the time the beam remains at its current position in seconds                         |
 
-## AdditiveFOAM Output
+## AdditiveFOAM output
 
-### Exporting ExaCA Data
+### ExaCA data
 AdditiveFOAM is can export thermal data to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. 
 
 This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. An example file for tracking the liquidus temperature the RVE for the above scan path is:
