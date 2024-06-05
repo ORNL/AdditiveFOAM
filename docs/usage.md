@@ -136,14 +136,15 @@ An AdditiveFOAM case directory has a typical organization like:
         }
     }
     ```
-     The available entries for the heatSourceModel are:
-     - superGaussian
-     - modifiedSuperGaussian
 
      The available entries for the absorption models are:
-     - constant
-     - [Kelly](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272)
-  
+     - `constant`
+     - [`Kelly`](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272): An effective absorption is calculated based of the geometry and apsect ratio of the heat source shape to simulate keyhole formation.
+
+     The available entries for the heatSourceModel are:
+     - `superGaussian`
+     - `modifiedSuperGaussian`
+       
      {: .custom }
      Each heat source model can dynamically update its depth to the a specified isotherm position by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature for simulating keyhole formation.
 
