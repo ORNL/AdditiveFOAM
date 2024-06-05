@@ -49,12 +49,12 @@ $$
 
 and is represented in the source code as:
 ```cpp
-146    // calculate the surface normal gradient on the patch
-147    return
-148    (
-149        transform(I - sqr(nHat), pif) - pif
-150     + coeff_*transform(I - sqr(nHat), tGrad) / this->patch().deltaCoeffs()
-151   )*this->patch().deltaCoeffs();
+// calculate the surface normal gradient on the patch
+return
+(
+    transform(I - sqr(nHat), pif) - pif
+  + coeff_*transform(I - sqr(nHat), tGrad) / this->patch().deltaCoeffs()
+)*this->patch().deltaCoeffs();
 ```
 The first two terms uses vector transormations to subtract out the component of the velocoity field normal to the surface which may be numerically nonzero, and the last term equations the surface-normal gradient to the product of the maragoni coefficient $c=\frac{1}{\mu}\frac{\partial \gamma}{\partial T}$ and the component of the temperature gradient that is tangential to the boundary.
 
