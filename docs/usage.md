@@ -147,14 +147,32 @@ An AdditiveFOAM case directory has a typical organization like:
      {: .custom }
      Each heat source model can dynamically update its depth to the a specified isotherm position by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature for simulating keyhole formation.
 
-#### system/
-Contains simulation configuration files.
-  - `controlDict`: Set simulation time settings and numerical parameters.
-  - `fvSchemes`: Set the discretization schemes used to solve the governing equations
-  - `fvSolution`: Set solution algorithms and convergence criterias.
+- `system`: Directory containing simulation configuration files.
+  - `controlDict`: File that sets simulation time settings and numerical parameters.
+  - `fvSchemes`: File that sets the discretization schemes used to solve the governing equations.
+  - `fvSolution`: File that sets solution algorithms and convergence criteria.
   
     {: .custom }
     Fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the `PIMPLE` dictionary.
+
+    {: .custom }
+    The thermodynamic algorithm settings are defined in the `PIMPLE` dictionary. The optional `explicitSolve` enables a first-order explicit solution to the temperature equation whenever the solution is numerically stable, providing computational speedup over the implicit solution.
+    ```cpp
+    PIMPLE
+    {
+        momentumPredictor no;
+        nOuterCorrectors 0;
+        nCorrectors     1;
+        nNonOrthogonalCorrectors 0;
+        pRefCell        0;
+        pRefValue       0;
+
+
+        nThermoCorrectors   20;
+        thermoTolerance     1e-8;
+        explicitSolve       true;
+    }
+    ```
 
 
 ### Scan Path Files
