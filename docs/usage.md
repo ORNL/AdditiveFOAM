@@ -147,7 +147,7 @@ An AdditiveFOAM case directory has a typical organization like:
      {: .custom }
      Each heat source model can dynamically update its depth to the a specified isotherm position by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature for simulating keyhole formation.
 
-  - `themoPath`: File the tabulates the temperature-solid fraction relationship. An example path for a linear transition between the eutetic and liquidus temperatures for IN625 is:
+  - `thermoPath`: File the tabulates the temperature-solid fraction relationship. An example path for a linear transition between the eutetic and liquidus temperatures for IN625 is:
     ```
     (
         1410.0000    1.0000
