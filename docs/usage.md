@@ -218,5 +218,6 @@ box         (0 -0.0001 -0.0002) (0.002 0.0002 0);
 dx          2.5e-6;
 isotherm    1620;
 ```
+
 {: .warning }
 It is recommended to track the liquidus isotherm to remain consistent with the assumptions in ExaCA. Users should be warned that this interpolation may requires significant computation overhead when the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
