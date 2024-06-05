@@ -190,8 +190,8 @@ An example scan path file for a bi-directional raster with a hatch-spacing of 10
 Mode    X       Y       Z     Power   Parameter
 1       0.000   0.000   0.0   0.0     0.0
 0       0.002   0.000   0.0   195.0   0.8
-0       0.002   1.e-4   0.0   0.0     0.8
-0       0.000   1.e-4   0.0   195.0   0.8
+0       0.002   0.0001  0.0   0.0     0.8
+0       0.000   0.0001  0.0   195.0   0.8
 ```
 
 The beam starts at (0, 0, 0) $$m$$ and moves horizontally to (0.002, 0, 0.0) $$m$$ with a power of 195 $$W$$ and speed of 0.8 $$m/s$$. Then, the laser turns off and moves vertically to (0.002, 0.0001, 0.0) $$m$$ at a speed of 0.8 $$m/s$$. Finally, the laser moves horizontally to (0.002, 0.0001, 0.0) $$m$$ with a power of 195 $$W$$ and speed of 0.8 $$m/s$$. At this point, the laser turns off for the remainder of the simulation.
@@ -205,7 +205,18 @@ A summary of the entries defining a path segment for the scan path is provided i
 | Column 5 | Value for laser power in watts                                                                                               |
 | Column 6 | Mode = 0: the speed of the beam in meters/second. <br>Mode = 1: the time the beam remains at its current position in seconds                         |
 
-## Exporting ExaCA Data
-AdditiveFOAM is able to export thermal data to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. 
+## AdditiveFOAM Output
 
-This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may requires significant computation overhead when the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
+### Exporting ExaCA Data
+AdditiveFOAM is can export thermal data to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. 
+
+This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. An example file for tracking the liquidus temperature the RVE for the above scan path is:
+```cpp
+execute     on;
+
+box         (0 -0.0001 -0.0002) (0.002 0.0002 0);
+dx          2.5e-6;
+isotherm    1620;
+```
+{: .warning }
+It is recommended to track the liquidus isotherm to remain consistent with the assumptions in ExaCA. Users should be warned that this interpolation may requires significant computation overhead when the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
