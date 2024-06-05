@@ -144,7 +144,7 @@ An AdditiveFOAM case directory has a typical organization like:
      - constant
      - [Kelly](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272)
   
-     {: .note }
+     {: .custom }
      Each heat source model can dynamically update its depth to the a specified isotherm position by setting the `transient` flag to `True`. The recommended value for `isoValue` is the alloy liquidus temperature for simulating keyhole formation.
 
 #### system/
