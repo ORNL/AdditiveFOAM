@@ -6,7 +6,7 @@ AdditiveFOAM is a free, open source heat and mass transfer software for simulati
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
 | [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
-| [tutorials](tutorials)                                     | Tutorial cases based on [NIST AMB2018](https://www.nist.gov/ambench/amb2018-02-description) single tracks |
+| [tutorials](tutorials)                                     | Tutorial cases |
 
 ## Documentation
 [![Documentation Status][docs-badge]][docs-url]
