@@ -13,6 +13,7 @@ usemathjax: true
 The transport phenomena in `AdditiveFOAM` is modeled using continuum mixture relationships for mass, momentum, and energy.
 
 #### Mass and Momentum Conservation
+The conservation equations for mass and momentum are modeled under the assumption of incompressibility:
 
 $$
 \nabla \cdot (\mathbf{u}) = 0
@@ -28,26 +29,22 @@ $$
 \rho_k = \rho \left[1 - \beta \left(T - T_{\text{liq}}\right)\right]
 $$
 
-where $\beta$ is the coefficient of thermal expansion and $T_{\text{liq}}$ is the alloy liquidus temperature. The drag induced from the coalesced solid is calculated from the Kozeny-Carman relationship:
+where $\beta$ is the coefficient of thermal expansion, $T$ is temperature, and $T_{\text{liq}}$ is the alloy liquidus temperature. The drag induced from the coalesced solid is calculated from the Kozeny-Carman relationship:
 
 $$
 D = \mu \frac{180}{\lambda^{2}}  \frac{f_s^{2}}{(1 - f_s)^{3}}
 $$
 
-where $\lambda$ is the characteristic length scale for mushy zone drag (assumed to be the dendrite arm spacing (DAS) ~10 microns) and $f_s$ is the solid volme fraction.
-
-
+where $\lambda$ is the characteristic length scale for mushy zone drag and $f_s$ is the solid volme fraction.
 
 #### Energy Conservation
-The heat equation without phase change is given by:
+The conservation equation for energy is modeled in terms of temperature:
 
 $$
 \rho c_{p} \frac{\partial T}{\partial t} + \rho c_{p} \nabla \cdot \left( \mathbf{u} T\right) = \nabla \cdot \left(k\nabla T\right) + \rho L_{f} \frac{\partial f_s}{\partial t} + Q,
 $$
 
-where $c_p$ is the specific heat at constant pressure, $T$, is the
-temperature, $k$ is the thermal conductivity, and $Q$ is the volumetric heat
-source term.
+where $c_p$ is the specific heat at constant pressure, $k$ is the thermal conductivity, $L_f$ is the latent heat of fusion, and $Q$ is the volumetric heat source term.
 
 ## Boundary Conditions
 In addition to the standard boundary conditions provided in OpenFOAM, we provide two custom boundary conditions necessary for simulating AM processes.
