@@ -19,17 +19,24 @@ $$
 $$
 
 $$
-\rho\left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u}\right) = \nabla \cdot (\mu \nabla \mathbf{u}) - \nabla p +  \rho _{k} \mathbf{g} - D\mathbf{u}
+\rho\left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u}\right) = \nabla \cdot (\mu \nabla \mathbf{u}) - \nabla p +  \rho_k \mathbf{g} - D\mathbf{u}
 $$
 
-where $$\rho$$ denotes density, $$t$$ denotes time, $$\mathbf{u}$$ denotes the mixture velocity vector, $$\mu$$ denotes the dynamic viscosity, and $$p$$ denotes pressusure. The source terms in the momentum equation represnt bouyancy induced from density variations due to temperature changes in the liquid:
+where $\rho$ denotes density, $t$ denotes time, $\mathbf{u}$ denotes the mixture velocity vector, $\mu$ denotes the dynamic viscosity, and $p$ denotes pressure. The source terms in the momentum equation represent buoyancy induced from density variations due to temperature changes in the liquid and drag induced from coalesced solid. The temperature-dependent density is calculated as:
 
 $$
-\rho_k = \rho \left[1 - \Beta \left(T - T_liq)\right]\right
+\rho_k = \rho \left[1 - \beta \left(T - T_{\text{liq}}\right)\right]
 $$
 
-and drag induced from coalesced solid.
- $$\rho_{k}$$ denotes the temperature-dependent density.
+where $\beta$ is the coefficient of thermal expansion and $T_{\text{liq}}$ is the alloy liquidus temperature. The drag induced from the coalesced solid is calculated from the Kozeny-Carman relationship:
+
+$$
+D = \mu \frac{180}{\lambda^{2}}  \frac{f_s^{2}}{(1 - f_s)^{3}}
+$$
+
+where $\lambda$ is the characteristic length scale for mushy zone drag (assumed to be the dendrite arm spacing (DAS) ~10 microns) and $f_s$ is the solid volme fraction.
+
+
 
 #### Energy Conservation
 The heat equation without phase change is given by:
@@ -38,8 +45,8 @@ $$
 \rho c_{p} \frac{\partial T}{\partial t} + \rho c_{p} \nabla \cdot \left( \mathbf{u} T\right) = \nabla \cdot \left(k\nabla T\right) + \rho L_{f} \frac{\partial f_s}{\partial t} + Q,
 $$
 
-where $$c_p$$ is the specific heat at constant pressure, $$T$$, is the
-temperature, $$k$$ is the thermal conductivity, and $$Q$$ is the volumetric heat
+where $c_p$ is the specific heat at constant pressure, $T$, is the
+temperature, $k$ is the thermal conductivity, and $Q$ is the volumetric heat
 source term.
 
 ## Boundary Conditions
