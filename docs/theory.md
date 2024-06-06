@@ -23,7 +23,7 @@ $$
 \rho\left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u}\right) = \nabla \cdot (\mu \nabla \mathbf{u}) - \nabla p +  \rho_k \mathbf{g} - D\mathbf{u}
 $$
 
-where $\rho$ denotes density, $t$ denotes time, $\mathbf{u}$ denotes the mixture velocity vector, $\mu$ denotes the dynamic viscosity, and $p$ denotes pressure. The source terms in the momentum equation represent buoyancy induced from density variations due to temperature changes in the liquid and drag induced from coalesced solid. The temperature-dependent density is calculated as:
+where \(\rho\) denotes density, $t$ denotes time, $\mathbf{u}$ denotes the mixture velocity vector, $\mu$ denotes the dynamic viscosity, and $p$ denotes pressure. The source terms in the momentum equation represent buoyancy induced from density variations due to temperature changes in the liquid and drag induced from coalesced solid. The temperature-dependent density is calculated as:
 
 $$
 \rho_k = \rho \left[1 - \beta \left(T - T_{\text{liq}}\right)\right]
