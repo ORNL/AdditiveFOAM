@@ -29,13 +29,16 @@ $$
 \rho_k = \rho \left[1 - \beta \left(T - T_{\text{liq}}\right)\right]
 $$
 
-where $$\Beta$$ is the coefficient of thermal expansion, $$T$$ is temperature, and $$T_{\text{liq}}$$ is the alloy liquidus temperature. The drag induced from the coalesced solid is calculated from the Kozeny-Carman relationship:
+where $$\beta$$ is the coefficient of thermal expansion, $$T$$ is temperature, and $$T_{\text{liq}}$$ is the alloy liquidus temperature. The drag induced from the coalesced solid is calculated from the Kozeny-Carman relationship:
 
 $$
 D = \mu \frac{180}{\lambda^{2}}  \frac{f_s^{2}}{(1 - f_s)^{3}}
 $$
 
 where $$\lambda$$ is the characteristic length scale for mushy zone drag and $$f_s$$ is the solid volme fraction.
+
+{: .custom }
+The value for $$\lambda$$ is chosen for numerical convenience to damp the flow in the rigid mush. We recommend using a value of 10e-6 microns
 
 #### Energy Conservation
 The conservation equation for energy is modeled in terms of temperature:
