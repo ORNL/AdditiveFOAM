@@ -26,7 +26,7 @@ affiliations:
  - name: [Material Science and Technology Division, Oak Ridge National Laboratory]
    index: 3
 date: [March 27, 2024]
-bibliography: additiveFoam-joss-1.bib
+bibliography: paper.bib
 ---
 
 # Summary
