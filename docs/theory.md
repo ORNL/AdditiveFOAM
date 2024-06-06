@@ -10,6 +10,8 @@ usemathjax: true
 
 ## Governing equations
 
+The transport phenomena in `AdditiveFOAM` is modeled using continuum mixture relationships for mass, momentum, and energy.
+
 #### Mass and Momentum Conservation
 
 $$
@@ -20,14 +22,20 @@ $$
 \rho\left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u}\right) = \nabla \cdot (\mu \nabla \mathbf{u}) - \nabla p +  \rho _{k} \mathbf{g} - D\mathbf{u}
 $$
 
-where $$\rho$$ denotes density, $$t$$ denotes time, $$\mathbf{u}$$ denotes the mixture velocity vector, $$\mu$$ denotes the dynamic viscosity, and $$p$$ denotes pressusure. The source terms in the momentum equation represnt bouyancy induced from density variations due to temperature changes in the fluid and drag induced from coalesced solid.
+where $$\rho$$ denotes density, $$t$$ denotes time, $$\mathbf{u}$$ denotes the mixture velocity vector, $$\mu$$ denotes the dynamic viscosity, and $$p$$ denotes pressusure. The source terms in the momentum equation represnt bouyancy induced from density variations due to temperature changes in the liquid:
+
+$$
+\rho_k = \rho \left[1 - \Beta \left(T - T_liq)\right]\right
+$$
+
+and drag induced from coalesced solid.
  $$\rho_{k}$$ denotes the temperature-dependent density.
 
 #### Energy Conservation
 The heat equation without phase change is given by:
 
 $$
-\rho c_{p} \frac{\partial T}{\partial t} + \rho c_{p} \nabla \cdot \left( \mathbf{u} T\right) = \nabla \cdot \left(k\nabla T\right) + Q,
+\rho c_{p} \frac{\partial T}{\partial t} + \rho c_{p} \nabla \cdot \left( \mathbf{u} T\right) = \nabla \cdot \left(k\nabla T\right) + \rho L_{f} \frac{\partial f_s}{\partial t} + Q,
 $$
 
 where $$c_p$$ is the specific heat at constant pressure, $$T$$, is the
