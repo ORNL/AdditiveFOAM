@@ -7,25 +7,25 @@ tags:
   - Laser-based Additive Manufacturing
   - OpenFOAM
 authors:
-  - name: [John Coleman]
+  - name: John Coleman
     affiliation: "1"
     corresponding: true
-  - name: [Kellis Kincaid]
+  - name: Kellis Kincaid
     affiliation: "2"
-  - name: [Alex Plotkowski]
+  - name: Alex Plotkowski
     affiliation: "3"
-  - name: [Gerry L. Knapp]
+  - name: Gerry L. Knapp
     affiliation: "3"
-  - name: [Benjamin Stump]
+  - name: Benjamin Stump
     affiliation: "1"
 affiliations:
- - name: [Computational Science and Engineering Division, Oak Ridge National Laboratory]
+ - name: Computational Science and Engineering Division, Oak Ridge National Laboratory
    index: 1
- - name: [Nuclear Energy and Fuel Cycle Division, Oak Ridge National Laboratory]
+ - name: Nuclear Energy and Fuel Cycle Division, Oak Ridge National Laboratory
    index: 2
- - name: [Material Science and Technology Division, Oak Ridge National Laboratory]
+ - name: Material Science and Technology Division, Oak Ridge National Laboratory
    index: 3
-date: [March 27, 2024]
+date: 06 June 2024
 bibliography: paper.bib
 ---
 
