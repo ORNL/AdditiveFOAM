@@ -38,7 +38,7 @@ $$
 where $$\lambda$$ is the characteristic length scale for mushy zone drag and $$f_s$$ is the solid volme fraction.
 
 {: .custom }
-The value for $$\lambda$$ is chosen for numerical convenience to damp the flow in the rigid mush. We recommend using a value of 10e-6 microns
+The value for $$\lambda$$ is chosen for numerical convenience to damp the flow in the rigid mush. We recommend using a value of 10e-6 microns.
 
 #### Energy Conservation
 The conservation equation for energy is modeled in terms of temperature:
