@@ -1,21 +1,4 @@
-@article{Sing2020,
-   author = {S. L. Sing and W. Y. Yeong},
-   doi = {10.1080/17452759.2020.1779999},
-   issn = {17452767},
-   issue = {3},
-   journal = {https://doi.org/10.1080/17452759.2020.1779999},
-   keywords = {3D Printing,Additive manufacturing,aluminium alloys,high entropy alloys,multi-lasers,powder bed fusion,remelting,selective laser melting},
-   month = {7},
-   pages = {359-370},
-   publisher = {Taylor & Francis},
-   title = {Laser powder bed fusion for metal additive manufacturing: perspectives on recent developments},
-   volume = {15},
-   url = {https://www.tandfonline.com/doi/abs/10.1080/17452759.2020.1779999},
-   year = {2020},
-}
-
-
-@article{Weller:1998,
+@article{openfoam,
    abstract = {In this article the principles of the field operation and manipulation (FOAM) C++class library for continuum mechanics are outlined. Our intention is to make it as easy as possible to develop reliable and efficient computational continuum-mechanics codes: this is achieved by making the top-level syntax of the code as close as possible to conventional mathematical notation for tensors and partial differential equations. Object-orientation techniques enable the creation of data types that closely mimic those of continuum mechanics, and the operator overloading possible in C++ allows normal mathematical symbols to be used for the basic operations. As an example, the implementation of various types of turbulence modeling in a FOAM computational-fluid-dynamics code is discussed, and calculations performed on a standard test case, that of flow around a square prism, are presented. To demonstrate the flexibility of the FOAM library, codes for solving structures and magnetohydrodynamics are also presented with appropriate test case results given.},
    author = {H. G. Weller and G. Tabor and H. Jasak and C. Fureby},
    doi = {10.1063/1.168744},
@@ -28,14 +11,22 @@
    year = {1998},
 }
 
-@techreport{noble2017ale3d,
+@techreport{ALE3D,
   title={ALE3D: An arbitrary Lagrangian-Eulerian multi-physics code},
   author={Noble, Charles R and Anderson, Andrew T and Barton, Nathan R and Bramwell, Jamie A and Capps, Arlie and Chang, Michael H and Chou, Jin J and Dawson, David M and Diana, Emily R and Dunn, Timothy A and others},
   year={2017},
   institution={Lawrence Livermore National Lab.(LLNL), Livermore, CA (United States)}
 }
 
-@article{rolchigo2022exaca,
+@Manual{FLOW-3D,
+  author = {Flow Science, Inc.},
+  title = {FLOW-3D, Version~2023R1},
+  year = {2023},
+  address = {Santa Fe, NM},
+  url = {https://www.flow3d.com/}
+}
+
+@article{exaca,
   title={ExaCA: A performance portable exascale cellular automata application for alloy solidification modeling},
   author={Rolchigo, Matt and Reeve, Samuel Temple and Stump, Benjamin and Knapp, Gerald L and Coleman, John and Plotkowski, Alex and Belak, James},
   journal={Computational Materials Science},
@@ -45,24 +36,41 @@
   publisher={Elsevier}
 }
 
-@article{Stump2019,
-   author = {B. Stump and A. Plotkowski},
-   doi = {10.1016/j.apm.2019.07.008},
-   issn = {0307904X},
-   journal = {Applied Mathematical Modelling},
-   keywords = {Additive manufacturing,Heat conduction,Numerical integration,Solidification},
-   month = {11},
-   pages = {787-805},
-   publisher = {Elsevier Inc.},
-   title = {An adaptive integration scheme for heat conduction in additive manufacturing},
-   volume = {75},
-   year = {2019},
+@article{haines-1,
+  title = {Experimental and computational analysis of site-specific formation of phases in laser powder bed fusion 17–4 precipitate hardened stainless steel},
+  journal = {Additive Manufacturing},
+  volume = {73},
+  pages = {103686},
+  year = {2023},
+  issn = {2214-8604},
+  doi = {https://doi.org/10.1016/j.addma.2023.103686},
+  url = {https://www.sciencedirect.com/science/article/pii/S2214860423002993},
+  author = {Michael P. Haines and Maxwell S. Moyle and Vitor V. Rielli and Vladimir Luzin and Nima Haghdadi and Sophie Primig}
 }
 
-@Manual{FLOW-3D,
-  author = {Flow Science, Inc.},
-  title = {FLOW-3D, Version~2023R1},
-  year = {2023},
-  address = {Santa Fe, NM},
-  url = {https://www.flow3d.com/}
+@article{haines-2,
+  title = {Role of scan strategies and heat treatment on grain structure evolution in Fe-Si soft magnetic alloys made by laser-powder bed fusion},
+  journal = {Additive Manufacturing},
+  volume = {50},
+  pages = {102578},
+  year = {2022},
+  issn = {2214-8604},
+  doi = {https://doi.org/10.1016/j.addma.2021.102578},
+  url = {https://www.sciencedirect.com/science/article/pii/S2214860421007259},
+  author = {MP Haines and F. List and K. Carver and DN Leonard and A. Plotkowski and CM Fancher and RR Dehoff and SS Babu},
+}
+
+@software{AdditiveFOAM_1.0.0,
+  author       = {John Coleman and
+                  Kellis Kincaid and
+                  Gerald L. Knapp and
+                  Benjamin Stump and
+                  Alexander J. Plotkowski},
+  title        = {AdditiveFOAM: Release 1.0},
+  month        = jun,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {1.0.0},
+  doi          = {10.5281/zenodo.8034098},
+  url          = {https://doi.org/10.5281/zenodo.8034098}
 }
