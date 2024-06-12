@@ -49,7 +49,7 @@ The second category contains models that simplify melt pool physics to rapidly s
 
 There is an established need for intermediate frameworks that are capable of accurately predict melt pool shape, thermal gradients, and other meso-scale quantities across an entire part. Some open-source mesoscale heat transfer software tools have recently emerged to address these challenges: 
 
-- Adamantine [@adamantine] is a thermomechanics simulation tool built on an open-source software stack designed for high performance computing across computing architectures, including the deal.II finite element software package [@deal.ii], ArborX [@arborx], Trilinos [@trilinos], and Kokkos [@kokkos]. 
+- Adamantine [@adamantine] is a thermomechanics simulation tool built on an open-source software stack designed for high performance computing across computing architectures, including the deal.II finite element software package [@deal.ii].
 
 - GO-MELT [@go-melt] is a gpu-optimized multidomain thermal simulation tool implemented as a finite element solver using jax [@jax].  
 
