@@ -62,13 +62,13 @@ AdditiveFOAM was designed to be used openly by researchers, industry, and academ
 
 - Knapp et al. [@knapp] developed an automated framework for statistical calibration of the gaussian heat source parameters available in AdditiveFOAM to accurately predict the melt pool shape, solidification conditions, and solidification grain structure for single track welds on IN625 plate. 
 
-- Rolchigo and co-workers [@exaca, @texture-regimes] used AdditiveFOAM to generate thermal data for solidification grain structure predictions is laser powder bed fusion, validated against the NIST AM Benchmark dataset [@amb2018]. 
+- Rolchigo and co-workers [@exaca; @texture-regimes] used AdditiveFOAM to generate thermal data for solidification grain structure predictions is laser powder bed fusion, validated against the NIST AM Benchmark dataset [@amb2018]. 
 
-- Haines et al. [@haines] used AdditiveFOAM to confirm experimentally observed phase transformation pathways in 17–4 PH stainless steel during the laser powder bed fusion (L-PBF) process, and [@haines-2] 
+- Haines et al. [@haines-1] used AdditiveFOAM to confirm experimentally observed phase transformation pathways in 17–4 PH stainless steel during the laser powder bed fusion (L-PBF) process, and [@haines-2] 
 
 - Plotkowski et al. [@plotkowski] used AdditiveFOAM to confirm experimentally observed grain growth in Fe-Si steel during the Laser Engineered Net Shaping (LENS) process. 
 
-The free, open-source nature of AdditiveFOAM will continue to enable scientific explorations in AM processing. The source code for AdditiveFOAM has been archived to Zenodo with the link DOI: [@additivefoam-doi]. Documentation for AdditiveFOAM is hosted on GitHub pages with the link: https://ornl.github.io/AdditiveFOAM/. 
+The free, open-source nature of AdditiveFOAM will continue to enable scientific explorations in AM processing. The source code for AdditiveFOAM has been archived to Zenodo with the link DOI: [@AdditiveFOAM_1.0.0]. Documentation for AdditiveFOAM is hosted on GitHub pages with the link: https://ornl.github.io/AdditiveFOAM/. 
 
 # Acknowledgements
 
