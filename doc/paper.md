@@ -62,7 +62,7 @@ AdditiveFOAM was designed to be used openly by researchers, industry, and academ
 
 - Knapp et al. [@knapp] developed an automated framework for statistical calibration of the gaussian heat source parameters available in AdditiveFOAM to accurately predict the melt pool shape, solidification conditions, and solidification grain structure for single track welds on IN625 plate. 
 
-- Rolchigo and co-workers [@exaca; @texture-regimes] used AdditiveFOAM to generate thermal data for solidification grain structure predictions is laser powder bed fusion, validated against the NIST AM Benchmark dataset [@amb2018]. 
+- Rolchigo and co-workers [@exaca; @texture-regimes] used AdditiveFOAM to generate thermal data for solidification grain structure predictions is laser powder bed fusion, validated against the NIST 2018 AM-Bench dataset [@amb2018]. 
 
 - Haines et al. [@haines-1] used AdditiveFOAM to confirm experimentally observed phase transformation pathways in 17–4 PH stainless steel during the laser powder bed fusion (L-PBF) process, and [@haines-2] 
 
