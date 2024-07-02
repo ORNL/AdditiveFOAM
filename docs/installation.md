@@ -19,18 +19,18 @@ spack install additivefoam
 ```
 spack `develop` is currently required.
 
-### Spack installation with external modules
+### Spack installation with existing compiler/dependencies
 
-If you are installing OpenFOAM through spack, some configuration is needed to enable spack to use external modules, which is common on HPC systems. For OpenFOAM, this is largely needed for the C++ compiler and MPI dependencies, which are both generally available as preconfigured modules that can be loaded for functionality that has been configured for a specific HPC system. While module versions and names may vary from system to system, this example provides a template for configuring spack on your system.
+Configuration of spack is needed to use external dependencies, which is common on HPC systems. The dependency could be an existing installation of OpenFOAM or the C++ compiler and MPI dependencies needed by OpenFOAM. On HPC systems, it is possible that all or a subset of these dependencies have already been installed as system modules that may have configurations specific to the HPC system. This example uses system modules for `openmpi` and `gcc` as the existing dependencies and assumes that `spack install additivefoam` will also need to install the spack `openfoam-org` dependency. A similar procedure could be used for configuring any existing compilers/dependencies for use with your installation of spack.
 
-First, the desired system compiler needs to be added to the spack compiler configuration.
+First, the desired compiler needs to be added to the spack compiler configuration.
 
 ```shell
 module load gcc/8.1.0
 spack compiler add $(dirname $(which gcc))
 ```
 
-Second, you must get the location prefix of the OpenMPI installation by copying the output of the below command.
+Second, you must get the location prefix of the MPI installation.
 
 ```shell
 module load openmpi/3.1.5
@@ -39,13 +39,13 @@ echo $(dirname $(dirname $(which mpirun)))
 
 > `/software/dev_tools/swtree/cs400_centos7.2_pe2016-08/openmpi/3.1.5/centos7.5_gnu8.1.0`
 
-Next, open the package configuration file (~/.spack/packages.yaml)to add in system modules.
+Next, open the package configuration file (`~/.spack/packages.yaml`) to add in system modules.
 
 ```bash
 spack config edit packages
 ```
 
-This will need to be edited to specify the external dependencies and specifications for the spack module. An example of `~/.spack/packages.yaml` is provided below. This file specifies that all packages should use the spack compiler (gcc@8.1.0) that was added in the first step. It also specifies that the spack module openmpi@3.1.5 will require the external `openmpi/3.1.5` and `gcc/8.1.0` modules from the system.
+This will need to be edited to specify the external dependencies and specifications for the spack module. An example of `~/.spack/packages.yaml` is provided below. This file specifies that all packages should use the spack compiler (gcc@8.1.0) that was added in the first step. It also specifies that the spack module "openmpi@3.1.5" will require the external `openmpi/3.1.5` and `gcc/8.1.0` modules from the system.
 
 ```yaml
 packages:
@@ -62,7 +62,7 @@ packages:
 
 Once "packages.yaml" is configured, run `spack install openmpi@3.1.5` to install the package. You should get a message that the modules have external modules `openmpi/3.1.5` and `gcc/8.1.0`.
 
-Finally, run the following to install OpenFOAM and additivefoam:
+Finally, run the following to install OpenFOAM and additivefoam. Note that if you already have an OpenFOAM-10 installation that you want to use with AdditiveFOAM, you can follow the above procedure for adding a spack package with external dependencies to add an `openfoam-org` package specification that points to you installation.
 
 ```bash
 module load gcc/8.1.0 openmpi/3.1.5
