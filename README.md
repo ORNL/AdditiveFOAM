@@ -1,140 +1,58 @@
 # AdditiveFOAM
 AdditiveFOAM is a free, open source heat and mass transfer software for simulations of Additive Manufacturing (AM) released by Oak Ridge National Laboratory. It is built upon OpenFOAM, a free, open source computational fluid dynamics (CFD) software package released by the OpenFOAM Foundation.
 
-## Citing
-If you use AdditiveFoam in your work, please cite the [source code](CITATION.bib). Also, please consider citing relevant AdditiveFOAM [Publications](#Publications).
-
-## Contributors
-- [John Coleman](https://www.ornl.gov/staff-profile/john-s-coleman)
-- [Kellis Kincaid](https://www.ornl.gov/staff-profile/kellis-c-kincaid)
-- [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
-- [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
-- [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
-- [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
-
-## Publications
-Some select publications using AdditiveFOAM are provided:
-1. [Coleman et al. "Sensitivity of Thermal Predictions to Uncertain Surface Tension Data in Laser Additive Manufacturing", J. Heat Transfer (2020) HT-19-1539](https://asmedigitalcollection.asme.org/heattransfer/article/doi/10.1115/1.4047916/1085538/Sensitivity-of-Thermal-Predictions-to-Uncertain)
-2. [Knapp et al. "Calibrating uncertain parameters in melt pool simulations of additive manufacturing", Comp. Mat. Sci. (2023) 111904](https://www.sciencedirect.com/science/article/abs/pii/S0927025622006152)
-3. [Rolchigo et al. "ExaCA: A performance portable exascale cellular automata application for alloy solidification modeling", Comp. Mat. Sci. (2022) 111692](https://www.sciencedirect.com/science/article/abs/pii/S0927025622004189)
-
-## Repository Features
+### Repository Features
 | Link                                                | Description                              |
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
 | [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
-| [tutorials](tutorials)                                     | Tutorial cases based on [NIST AMB2018](https://www.nist.gov/ambench/amb2018-02-description) single tracks |
+| [tutorials](tutorials)                                     | Tutorial cases |
 
-## Build and Install
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
+## Documentation
+[![Documentation Status][docs-badge]][docs-url]
 
-### Spack install
-[spack](https://spack.readthedocs.io/en/latest/) provides a simple way to install AdditiveFOAM. spack `develop` is currently required:
-```spack install additivefoam```
+The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.github.io/AdditiveFOAM/).
 
-### Manual install
-Alternatively, a Docker container with pre-built OpenFOAM-10 can be used:
+## Installation and Dependencies
+[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
+
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM).
+
+[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
+
+The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedocs.io/en/latest/):  
 ```
-docker pull openfoam/openfoam10-paraview510
-docker run -it openfoam/openfoam10-paraview510
+spack install additivefoam
 ```
 
-or instead OpenFOAM-10 can be compiled from source code following the steps provided by the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
+See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
 
-Once **OpenFOAM-10** is available on your system, perform the following steps:
-
-1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_USER_DIR`:
-   ```bash
-   cd $WM_PROJECT_USER_DIR
-   git clone https://github.com/ORNL/AdditiveFOAM.git
-   ```
-
-   If `git` is not available on your system (in the case of the OpenFOAM docker container) you can instead use:
-   ```bash
-   wget https://github.com/ORNL/AdditiveFOAM/archive/refs/heads/main.tar.gz
-   mkdir AdditiveFOAM
-   tar xzvf main.tar.gz -C AdditiveFOAM --strip-components=1
-   ```
-2. Build the `movingHeatSource` library and the `additiveFoam` executable:
-   ```bash
-   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
-   wmake libso
-   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
-   wmake
-   ```
-
-## Run AdditiveFOAM
-To run an AdditiveFOAM simulation, it is recommended to perform the following steps:
-1. Prepare the case directory structure using a provided template:
-   ```bash
-   mkdir -p $FOAM_RUN/additivefoam
-   cd $FOAM_RUN/additivefoam
-   cp -r $WM_PROJECT_USER_DIR/AdditiveFOAM/tutorials/AMB2018-02-B userCase
-   cd userCase
-   ```
-2. Modify the necessary input files according to your simulation requirements. These files include:
-
-   - `constant/`: Contains configuration and settings that define geometric and material conditions, including:
-
-      - `transportProperties`: Sets the transport properties of the material. The thermal conductivity `kappa` and specific heat `Cp` are given as temperature dependent second-order polynomials for each phase in the material.
-      
-         The available phases are:
-         - solid
-         - liquid
-         - powder
-      
-         The remaining properties are all assumed constant throughout the simulation.
-
-      - `heatSourceDict`: Defines number, types, and paths of moving heat sources in the simulation.
-
-         The available heat sources are:
-         - superGaussian
-         - modifiedSuperGaussian
-   
-         The available absorption models are:
-         - constant
-         - [Kelly](https://opg.optica.org/ao/fulltext.cfm?uri=ao-5-6-925&id=14272)
-      
-         Each heat source model has the ability to be update the depth of the heat source for keyhole modeling, by setting the `transient` flag to `True` and defining an `isoValue` to track the depth of an isotherm contained within the heat source radius. An example of this usage is provided in the [multiBeam](tutorials/multiBeam) tutorial.
-
-   - `0/`: Contains the initial fields. The available fields are provided in the files:
-      - `T`:            temperature
-      - `U`:            velocity
-      - `p_rgh`:        reduced pressure
-      - `alpha.solid`:  solid volume fraction
-      - `alpha.powder`: powder volume fraction
-
-   - `system/`: Contains simulation configuration files.
-      - `controlDict`: Set simulation time settings and numerical parameters.
-      - `fvSchemes`: Set the discretization schemes used to solve the governing equations
-      - `fvSolution`: Set solution algorithms and convergence criterias. Note: fluid flow can be turned off by setting `nOuterCorrectors` to `0` in the **PIMPLE** dictionary.
-      
-3. Run the simulation:
-An example run script which creates a mesh, decomposes the mesh across multiple processors, and runs the AdditiveFOAM case in parallel using MPI is provided in tutorial `Allrun` script.
-
-4. Visualize and post-process the results using **ParaView**
-   ```bash
-   touch case.foam
-   paraview case.foam
-   ```
-### Creating Scan Path Files
-AdditiveFOAM supports a scan path file format that decomposes the laser path into segments that are either a) line sources or b) point sources.
-
-| Column   | Description                                                                                                                 |
-|----------|-----------------------------------------------------------------------------------------------------------------------------|
-| Column 1 | mode = 0 for line source, mode = 1 for point source                                                                               |
-| Columns 2-4 | (x,y,z) coordinates in meters. <br>For a line (mode = 0), this is the final position of the line raster. <br>For a spot (mode = 1), this is the constant position of the laser |
-| Column 5 | Value for laser power in watts                                                                                               |
-| Column 6 | For a line (mode = 0), this is the velocity of the laser in meters/second. <br>For a point (mode = 1), this is the dwell time of the laser in seconds                         |
-
-### Exporting ExaCA Data
-One feature of AdditiveFOAM is its ability to export thermal information to [ExaCA](https://github.com/LLNL/ExaCA), a cellular automata (CA) code for grain growth under additive manufacturing conditions. This feature is enabled using the `execute` flag in the `constant/foamToExaCADict` file. The solidification conditions at the specified `isotherm` is tracked in the represenative volume element defined by `box` and a resolution defined by `dx`. It is recommended to track the liquidus isotherm. Users should be warned that this interpolation may cause a significant load-balancing issues if the resolution of the ExaCA data is much finer than that of the AdditiveFOAM mesh, and therefore, this feature should be used selectively.
+## Citing
+If you use AdditiveFOAM in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
+```bibtex
+@software{AdditiveFOAM_1.0.0,
+  author       = {John Coleman and
+                  Kellis Kincaid and
+                  Gerald L. Knapp and
+                  Benjamin Stump and
+                  Alexander J. Plotkowski},
+  title        = {AdditiveFOAM: Release 1.0},
+  month        = jun,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {1.0.0},
+  doi          = {10.5281/zenodo.8034098},
+  url          = {https://doi.org/10.5281/zenodo.8034098}
+}
+```
 
 ## License
+[![GPL](https://img.shields.io/badge/GPL-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+
 AdditiveFOAM is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the file `LICENSE` in this directory or http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
 
 ## Contact
-For any questions, issues, or suggestions regarding AdditiveFOAM, you can reach out to the project maintainers through the GitHub repository's issue tracker or by contacting the [development team](#Contributors).
+For any questions, issues, or suggestions regarding AdditiveFOAM, you can reach out to the project maintainers through the GitHub repository's issue tracker or by contacting the development team directly.
 
 ## Contributing
 
@@ -142,3 +60,15 @@ We encourage you to contribute to AdditiveFOAM! Please check the
 [guidelines](CONTRIBUTING.md) on how to do so.
 
 We appreciate your interest in AdditiveFOAM and look forward to your contributions!
+
+#### Contributors
+- [John Coleman](https://www.ornl.gov/staff-profile/john-s-coleman)
+- [Kellis Kincaid](https://www.ornl.gov/staff-profile/kellis-c-kincaid)
+- [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
+- [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
+- [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
+- [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
+
+
+[docs-badge]: https://img.shields.io/badge/docs-latest-brightgreen.svg
+[docs-url]: https://ornl.github.io/AdditiveFOAM/
