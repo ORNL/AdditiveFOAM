@@ -4,7 +4,7 @@ tags:
   - Computational Fluid Dynamics
   - Heat Transfer
   - Mass Transfer
-  - Laser-based Additive Manufacturing
+  - Additive Manufacturing
   - OpenFOAM
 authors:
   - name: John Coleman
