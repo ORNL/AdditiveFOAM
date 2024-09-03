@@ -20,6 +20,8 @@ compress_html:
 # Override purple (default) to ORNL green
 color_scheme: ornl_green
 
+logo: "https://raw.githubusercontent.com/colemanjs/additivefoam-website-assets/main/images/logo.png"
+
 # External navigation links
 nav_external_links:
   - title: AdditiveFOAM on GitHub
