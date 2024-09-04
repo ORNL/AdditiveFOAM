@@ -5,6 +5,9 @@ nav_order: 1
 permalink: /
 ---
 
+<img src="https://raw.githubusercontent.com/ORNL-MDF/additivefoam-website-assets/main/images/logo.png" alt="image" width="800">
+
+---
 # AdditiveFOAM
 {: .fs-9 }
 
