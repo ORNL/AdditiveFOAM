@@ -55,3 +55,8 @@ callouts:
   custom:
     title: Note
     color: ornl_green
+
+# Update custom style assets
+assets:
+  stylesheets:
+    - /assets/css/custom.css
