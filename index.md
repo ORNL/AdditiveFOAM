@@ -7,7 +7,6 @@ permalink: /
 
 <img src="https://raw.githubusercontent.com/ORNL-MDF/additivefoam-website-assets/main/images/logo.png" alt="image">
 
----
 An open-source CFD code for additive manufacturing built on OpenFOAM.
 {: .fs-6 .fw-300 }
 
