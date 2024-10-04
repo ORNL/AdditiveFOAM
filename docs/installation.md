@@ -1,14 +1,12 @@
 ---
-title: Installation
-nav_order: 4
+parent: AdditiveFOAM v1.0 User Guide
+nav_order: 1
 ---
 
 # Installation
-[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
-
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
 
 ---
+AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is [![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10).
 
 ## Spack install
 [![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
@@ -27,7 +25,7 @@ docker run -it openfoam/openfoam10-paraview510
 ```
 
 ## Manual install
-OpenFOAM-10 can be compiled from source code following the steps provided in the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
+[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10) can be compiled from source code following the steps provided in the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
 
 Once *OpenFOAM-10* is available on your system, perform the following steps:
 
