@@ -18,3 +18,38 @@
     min-width: $nav-width;
   }
 }
+
+  & + .main {
+    @include mq(md) {
+      margin-left: $nav-width-md;
+    }
+
+    @include mq(lg) {
+      // stylelint-disable function-name-case
+      // disable for Max(), we want to use the CSS max() function
+      margin-left: Max(
+        #{$nav-width},
+        calc((50% - #{$nav-width + $content-width}) / 2 + #{$nav-width})
+      );
+      // stylelint-enable function-name-case
+    }
+
+    .main-header {
+      display: none;
+      background-color: $sidebar-color;
+
+      @include mq(md) {
+        display: flex;
+        background-color: $body-background-color;
+      }
+
+      &.nav-open {
+        display: block;
+
+        @include mq(md) {
+          display: flex;
+        }
+      }
+    }
+  }
+}
