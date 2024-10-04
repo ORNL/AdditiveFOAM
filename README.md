@@ -3,17 +3,17 @@
 ---
 `AdditiveFOAM` is a free, open source heat and mass transfer software for simulations of Additive Manufacturing (AM) released by Oak Ridge National Laboratory. It is built upon OpenFOAM, a free, open source computational fluid dynamics (CFD) software package released by the OpenFOAM Foundation.
 
+## Documentation
+[![Documentation Status][docs-badge]][docs-url]
+
+The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.github.io/AdditiveFOAM/).
+
 ### Repository Features
 | Link                                                | Description                              |
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
 | [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
 | [tutorials](tutorials)                                     | Tutorial cases |
-
-## Documentation
-[![Documentation Status][docs-badge]][docs-url]
-
-The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.github.io/AdditiveFOAM/).
 
 ## Installation and Dependencies
 [![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
