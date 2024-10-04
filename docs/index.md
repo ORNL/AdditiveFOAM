@@ -1,4 +1,5 @@
 ---
+layout: page
 title: AdditiveFOAM v1.0 User Guide
 nav_order: 2
 has_children: true
@@ -11,10 +12,3 @@ AdditiveFOAM is a free, open source heat and mass transfer software for simulati
 
 {: .custom }
 The User Guide v1.0 is currently under development and may be incomplete.
-
-
-## Table of Contents
-{: .no_toc }
-
-- TOC
-{:toc}
