@@ -2,3 +2,17 @@ $ornl-green-000: #008542;
 $ornl-green-100: #008542;
 $ornl-green-200: #008542;
 $ornl-green-300: #008542;
+
+// Grid system
+
+$gutter-spacing: $sp-6 !default;
+$gutter-spacing-sm: $sp-4 !default;
+$nav-width: 16.5rem !default;
+$nav-width-md: 15.5rem !default;
+$nav-list-item-height: $sp-6 !default;
+$nav-list-item-height-sm: $sp-8 !default;
+$nav-list-expander-right: true;
+$content-width: 70rem !default;
+$header-height: 3.75rem !default;
+$search-results-width: $content-width - $nav-width !default;
+$transition-duration: 400ms;
