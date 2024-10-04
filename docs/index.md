@@ -2,6 +2,7 @@
 title: AdditiveFOAM v1.0 User Guide
 nav_order: 2
 has_children: true
+has_toc: true
 ---
 
 # AdditiveFOAM v1.0 User Guide
