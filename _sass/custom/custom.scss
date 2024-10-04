@@ -52,3 +52,18 @@
     }
   }
 }
+
+body {
+  background-color: $grey-lt-000;
+}
+
+html, body {
+  height: 100%;
+}
+
+.main {
+  #background-color: #ffffff;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding-bottom: 2rem;
+}
