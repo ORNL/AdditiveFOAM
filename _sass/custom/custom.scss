@@ -1,5 +1,0 @@
-.side-bar {
-  @include mq(lg) {
-    width: calc((70% - #{$nav-width + $content-width}) / 2 + #{$nav-width});
-  }
-}
