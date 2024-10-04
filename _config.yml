@@ -55,3 +55,6 @@ callouts:
   custom:
     title: Note
     color: ornl_green
+
+sass:
+  custom_stylesheet: _sass/custom/custom.scss
