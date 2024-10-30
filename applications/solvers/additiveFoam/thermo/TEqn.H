@@ -25,8 +25,12 @@
         (
             TEqn
          ==
-            rDeltaT*rho*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
-          + rho*Lf*fvc::ddt(alpha1)
+            (
+                (ddtScheme == "Euler")
+              ? rho*Lf*fv::EulerDdtScheme<scalar>(mesh).fvcDdt(alpha1)
+              : rho*Lf*fvc::ddt(alpha1)
+            )
+          + rDeltaT*rho*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
         );
 
         T.correctBoundaryConditions();

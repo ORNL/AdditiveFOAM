@@ -42,6 +42,7 @@ Description
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
 
+#include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
