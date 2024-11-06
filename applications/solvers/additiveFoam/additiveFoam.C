@@ -38,7 +38,6 @@ Description
 #include "Polynomial.H"
 
 #include "interpolateXY/interpolateXY.H"
-
 #include "movingHeatSourceModel.H"
 
 #include "EulerDdtScheme.H"

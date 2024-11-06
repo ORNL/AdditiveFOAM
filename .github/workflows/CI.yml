@@ -29,11 +29,8 @@ jobs:
       - name: Build AdditiveFOAM
         run: |
           . /opt/openfoam10/etc/bashrc
-          cd applications/solvers/additiveFoam/movingHeatSource
-          wmake libso
-          cd -
           cd applications/solvers/additiveFoam
-          wmake
+          ./Allwmake
       - name: Test AdditiveFOAM
         run: |
           . /opt/openfoam10/etc/bashrc
