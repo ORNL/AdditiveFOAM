@@ -1,12 +1,30 @@
 //- Construct the temperature equation for the chosen time integration scheme
+word ddtScheme = mesh.schemes().ddt(T.name());
+
+if
+(
+    (ddtScheme != "Euler")
+ && (ddtScheme != "backward")
+ && (ddtScheme != "CrankNicolson")
+)
+{
+    FatalErrorInFunction
+        << "Unsupported ddtScheme " << ddtScheme
+        << ". Choose Euler, CrankNicolson, or backward."
+        << abort(FatalError);
+}
+
 fvScalarMatrix TEqn(T, dimPower);
 dimensionedScalar rDeltaT = 1.0 / runTime.deltaT();
-
+   
 if (explicitSolve)
 {
+    // Forward Euler is the only explicit method supported.
+    ddtScheme = "Euler";
+    
     TEqn =
     (
-        rho*Cp*(fvm::ddt(T) + fvc::div(phi, T))
+        rho*Cp*(fv::EulerDdtScheme<scalar>(mesh).fvmDdt(T) + fvc::div(phi, T))
       - fvc::laplacian(kappa, T)
       - sources.qDot()
     );
@@ -22,28 +40,15 @@ else
 
     scalar coefft = 1.0;
     
-    const word ddtScheme = mesh.schemes().ddt(T.name());
-
-    if
-    (
-        (ddtScheme != "Euler")
-     && (ddtScheme != "backward")
-     && (ddtScheme != "CrankNicolson")
-    )
-    {
-        FatalErrorInFunction
-            << "Unsupported ddtScheme " << ddtScheme
-            << ". Choose Euler, CrankNicolson, or backward."
-            << abort(FatalError);
-    }
-    else if (ddtScheme == "backward")
+    if (ddtScheme == "backward")
     {
         const dimensionedScalar deltaT = runTime.deltaT();
         const dimensionedScalar deltaT0 = runTime.deltaT0();
         
         coefft = 1.0 + (deltaT/(deltaT + deltaT0)).value();    
     }
-    else if (ddtScheme == "CrankNicolson")
+    
+    if (ddtScheme == "CrankNicolson")
     {
         scalar ocCoeff =
             refCast<const fv::CrankNicolsonDdtScheme<scalar>>

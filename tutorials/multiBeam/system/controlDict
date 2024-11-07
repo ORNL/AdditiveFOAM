@@ -23,7 +23,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.0014;
+endTime         0.0042;
 
 deltaT          1e-7;
 
@@ -50,4 +50,11 @@ adjustTimeStep  yes;
 maxCo           0.5;
 maxDi           10;
 maxAlphaCo      1;
+
+/*
+functions
+{
+    #includeFunc ExaCA
+}
+*/
 // ************************************************************************* //

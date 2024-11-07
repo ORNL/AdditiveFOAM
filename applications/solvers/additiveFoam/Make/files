@@ -1,5 +1,5 @@
-BCs/mixedTemperature/mixedTemperatureFvPatchScalarField.C
-BCs/marangoni/marangoniFvPatchVectorField.C
+derivedFvPatchFields/mixedTemperature/mixedTemperatureFvPatchScalarField.C
+derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
 
 additiveFoam.C
 

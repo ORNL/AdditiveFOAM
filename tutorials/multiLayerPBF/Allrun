@@ -20,7 +20,7 @@ cd ${0%/*} || exit 1
 
 runApplication blockMesh
 
-path="$WM_PROJECT_INST_DIR/openfoam-am-dev/applications/utilities/multiLayer"
+path="$WM_PROJECT_INST_DIR/AdditiveFOAM/applications/utilities/multiLayer"
 
 $path/runLayers -nLayers 5 -nCellsPerLayer 2 -layerThickness 20e-6
 $path/reconstructLayers
