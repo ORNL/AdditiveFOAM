@@ -21,7 +21,7 @@ volScalarField alpha3
         runTime.timeName(),
         mesh,
         IOobject::READ_IF_PRESENT,
-        IOobject::NO_WRITE
+        IOobject::AUTO_WRITE
     ),
     mesh,
     dimensionedScalar("alpha.powder", dimless, 0.0),

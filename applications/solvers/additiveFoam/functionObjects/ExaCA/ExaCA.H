@@ -36,7 +36,7 @@ SourceFiles
 
 #include "fvMeshFunctionObject.H"
 #include "volPointInterpolation.H"
-
+#include "meshSearch.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -75,6 +75,8 @@ class ExaCA
         scalar    isoValue_;
 
         scalar    dx_;
+        
+        meshSearch searchEngine_;
 
     // Private Member Functions
 

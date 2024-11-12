@@ -3,13 +3,41 @@ cd ${0%/*} || exit 1    # Run from this directory
 
 # Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
-
 application=`getApplication`
 
+# Parse arguments
+withExaCA=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -withExaCA)
+      withExaCA=true
+      ;;
+  esac
+  shift
+done
+
+if [ "$withExaCA" = true ]; then
+    foamDictionary -entry functions -set "{#includeFunc ExaCA}" system/controlDict
+else
+    foamDictionary -entry functions -set "{}" system/controlDict
+fi
+
+#------------------------------------------------------------------------------
+# AdditiveFOAM
 runApplication blockMesh
 runApplication decomposePar
 runParallel $application
 
 runApplication reconstructPar
 
+#------------------------------------------------------------------------------
+# ExaCA (Version 2.0.1)
+if [ "$withExaCA" = true ]; then
+    echo "x,y,z,tm,ts,cr" > ExaCA/time-temperature.csv
+    cat ExaCA/data_* >> ExaCA/time-temperature.csv
+    rm -rf ExaCA/data_*
+
+    NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
+    mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
+fi
 #------------------------------------------------------------------------------

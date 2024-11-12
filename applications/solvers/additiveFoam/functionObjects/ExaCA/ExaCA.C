@@ -32,7 +32,6 @@ License
 #include "volFields.H"
 #include "OFstream.H"
 #include "OSspecific.H"
-#include "meshSearch.H"
 #include "labelVector.H"
 #include "pointMVCWeight.H"
 
@@ -76,7 +75,8 @@ Foam::functionObjects::ExaCA::ExaCA
             IOobject::NO_WRITE
         ),
         vpi_.interpolate(T_)
-    )
+    ),
+    searchEngine_(mesh_, polyMesh::CELL_TETS)
 {
     read(dict);
     
@@ -227,13 +227,11 @@ bool Foam::functionObjects::ExaCA::execute()
 
 void Foam::functionObjects::ExaCA::mapPoints()
 {
-    mesh_.time().cpuTimeIncrement();
-
     if (events.size() == 0)
     {
         return;
     }
-              
+
     // find event sub-space before constructing interpolant weights
     const pointField& points = mesh_.points();
 
@@ -260,14 +258,14 @@ void Foam::functionObjects::ExaCA::mapPoints()
     }
 
     // find interpolant weigthts for each point
-    meshSearch searchEngine(mesh_, polyMesh::CELL_TETS);  
-
     label pI = 0;
     label seedi = events[0][0];
 
     pointsInCell.setSize(mesh_.nCells());
 
     const labelVector nPoints(vector::one + box_.span() / dx_);
+
+    Info << "starting point loop" << endl;
 
     for (label k=0; k < nPoints.z(); ++k)
     {
@@ -282,7 +280,7 @@ void Foam::functionObjects::ExaCA::mapPoints()
                     // shift point during search to avoid edges in pointMVC
                     const point spt = pt - vector::one*1e-10;
 
-                    label celli = searchEngine.findCell(spt, seedi, true);
+                    label celli = searchEngine_.findCell(spt, seedi, true);
 
                     if (celli != -1)
                     {
@@ -296,7 +294,7 @@ void Foam::functionObjects::ExaCA::mapPoints()
 
                         pI++;
                     }
-                    
+
                     seedi = celli;
                 }
             }
@@ -311,16 +309,10 @@ void Foam::functionObjects::ExaCA::mapPoints()
     {
         pic.shrink();
     }
-    
-    Info<< "Successfully mapped points to mesh in: "
-        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
-        << endl << endl;
 }
 
 void Foam::functionObjects::ExaCA::interpolate()
-{
-    mesh_.time().cpuTimeIncrement();
-    
+{    
     if (events.size() == 0)
     {
         return;
@@ -423,24 +415,28 @@ void Foam::functionObjects::ExaCA::interpolate()
         }
         os << data[i][n] << "\n";
     }
-    
-    Info<< "Successfully interpolated and wrote ExaCA data in: "
-        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
-        << endl << endl;
 }
 
 bool Foam::functionObjects::ExaCA::end()
 {
+    //- sort events by cell and in time
     events.shrink();
 
     sort(events);
 
     Info<< "Number of solidification events: "
         << returnReduce(events.size(), sumOp<scalar>()) << endl;
-    
+
+    //- map points to cells
+    mesh_.time().cpuTimeIncrement();
+       
     mapPoints();
+    
+    Info<< "Successfully mapped points to mesh in: "
+        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
+        << endl << endl;
 
-
+    //- interpolate and write ExaCA data in reduced data format
     const fileName exacaPath
     (
         mesh_.time().rootPath()/mesh_.time().globalCaseName()/"ExaCA"
@@ -449,6 +445,10 @@ bool Foam::functionObjects::ExaCA::end()
     mkDir(exacaPath);
     
     interpolate();
+    
+    Info<< "Successfully interpolated and wrote ExaCA data in: "
+        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
+        << endl << endl;
 
     return true;
 }

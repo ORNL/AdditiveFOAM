@@ -17,23 +17,32 @@ FoamFile
 
 sources (beam);
 
+/*---------------------------------------------------------------------------*\
+Citation:
+    J. Coleman, G.L. Knapp, B. Stump, M. Rolchigo, K. Kincaid, A. Plotkowski,
+    A dynamic volumetric heat source model for laser additive manufacturing,
+    Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
+\*---------------------------------------------------------------------------*/
 beam
 {
-    pathName            scanPath;    
+    pathName            scanPath;
+ 
+    absorptionModel     Kelly;    
+    KellyCoeffs
+    {
+        geometry        cone;
+        eta0            0.28;
+        etaMin          0.35;
+    }   
 
-    absorptionModel     constant;
-    
-    constantCoeffs
+    heatSourceModel     modifiedSuperGaussian;
+    modifiedSuperGaussianCoeffs
     {
-        eta             0.3;
-    }
-    
-    heatSourceModel     superGaussian;
-    
-    superGaussianCoeffs
-    {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
+        dimensions      (40.0e-6 40.0e-6 30e-6);
+        m               2.72;
+        k               7.95;
+        transient       true;
+        isoValue        1620;
         nPoints         (10 10 10);
     }
 }
