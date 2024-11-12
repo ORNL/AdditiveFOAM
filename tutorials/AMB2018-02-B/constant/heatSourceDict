@@ -17,6 +17,12 @@ FoamFile
 
 sources (beam);
 
+/*---------------------------------------------------------------------------*\
+Citation:
+    G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
+    Calibrating uncertain parameters in melt pool simulations of additive 
+    manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
+\*---------------------------------------------------------------------------*/
 beam
 {
     pathName            scanPath;    

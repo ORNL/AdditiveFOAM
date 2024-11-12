@@ -16,12 +16,18 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+if [ "$withExaCA" = true ]; then
+    foamDictionary -entry functions -set "{#includeFunc ExaCA}" system/controlDict
+else
+    foamDictionary -entry functions -set "{}" system/controlDict
+fi
+
 #------------------------------------------------------------------------------
 # AdditiveFOAM
 runApplication blockMesh
 
 # Change to AdditiveFOAM install path
-path="/home/cloud/data/JOSS/AdditiveFOAM/applications/utilities/multiLayer"
+path="$WM_PROJECT_INST_DIR/AdditiveFOAM/applications/utilities/multiLayer"
 
 $path/runLayers -nLayers 4 -nCellsPerLayer 4 -layerThickness 40e-6
 $path/reconstructLayers
@@ -34,7 +40,8 @@ if [ "$withExaCA" = true ]; then
         cat "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
         rm -rf "$d/ExaCA/data_*"
     done
-
+    
+    export OMP_NUM_THREADS=1
     NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
     mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
 fi

@@ -16,6 +16,11 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+if [ "$withExaCA" = true ]; then
+    foamDictionary -entry functions -set "{#includeFunc ExaCA}" system/controlDict
+else
+    foamDictionary -entry functions -set "{}" system/controlDict
+fi
 
 #------------------------------------------------------------------------------
 # AdditiveFOAM

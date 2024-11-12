@@ -15,7 +15,18 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-regions         ( boxToCell { box ( -1 -1 -0.0001 ) ( 1 1 1 ) ; fieldValues ( volScalarFieldValue alpha.powder 1 ) ; } );
+regions
+(
+    boxToCell
+    {
+        box (-1 -1 -4e-5) (1 1 1);
+
+        fieldValues
+        (
+            volScalarFieldValue alpha.powder 1
+        );
+    }
+);
 
 
 // ************************************************************************* //

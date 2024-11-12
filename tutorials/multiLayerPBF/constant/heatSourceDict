@@ -15,15 +15,14 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+sources (beam);
+
 /*---------------------------------------------------------------------------*\
 Citation:
     J. Coleman, G.L. Knapp, B. Stump, M. Rolchigo, K. Kincaid, A. Plotkowski,
-    A Dynamic Volumetric Heat Source Model for Laser Additive Manufacturing,
+    A dynamic volumetric heat source model for laser additive manufacturing,
     Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
 \*---------------------------------------------------------------------------*/
-
-sources (beam);
-
 beam
 {
     pathName            scanPath;

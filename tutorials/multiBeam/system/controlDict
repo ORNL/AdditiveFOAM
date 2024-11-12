@@ -7,11 +7,11 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      controlDict;
+    version         2;
+    format          ascii;
+    class           dictionary;
+    location        "system";
+    object          controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -25,7 +25,7 @@ stopAt          endTime;
 
 endTime         0.0042;
 
-deltaT          1e-7;
+deltaT          1e-07;
 
 writeControl    adjustableRunTime;
 
@@ -48,12 +48,15 @@ runTimeModifiable yes;
 adjustTimeStep  yes;
 
 maxCo           0.5;
+
 maxDi           10;
+
 maxAlphaCo      1;
 
 functions
 {
-    //#includeFunc ExaCA
+    #includeFunc    ExaCA
 }
+
 
 // ************************************************************************* //
