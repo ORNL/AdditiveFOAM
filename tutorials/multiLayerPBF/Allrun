@@ -41,7 +41,6 @@ if [ "$withExaCA" = true ]; then
         rm -rf "$d/ExaCA/data_*"
     done
     
-    export OMP_NUM_THREADS=1
     NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
     mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
 fi
