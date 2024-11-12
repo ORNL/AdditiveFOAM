@@ -51,10 +51,9 @@ maxCo           0.5;
 maxDi           10;
 maxAlphaCo      1;
 
-/*
 functions
 {
-    #includeFunc ExaCA
+    //#includeFunc ExaCA
 }
-*/
+
 // ************************************************************************* //

@@ -53,6 +53,6 @@ maxAlphaCo      1;
 
 functions
 {
-    #includeFunc ExaCA
+    //#includeFunc ExaCA
 }
 // ************************************************************************* //

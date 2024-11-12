@@ -29,8 +29,8 @@ liquid
 
 powder
 {
-    kappa   (-0.07707   0.00075   0.0);
-    Cp      (747.568    0.0       0.0);
+    kappa   (0.21767  0.00102   0.0);
+    Cp      (317.53   0.0       0.0);
 }
 
 //- fluid flow properties

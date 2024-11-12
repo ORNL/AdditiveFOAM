@@ -25,7 +25,7 @@ beam1
     absorptionModel     constant;    
     constantCoeffs
     {
-        eta             0.35;
+        eta             0.33;
     }   
 
     heatSourceModel     superGaussian;
@@ -38,7 +38,13 @@ beam1
     }
 }
 
-//- transient heat source with a modified super-gaussian distribution
+/*---------------------------------------------------------------------------*\
+Citation:
+    J. Coleman, G.L. Knapp, B. Stump, M. Rolchigo, K. Kincaid, A. Plotkowski,
+    A Dynamic Volumetric Heat Source Model for Laser Additive Manufacturing,
+    Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
+\*---------------------------------------------------------------------------*/
+
 beam2
 {
     pathName            scanPath_2;
@@ -46,19 +52,19 @@ beam2
     absorptionModel     Kelly;    
     KellyCoeffs
     {
-        geometry        cylinder;
-        eta0            0.3;
+        geometry        cone;
+        eta0            0.28;
         etaMin          0.35;
     }   
 
     heatSourceModel     modifiedSuperGaussian;
     modifiedSuperGaussianCoeffs
     {
-        dimensions      (50.0e-6 50.0e-6 30e-6);
-        m               2.0;
-        k               2.0;
+        dimensions      (40.0e-6 40.0e-6 30e-6);
+        m               2.72;
+        k               7.95;
         transient       true;
-        isoValue        1410;
+        isoValue        1620;
         nPoints         (10 10 10);
     }
 }

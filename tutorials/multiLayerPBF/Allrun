@@ -1,28 +1,41 @@
 #!/bin/sh
-#------------------------------------------------------------------------------
-# =========                 |
-# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-#  \\    /   O peration     | Website:  https://openfoam.org
-#   \\  /    A nd           | Copyright (C) 2011-2020 OpenFOAM Foundation
-#    \\/     M anipulation  |
-#------------------------------------------------------------------------------
-# Script
-#     Allrun for multiLayer
-#
-# Description
-#   Allrun script created for calling multiLayer utilities.
-#   User must specify path for multiLayer applications
-#
-#------------------------------------------------------------------------------
-cd ${0%/*} || exit 1
+cd ${0%/*} || exit 1    # Run from this directory
 
+# Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
+application=`getApplication`
 
+# Parse arguments
+withExaCA=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -withExaCA)
+      withExaCA=true
+      ;;
+  esac
+  shift
+done
+
+#------------------------------------------------------------------------------
+# AdditiveFOAM
 runApplication blockMesh
 
-path="$WM_PROJECT_INST_DIR/AdditiveFOAM/applications/utilities/multiLayer"
+# Change to AdditiveFOAM install path
+path="/home/cloud/data/JOSS/AdditiveFOAM/applications/utilities/multiLayer"
 
-$path/runLayers -nLayers 5 -nCellsPerLayer 2 -layerThickness 20e-6
+$path/runLayers -nLayers 4 -nCellsPerLayer 4 -layerThickness 40e-6
 $path/reconstructLayers
 
+#------------------------------------------------------------------------------
+# ExaCA (Version 2.0.1)
+if [ "$withExaCA" = true ]; then
+    for d in layer*; do
+        echo "x,y,z,tm,ts,cr" > "$d/ExaCA/time-temperature.csv"
+        cat "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
+        rm -rf "$d/ExaCA/data_*"
+    done
+
+    NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
+    mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
+fi
 #------------------------------------------------------------------------------

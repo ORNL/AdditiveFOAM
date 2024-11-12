@@ -153,9 +153,23 @@ do
     fi
 
     thickness="$(foamDictionary -entry linearDirectionCoeffs/thickness -value system/extrudeMeshDict)"
+    
+    # set powder height to the layer thickness 
+    foamDictionary -entry regions -set \
+    "(
+        boxToCell
+        {
+            box (-1 -1 -$layerThickness) (1 1 1);
+            fieldValues
+            (
+                volScalarFieldValue alpha.powder 1
+            );
+        }
+    )" system/setFieldsDict
+    
     nProcs="$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)"
 
-    transformPoints "translate=(0 0 -$thickness)"
+    transformPoints "translate=(0 0 -$thickness)"    
     setFields
     decomposePar
     mpirun -np $nProcs additiveFoam -parallel
