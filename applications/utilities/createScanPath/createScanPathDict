@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      createScanPathDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+minPoint    (0.0 0.0);
+
+maxPoint    (0.002 0.002);
+
+angle       67;
+
+hatch       1e-4;
+
+nRotations  5;
+
+power       200;
+
+speed       1;
+
+dwellTime   0.0;
+
+biDirection true;
+
+// ************************************************************************* //
