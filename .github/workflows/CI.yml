@@ -19,7 +19,7 @@ jobs:
         cxx: ['g++']
         cmake_build_type: ['Release']
        
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: docker.io/openfoam/openfoam10-paraview510
       options: --user root
