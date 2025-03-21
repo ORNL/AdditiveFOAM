@@ -25,7 +25,7 @@ Citation:
 \*---------------------------------------------------------------------------*/
 beam
 {
-    pathName            scanPath;
+    pathName            scanPath_0;
  
     absorptionModel     Kelly;    
     KellyCoeffs

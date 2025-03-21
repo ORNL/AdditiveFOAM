@@ -41,6 +41,7 @@ options:
   -nLayers          number of layers
   -layerThickness   thickness of each layer (deposition)
   -nCellsPerLayer   number of desired cells in each deposited layer
+  -scanPathList     list of scan path files for each source and layer
   -help             print the usage
 * Run an additiveFoam simulation for sequential layers.
 * Currently, only a single repeating scan pattern is supported.
@@ -73,6 +74,10 @@ do
       nCellsPerLayer="$2"
       shift 2
       ;;
+   -scanPathList)
+      scanPathList="$2"
+      shift 2
+      ;;
    --)
       shift
       break
@@ -86,7 +91,32 @@ do
    esac
 done
 
-args_check $nLayers $layerThickness $nCellsPerLayer
+args_check $nLayers $layerThickness $nCellsPerLayer $scanPathList
+
+# Check number of heat sources
+nSources=`foamDictionary -entry sources -value constant/heatSourceDict | wc -w`
+nSources=$(($nSources - 2))
+
+# Check that scan path list contains files for all sources and layers
+nScanPathFiles=`grep -c "" $scanPathList`
+
+# Discard first line of scanPathList which contains source names
+nScanPathFiles=$((nScanPathFiles - 1))
+
+if [ $nScanPathFiles != $nLayers ]; then
+    echo "runLayers error: number of files in scan path list must match"
+    echo "number of layers."
+    exit 1
+fi
+
+# Check that there is a scan path list for each heat source    
+nSourceLists=`head -n 1 $scanPathList | wc -w`
+
+if [ $nSourceLists != $nSources ]; then
+    echo "runLayers error: number of sources in scan path list must match"
+    echo "number of sources in heatSourceDict."
+    exit 1
+fi
 
 # create case directories
 baseDir=${PWD}
@@ -101,6 +131,19 @@ do
     cp -r "$baseDir/0" $case
     cp -r "$baseDir/constant" $case
     cp -r "$baseDir/system" $case
+    
+    # Iterate over list of heat sources
+    for (( source=0; source<$nSources; source++ ))
+    do
+        # Get name of current heat source
+        sourceName=`head -n 1 $scanPathList | cut -d " " -f $(($source + 1))`
+        
+        # Get name of scan path file associated with current heat source and layer
+        layerPathName=`head -n $(($layer + 2)) $scanPathList | tail -n 1 | cut -d " " -f $(($source + 1))`
+        
+        # Set scan path for current heat source / layer
+        foamDictionary -entry $sourceName/pathName -set $layerPathName  $case/constant/heatSourceDict
+    done
 done
 
 # extrude mesh in each directory
@@ -137,19 +180,27 @@ do
         time="$(foamDictionary -entry endTime -value $previous/system/controlDict)"
 
         # update start and end time of simulation
+        echo "Setting up layer $layer..."
+        echo ""
         mv 0 "$time"
         endTime=`awk "BEGIN {print $time + $layerTime; exit}"`
         foamDictionary -entry startTime -set $time system/controlDict
         foamDictionary -entry endTime -set $endTime system/controlDict
 
-        # update wait time for scan path (assumes repeating scan)
-        path=(`sed '2q;d' constant/scanPath`)
-        path[5]=$time
-        path=`echo $(echo ${path[@]}) | tr ' ' '\t\t'`
-        sed -i "2s/.*/$path/" "$case/constant/scanPath"
+        # Update wait time for scan path (assumes all layers/sources have equal times)
+        for (( source=0; source<$nSources; source++ ))
+        do
+            # Get name of scan path file associated with current heat source and layer
+            layerPathName=`head -n $(($layer + 2)) $scanPathList | tail -n 1 | cut -d " " -f $(($source + 1))`
+            
+            path=(`sed '2q;d' constant/$layerPathName`)
+            path[5]=$time
+            path=`echo $(echo ${path[@]}) | tr ' ' '\t\t'`
+            sed -i "2s/.*/$path/" "$case/constant/$layerPathName"
+        done
 
         # map previous layer fields to new layer
-        mapFields -case $case -sourceTime "$time" -mapMethod mapNearest $previous
+        mapFields -case $case -sourceTime "$time" -mapMethod mapNearest $previous > log.mapFields
     fi
 
     thickness="$(foamDictionary -entry linearDirectionCoeffs/thickness -value system/extrudeMeshDict)"
@@ -169,12 +220,16 @@ do
     
     nProcs="$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)"
 
-    transformPoints "translate=(0 0 -$thickness)"    
-    setFields
-    decomposePar
-    mpirun -np $nProcs additiveFoam -parallel
-    reconstructPar -latestTime
-    transformPoints "translate=(0 0 $thickness)"
+    transformPoints "translate=(0 0 -$thickness)" > log.transformPoints_0
+    setFields > log.setFields
+    decomposePar > log.decomposePar
+    echo "Running additiveFoam for layer $layer..."
+    echo ""
+    mpirun -np $nProcs additiveFoam -parallel > log.additiveFoam
+    reconstructPar -latestTime > log.reconstructPar
+    transformPoints "translate=(0 0 $thickness)" > log.transformPoints_1
+    echo "Completed layer $layer."
+    echo ""
 done
 
 #------------------------------------------------------------------------------
