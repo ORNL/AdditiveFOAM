@@ -24,6 +24,7 @@ We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](ht
 - [Gerry L. Knapp](https://www.ornl.gov/staff-profile/gerald-l-knapp)
 - [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
 - [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
+- [Matt Rolchigo](https://www.ornl.gov/staff-profile/matt-rolchigo)
 - [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
 
 
