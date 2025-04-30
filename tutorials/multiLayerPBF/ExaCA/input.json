@@ -1,0 +1,44 @@
+{
+   "SimulationType": "FromFile",
+   "MaterialFileName": "Inconel625.json",
+   "GrainOrientationFile": "GrainOrientationVectors.csv",
+   "RandomSeed": 0,
+   "Domain": {
+       "CellSize": 2.5,
+       "TimeStep": 0.125,
+       "NumberOfLayers": 4,
+       "LayerOffset": 16
+   },
+   "Nucleation": {
+      "Density": 100,
+      "MeanUndercooling": 5,
+      "StDev": 0.5
+   },
+   "TemperatureData": {
+       "LayerwiseTempRead": true,
+       "TemperatureFiles": [
+        "./layer0/ExaCA/time-temperature.csv",
+        "./layer1/ExaCA/time-temperature.csv",
+        "./layer2/ExaCA/time-temperature.csv",
+        "./layer3/ExaCA/time-temperature.csv"]
+   },
+   "Substrate": {
+      "MeanBaseplateGrainSize": 8.3,
+      "MeanPowderGrainSize": 2.5
+   },
+   "Printing": {
+      "PathToOutput": "./ExaCA/",
+      "OutputFile": "Output",
+      "PrintBinary": false,
+      "PrintExaConstitSize": 0,
+      "Interlayer": {
+          "Fields": [
+            "GrainID",
+            "LayerID",
+            "GrainMisorientation",
+            "UndercoolingCurrent",
+            "SolidificationEventCounter"],
+          "Layers": [0, 1]
+      }
+   }
+}

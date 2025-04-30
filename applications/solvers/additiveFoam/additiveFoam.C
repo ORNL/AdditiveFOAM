@@ -38,10 +38,9 @@ Description
 #include "Polynomial.H"
 
 #include "interpolateXY/interpolateXY.H"
-
 #include "movingHeatSourceModel.H"
-#include "foamToExaCA/foamToExaCA.H"
 
+#include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -64,8 +63,6 @@ int main(int argc, char *argv[])
     scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
-
-    foamToExaCA ExaCA(T);
 
     movingHeatSourceModel sources(mesh);
 
@@ -97,16 +94,12 @@ int main(int argc, char *argv[])
 
         #include "thermo/TEqn.H"
         
-        ExaCA.update();
-
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-
-    ExaCA.write();
 
     return 0;
 }

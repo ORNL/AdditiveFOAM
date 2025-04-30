@@ -10,15 +10,27 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      foamToExaCADict;
+    object      createScanPathDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-execute     off;
+minPoint    (0.0 0.0);
 
-box         (0 -0.0001 -0.0002) (0.002 0.0001 0);
-dx          5e-6;
-isotherm    1620;
+maxPoint    (0.002 0.002);
+
+angle       67;
+
+hatch       1e-4;
+
+nRotations  5;
+
+power       200;
+
+speed       1;
+
+dwellTime   0.0;
+
+biDirection true;
 
 // ************************************************************************* //

@@ -5,18 +5,15 @@
     \\  /    A nd           | Version:  10
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
-FoamFile
+
+ExaCA
 {
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      decomposeParDict;
+    type ExaCA;
+    libs ("libExaCAFunctionObject.so");
+    
+    box         (0 -0.0001 -0.0002) (0.002 0.0001 0);
+    dx          2.5e-6;
+    isoValue    1620;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains  6;
-
-method              scotch;
-
-// ************************************************************************* //
+// *********************************************************************** //

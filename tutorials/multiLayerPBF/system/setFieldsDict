@@ -7,11 +7,11 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      setFieldsDict;
+    version         2;
+    format          ascii;
+    class           dictionary;
+    location        "system";
+    object          setFieldsDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -19,7 +19,7 @@ regions
 (
     boxToCell
     {
-        box (-1 -1 -2e-5) (1 1 1);
+        box (-1 -1 -4e-5) (1 1 1);
 
         fieldValues
         (
