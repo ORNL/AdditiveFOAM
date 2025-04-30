@@ -1,5 +1,5 @@
 ---
-title: 'AdditiveFOAM 1.0: A Continuum Physics Code for Additive Manufacturing'
+title: 'AdditiveFOAM 1.1: A Continuum Physics Code for Additive Manufacturing'
 tags:
   - Computational Fluid Dynamics
   - Heat Transfer
@@ -15,6 +15,10 @@ authors:
   - name: Gerry L. Knapp
     affiliation: "3"
   - name: Benjamin Stump
+    affiliation: "1"
+  - name: Samuel Reeve
+    affiliation: "1"
+  - name: Matt Rolchigo
     affiliation: "1"
   - name: Alex Plotkowski
     affiliation: "1"
