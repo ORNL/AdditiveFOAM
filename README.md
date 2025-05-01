@@ -70,7 +70,7 @@ We appreciate your interest in AdditiveFOAM and look forward to your contributio
 - [Benjamin Stump](https://www.ornl.gov/staff-profile/benjamin-c-stump)
 - [Alex Plotkowski](https://www.ornl.gov/staff-profile/alex-j-plotkowski)
 - [Sam T. Reeve](https://www.ornl.gov/staff-profile/samuel-t-reeve)
-
+- [Matt Rolchigo](https://www.ornl.gov/staff-profile/matt-rolchigo)
 
 [docs-badge]: https://img.shields.io/badge/docs-latest-brightgreen.svg
 [docs-url]: https://ornl.github.io/AdditiveFOAM/
