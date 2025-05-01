@@ -4,6 +4,37 @@ cd ${0%/*} || exit 1    # Run from this directory
 # Parse arguments for library compilation
 . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
 
+#------------------------------------------------------------------------------
+# Generate AdditiveFOAM version header
+HEADER_FILE="${0%/*}/Make/additiveFoamVersion.H"
+GIT_DESCRIBE=$(git describe --tags --always 2>/dev/null) || GIT_DESCRIBE="undefined"
+GIT_SHA1=$(git rev-parse HEAD 2>/dev/null) || GIT_SHA1="undefined"
+STATIC_VERSION="1.1.0"
+
+cat > "$HEADER_FILE" << EOF
+#ifndef AdditiveFOAMVersion_H
+#define AdditiveFOAMVersion_H
+
+// Static Version (optional)
+#define ADDITIVEFOAM_VERSION      "$STATIC_VERSION"
+
+// Git describe (tag or hash)
+#define ADDITIVEFOAM_GIT_DESCRIBE "$GIT_DESCRIBE"
+
+// Git commit SHA1
+#define ADDITIVEFOAM_GIT_SHA1     "$GIT_SHA1"
+
+#endif
+EOF
+
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to write to $HEADER_FILE" >&2
+fi
+
+echo "Generated version header: $HEADER_FILE" >&2
+
+#------------------------------------------------------------------------------
+# Build libraries and solver
 wmake $targetType functionObjects/ExaCA
 wmake $targetType movingHeatSource
 wmake $targetType

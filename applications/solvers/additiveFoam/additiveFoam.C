@@ -27,26 +27,39 @@ Application
     additiveFoam
 
 Description
-    Transient solver for additive manufacturing simulations
+    A transient heat transfer and fluid flow solver for additive manufacturing
+    simulations.
     
 \*---------------------------------------------------------------------------*/
 
+#include "Make/additiveFoamVersion.H"
+
 #include "fvCFD.H"
 #include "pimpleControl.H"
-
 #include "graph.H"
 #include "Polynomial.H"
-
 #include "interpolateXY/interpolateXY.H"
 #include "movingHeatSourceModel.H"
-
 #include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
-{
+{      
+    Info << nl << "--- AdditiveFOAM Information ---" << nl;
+    #ifdef ADDITIVEFOAM_VERSION
+        Info << "Version:   " << ADDITIVEFOAM_VERSION << nl;
+    #endif
+    #ifdef ADDITIVEFOAM_GIT_DESCRIBE
+        Info << "Build:     " << ADDITIVEFOAM_GIT_DESCRIBE << nl;
+    #endif
+    #ifdef ADDITIVEFOAM_GIT_SHA1
+        Info << "Git SHA1:  " << ADDITIVEFOAM_GIT_SHA1 << nl << endl;
+    #endif
+
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+       
     #include "postProcess.H"
 
     #include "setRootCase.H"
@@ -56,17 +69,12 @@ int main(int argc, char *argv[])
     #include "createFields.H"
     #include "createTimeControls.H"
     #include "initContinuityErrs.H"
-
-    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
-    // initialize time-stepping controls
-    scalar DiNum = 0.0;
-
-    scalar alphaCoNum = 0.0;
-
-    movingHeatSourceModel sources(mesh);
-
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+    scalar DiNum = 0.0;
+    scalar alphaCoNum = 0.0;
+    movingHeatSourceModel sources(mesh);
 
     Info<< "\nStarting time loop\n" << endl;
 
