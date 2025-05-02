@@ -1,5 +1,5 @@
 ---
-title: 'AdditiveFOAM 1.1: A Continuum Physics Code for Additive Manufacturing'
+title: 'AdditiveFOAM: A Continuum Multiphysics Code for Additive Manufacturing'
 tags:
   - Computational Fluid Dynamics
   - Heat Transfer
