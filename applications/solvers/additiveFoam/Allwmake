@@ -8,21 +8,17 @@ cd ${0%/*} || exit 1    # Run from this directory
 # Generate AdditiveFOAM version header
 HEADER_FILE="${0%/*}/Make/additiveFoamVersion.H"
 GIT_DESCRIBE=$(git describe --tags --always 2>/dev/null) || GIT_DESCRIBE="undefined"
-GIT_SHA1=$(git rev-parse HEAD 2>/dev/null) || GIT_SHA1="undefined"
-STATIC_VERSION="1.1.0"
+STATIC_VERSION="1.1-dev"
 
 cat > "$HEADER_FILE" << EOF
 #ifndef AdditiveFOAMVersion_H
 #define AdditiveFOAMVersion_H
 
 // Static Version (optional)
-#define ADDITIVEFOAM_VERSION      "$STATIC_VERSION"
+ #define ADDITIVEFOAM_VERSION      "$STATIC_VERSION"
 
 // Git describe (tag or hash)
 #define ADDITIVEFOAM_GIT_DESCRIBE "$GIT_DESCRIBE"
-
-// Git commit SHA1
-#define ADDITIVEFOAM_GIT_SHA1     "$GIT_SHA1"
 
 #endif
 EOF
