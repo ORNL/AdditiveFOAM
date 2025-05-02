@@ -62,7 +62,7 @@ AdditiveFOAM was designed to be used openly by researchers, industry, and academ
 
 - Plotkowski et al. [@plotkowski] used AdditiveFOAM to confirm experimentally observed grain growth in Fe-Si steel during the Laser Engineered Net Shaping (LENS) process. 
 
-The free, open-source nature of AdditiveFOAM will continue to enable scientific explorations in AM processing. The source code for AdditiveFOAM has been archived to Zenodo with the link DOI: [@AdditiveFOAM_1.0.0]. Documentation for AdditiveFOAM is hosted on GitHub pages with the link: https://ornl.github.io/AdditiveFOAM/. 
+The free, open-source nature of AdditiveFOAM will continue to enable scientific explorations in AM processing. Documentation for AdditiveFOAM is hosted on GitHub pages with the link: https://ornl.github.io/AdditiveFOAM/. 
 
 # Acknowledgements
 
