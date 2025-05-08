@@ -55,7 +55,10 @@ int main(int argc, char *argv[])
         Info << "Version:   " << ADDITIVEFOAM_VERSION << nl;
     #endif
     #ifdef ADDITIVEFOAM_GIT_DESCRIBE
-        Info << "Build:     " << ADDITIVEFOAM_GIT_DESCRIBE << nl << endl;
+        Info << "Build:     " << ADDITIVEFOAM_GIT_DESCRIBE << nl;
+    #endif
+    #ifdef ADDITIVEFOAM_GIT_SHA1
+        Info << "Git SHA1:  " << ADDITIVEFOAM_GIT_SHA1 << nl << endl;
     #endif
     
     #include "createTime.H"
