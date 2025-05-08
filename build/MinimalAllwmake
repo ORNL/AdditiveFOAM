@@ -1,0 +1,88 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Perform various checks
+wmakeCheckPwd "$WM_PROJECT_DIR" || {
+    echo "Allwmake error: Current directory is not \$WM_PROJECT_DIR"
+    echo "    The environment variables are inconsistent with the installation."
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+
+[ -n "$FOAM_EXT_LIBBIN" ] || {
+    echo "Allwmake error: FOAM_EXT_LIBBIN not set"
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+
+# Compile wmake support applications
+(cd wmake/src && make)
+
+# Compile ThirdParty libraries and applications
+if [ -d "$WM_THIRD_PARTY_DIR" ]
+then
+    echo "Performing minimal ThirdParty Allwmake..."
+    $WM_THIRD_PARTY_DIR/MinimalThirdPartyAllwmake
+else
+    echo "Allwmake: no ThirdParty directory found - skipping"
+fi
+
+# Compile only required OpenFOAM libraries
+cd src
+
+# The following is taken from OpenFOAM-10/src/Allwmake:
+
+# Update OpenFOAM version strings if required
+wmakePrintBuild -check || wrmo OpenFOAM/global/global.o 2>/dev/null
+
+Pstream/Allwmake -j $targetType $*
+
+OSspecific/${WM_OSTYPE:-POSIX}/Allwmake -j $targetType $*
+wmake -j $targetType OpenFOAM
+
+wmake -j $targetType fileFormats
+wmake -j $targetType surfMesh
+wmake -j $targetType triSurface
+wmake -j $targetType meshTools
+
+# Decomposition methods needed by dummyThirdParty
+# (dummy metisDecomp, scotchDecomp etc) needed by e.g. meshTools
+dummyThirdParty/Allwmake -j $targetType $*
+
+wmake -j $targetType finiteVolume
+wmake -j $targetType lagrangian/basic
+wmake -j $targetType lagrangian/distributionModels
+wmake -j $targetType genericPatchFields
+
+wmake -j $targetType mesh/extrudeModel
+wmake -j $targetType dynamicMesh
+
+# Compile scotchDecomp, metisDecomp etc.
+parallel/Allwmake -j $targetType $*
+
+wmake -j $targetType ODE
+wmake -j $targetType randomProcesses
+
+wmake -j $targetType physicalProperties
+
+thermophysicalModels/Allwmake -j $targetType $*
+twoPhaseModels/Allwmake -j $targetType $*
+multiphaseModels/Allwmake -j $targetType $*
+MomentumTransportModels/Allwmake -j $targetType $*
+ThermophysicalTransportModels/Allwmake -j $targetType $*
+wmake -j $targetType radiationModels
+regionModels/Allwmake -j $targetType $*
+
+wmake -j $targetType mesh/blockMesh
+
+# Compile only required OpenFOAM applications
+cd ../applications
+
+wmake -j $targetType utilities/mesh/generation/blockMesh
+
+wmake -j $targetType utilities/parallelProcessing/decomposePar
+wmake -j $targetType utilities/parallelProcessing/reconstructPar
+
+wmake -j $targetType utilities/miscellaneous/foamDictionary
+
+#------------------------------------------------------------------------------
