@@ -55,7 +55,6 @@ maxAlphaCo      1;
 
 functions
 {
-    #includeFunc    ExaCA
 }
 
 

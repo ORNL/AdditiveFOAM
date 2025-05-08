@@ -1,6 +1,8 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
 
+rm -rf Make/additiveFoamVersion.H
+
 wclean libso functionObjects/ExaCA
 wclean libso movingHeatSource
 wclean
