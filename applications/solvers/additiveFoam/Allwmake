@@ -5,18 +5,14 @@ cd ${0%/*} || exit 1    # Run from this directory
 . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
 
 #------------------------------------------------------------------------------
-# Generate AdditiveFOAM version header
-HEADER_FILE="${0%/*}/Make/additiveFoamVersion.H"
-GIT_DESCRIBE=$(git describe --tags --always 2>/dev/null) || GIT_DESCRIBE="undefined"
-GIT_SHA1=$(git rev-parse HEAD 2>/dev/null) || GIT_SHA1="undefined"
-STATIC_VERSION="1.1.0-dev"
+# Generate header for git information
+HEADER_FILE="${0%/*}/Make/gitInfo.H"
+GIT_DESCRIBE=$(git describe --tags --always 2>/dev/null)
+GIT_SHA1=$(git rev-parse HEAD 2>/dev/null)
 
 cat > "$HEADER_FILE" << EOF
-#ifndef AdditiveFOAMVersion_H
-#define AdditiveFOAMVersion_H
-
-// Static Version
-#define ADDITIVEFOAM_VERSION      "$STATIC_VERSION"
+#ifndef gitInfo_H
+#define gitInfo_H
 
 // Git describe
 #define ADDITIVEFOAM_GIT_DESCRIBE "$GIT_DESCRIBE"
@@ -27,11 +23,7 @@ cat > "$HEADER_FILE" << EOF
 #endif
 EOF
 
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to write to $HEADER_FILE" >&2
-fi
-
-echo "Generated version header: $HEADER_FILE" >&2
+export ADDITIVEFOAM_BUILD_FLAGS="-DGIT_MODULE_ENABLED=1"
 
 #------------------------------------------------------------------------------
 # Build libraries and solver
