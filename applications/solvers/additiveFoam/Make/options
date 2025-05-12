@@ -1,4 +1,5 @@
 EXE_INC = \
+    $(ADDITIVEFOAM_BUILD_FLAGS) \
     -I. \
     -ImovingHeatSource/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \

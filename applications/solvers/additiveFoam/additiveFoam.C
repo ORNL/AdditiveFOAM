@@ -31,9 +31,7 @@ Description
     simulations.
     
 \*---------------------------------------------------------------------------*/
-
-#include "Make/additiveFoamVersion.H"
-
+#include "additiveFoamInfo.H"
 #include "fvCFD.H"
 #include "pimpleControl.H"
 #include "graph.H"
@@ -49,18 +47,7 @@ int main(int argc, char *argv[])
 {       
     #include "postProcess.H"    
     #include "setRootCase.H"
-    
-    Info << "AdditiveFOAM Information:" << nl;
-    #ifdef ADDITIVEFOAM_VERSION
-        Info << "Version:   " << ADDITIVEFOAM_VERSION << nl;
-    #endif
-    #ifdef ADDITIVEFOAM_GIT_DESCRIBE
-        Info << "Build:     " << ADDITIVEFOAM_GIT_DESCRIBE << nl;
-    #endif
-    #ifdef ADDITIVEFOAM_GIT_SHA1
-        Info << "Git SHA1:  " << ADDITIVEFOAM_GIT_SHA1 << nl << endl;
-    #endif
-    
+    AdditiveFoamInfo::write();
     #include "createTime.H"
     #include "createMesh.H"
     #include "createControl.H"
