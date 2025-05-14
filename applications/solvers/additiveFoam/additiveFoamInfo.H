@@ -21,7 +21,7 @@ Description
 #endif
 
 // Static version
-#define ADDITIVEFOAM_VERSION "1.1.0-dev"
+#define ADDITIVEFOAM_VERSION "1.1.0"
 
 namespace Foam
 {
