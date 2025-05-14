@@ -9,19 +9,26 @@ tags:
 authors:
   - name: John Coleman
     affiliation: "1"
+    orcid: 0000-0002-7261-3143
     corresponding: true
   - name: Kellis Kincaid
     affiliation: "2"
+    orcid: 0000-0002-0147-553X
   - name: Gerry L. Knapp
     affiliation: "3"
+    orcid: 0000-0002-2023-992X
   - name: Benjamin Stump
     affiliation: "1"
-  - name: Samuel Reeve
+    orcid: 0000-0002-1290-7262
+  - name: Samuel Temple Reeve
     affiliation: "1"
+    orcid: 0000-0002-4250-9476
   - name: Matt Rolchigo
     affiliation: "1"
+    orcid: 0000-0003-3439-4207
   - name: Alex Plotkowski
     affiliation: "1"
+    orcid: 0000-0001-5471-8681
 affiliations:
  - name: Computational Science and Engineering Division, Oak Ridge National Laboratory
    index: 1
