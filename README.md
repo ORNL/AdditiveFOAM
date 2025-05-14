@@ -30,23 +30,7 @@ spack install additivefoam
 See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
 
 ## Citing
-If you use AdditiveFOAM in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
-```bibtex
-@software{AdditiveFOAM_1.0.0,
-  author       = {John Coleman and
-                  Kellis Kincaid and
-                  Gerald L. Knapp and
-                  Benjamin Stump and
-                  Alexander J. Plotkowski},
-  title        = {AdditiveFOAM: Release 1.0},
-  month        = jun,
-  year         = 2023,
-  publisher    = {Zenodo},
-  version      = {1.0.0},
-  doi          = {10.5281/zenodo.8034098},
-  url          = {https://doi.org/10.5281/zenodo.8034098}
-}
-```
+If you use AdditiveFOAM in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034097.svg)](https://doi.org/10.5281/zenodo.8034097).
 
 ## License
 [![GPL](https://img.shields.io/badge/GPL-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
