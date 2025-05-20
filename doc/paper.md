@@ -30,7 +30,7 @@ authors:
     affiliation: "1"
     orcid: 0000-0001-5471-8681
 affiliations:
- - name: Computational Science and Engineering Division, Oak Ridge National Laboratory
+ - name: Computational Sciences and Engineering Division, Oak Ridge National Laboratory
    index: 1
  - name: Nuclear Energy and Fuel Cycle Division, Oak Ridge National Laboratory
    index: 2
