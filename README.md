@@ -34,7 +34,7 @@ See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/ins
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034097.svg)](https://doi.org/10.5281/zenodo.8034097)
 
 If you use AdditiveFOAM in your work, please cite the JOSS article and
-consider citing the Zenodo DOIfor the version used.
+consider citing the Zenodo DOI for the version used.
 
 ## License
 [![GPL](https://img.shields.io/badge/GPL-3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
