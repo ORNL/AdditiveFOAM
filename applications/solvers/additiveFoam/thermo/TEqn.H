@@ -20,10 +20,18 @@
     {
         #include "thermo/thermoSource.H"
 
+        //- optional implicit limiting of temperature field
+        volScalarField A
+        (
+            "A",
+            dimensionedScalar(rho.dimensions()*Cp.dimensions(), 1e15)
+           *pos(T - Tmax)
+        );
+        
         //- solve the energy equation
         solve
         (
-            TEqn
+            TEqn + rDeltaT*(fvm::Sp(A, T) - A*Tmax)
          ==
             (
                 (ddtScheme == "Euler")
