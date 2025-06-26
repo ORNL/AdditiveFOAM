@@ -57,7 +57,13 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
     B_ = heatSourceModelCoeffs_.lookup<scalar>("B");
     
     // set initial shape function
-    const scalar x_ = max(dimensions_.z() / staticDimensions_.x(), 1.0);
+    const scalar x_ =
+        max
+        (
+            dimensions_.z()
+          / min(staticDimensions_.x(), staticDimensions_.y()),
+            1.0
+        );
     const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
     k_ = std::pow(2.0, n_);            
 }
@@ -87,10 +93,16 @@ Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::projectedGaussian::V0()
 {
-    const scalar x_ = max(dimensions_.z() / staticDimensions_.x(), 1.0);
+    const scalar x_ =
+        max
+        (
+            dimensions_.z()
+          / min(staticDimensions_.x(), staticDimensions_.y()),
+            1.0
+        );
     
     const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
-    
+        
     k_ = std::pow(2.0, n_);
     
     const dimensionedScalar V0

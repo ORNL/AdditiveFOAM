@@ -1,0 +1,66 @@
+/*---------------------------------------------------------------------------
+     AdditiveFOAM template input file (compatible with 1.0, OpenFOAM 10)
+
+                      Created for simulation with Myna
+  ---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+xmin            0.0494;
+ymin            -0.049600000000000005;
+zmin            -0.0029;
+
+xmax            0.050600000000000006;
+ymax            -0.0484;
+zmax            0.0;
+
+nx              15;
+ny              15;
+nz              36;
+
+vertices
+(
+    ( $xmin $ymin $zmin )
+    ( $xmax $ymin $zmin )
+    ( $xmax $ymax $zmin )
+    ( $xmin $ymax $zmin )
+    ( $xmin $ymin $zmax )
+    ( $xmax $ymin $zmax )
+    ( $xmax $ymax $zmax )
+    ( $xmin $ymax $zmax )
+);
+
+blocks
+(
+    hex ( 0 1 2 3 4 5 6 7 ) ( $nx $ny $nz ) simpleGrading ( 1 1 1 )
+);
+
+edges( );
+
+boundary
+(
+    part
+    {
+        type wall;
+        faces
+        (
+            ( 0 3 2 1 )
+            ( 4 5 6 7 )
+            ( 0 4 7 3 )
+            ( 2 6 5 1 )
+            ( 1 5 4 0 )
+            ( 3 7 6 2 )
+        );
+    }
+);
+
+mergePatchPairs ( );
+
+// ************************************************************************* //
