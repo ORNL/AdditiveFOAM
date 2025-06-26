@@ -29,6 +29,9 @@ spack install additivefoam
 
 See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
 
+An alternative installation mechanism is using Nix. See
+[Nix.md](./NIX.md) for more details.
+
 ## Citing
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034097.svg)](https://doi.org/10.5281/zenodo.8034097)
