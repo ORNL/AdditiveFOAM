@@ -20,7 +20,7 @@ compress_html:
 # Override purple (default) to ORNL green
 color_scheme: ornl_green
 
-logo: "https://raw.githubusercontent.com/ORNL-MDF/additivefoam-website-assets/main/images/logo.png"
+logo: "https://raw.githubusercontent.com/ORNL-MDF/additivefoam-website-assets/main/images/AdditiveFOAM-logo.svg"
 
 # External navigation links
 nav_external_links:
