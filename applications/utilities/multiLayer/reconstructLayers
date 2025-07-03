@@ -40,7 +40,7 @@ echo "Found $nLayers parallel-in-time layers in $baseDir"
 
 for (( layer=$(($nLayers-1)); layer>=0; layer-- ))
 do
-    reconstructPar -case "${caseList[$layer]}" -newTimes
+    reconstructPar -case "${caseList[$layer]}" -newTimes > log.reconstructPar_layer$layer
     timeList=( $(foamListTimes -case "${caseList[$layer]}" -withZero) )
     for time in "${timeList[@]:1}"
     do  

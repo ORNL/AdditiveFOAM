@@ -29,7 +29,7 @@ runApplication blockMesh
 # Change to AdditiveFOAM install path
 path="$WM_PROJECT_INST_DIR/AdditiveFOAM/applications/utilities/multiLayer"
 
-$path/runLayers -nLayers 4 -nCellsPerLayer 4 -layerThickness 40e-6
+$path/runLayers -nLayers 4 -nCellsPerLayer 4 -layerThickness 40e-6 -scanPathList constant/scanPathList
 $path/reconstructLayers
 
 #------------------------------------------------------------------------------
