@@ -23,7 +23,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.004;
+endTime         0.01;
 
 deltaT          1e-07;
 
@@ -55,7 +55,6 @@ maxAlphaCo      1;
 
 functions
 {
-    #includeFunc    ExaCA
 }
 
 
