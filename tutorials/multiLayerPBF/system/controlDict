@@ -23,13 +23,13 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.004;
+endTime         0.015;
 
 deltaT          1e-07;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.001;
+writeInterval   0.0025;
 
 purgeWrite      0;
 
@@ -49,13 +49,12 @@ adjustTimeStep  yes;
 
 maxCo           0.5;
 
-maxDi           10;
+maxDi           100;
 
 maxAlphaCo      1;
 
 functions
 {
-    #includeFunc    ExaCA
 }
 
 

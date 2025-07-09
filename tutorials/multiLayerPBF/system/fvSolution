@@ -54,6 +54,7 @@ PIMPLE
     nThermoCorrectors   20;
     thermoTolerance     1e-8;
     explicitSolve       true;
+    Tmax                3300.0;
 }
 
 relaxationFactors

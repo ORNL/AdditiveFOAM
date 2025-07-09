@@ -88,22 +88,49 @@ done
 
 args_check $nLayers $layerThickness $nCellsPerLayer
 
-# create case directories
+
+# 1. Find available scan path files
+scanPathFiles=(constant/scanPath_*)
+
+# Check if the globbing found any actual files.
+if [ -e "${scanPathFiles[0]}" ]; then
+    numScanPathFiles=${#scanPathFiles[@]}
+    echo "Found $numScanPathFiles numbered scanPath file(s) to cycle through."
+
+elif [ -f "constant/scanPath" ]; then
+    scanPathFiles=("constant/scanPath")
+    numScanPathFiles=1
+    echo "Found single 'scanPath' file. This will be used for all layers."
+
+else
+    echo "Error: No 'scanPath_*' files or 'scanPath' file found." >&2
+    exit 1
+fi
+
+# 2. Create case directories
+shopt -s extglob
 baseDir=${PWD}
 caseList=()
 for (( layer=0; layer<$nLayers; layer++ ))
 do
     case="$baseDir/layer$layer"
-    caseList+=($case)
-    if [ -d $case ]; then rm -rf $case; fi
-    mkdir $case
+    caseList+=("$case")
+    if [ -d "$case" ]; then rm -rf "$case"; fi
+    mkdir -p "$case/constant" "$case/system"
 
-    cp -r "$baseDir/0" $case
-    cp -r "$baseDir/constant" $case
-    cp -r "$baseDir/system" $case
+    cp -r "$baseDir/0" "$case/"
+    cp -r "$baseDir/system"/* "$case/system/"
+
+    cp -r "$baseDir/constant"/!(scanPath|scanPath_*) "$case/constant/"
+    scanPathIndex=$(( layer % numScanPathFiles ))
+    sourceScanPathFile=${scanPathFiles[$scanPathIndex]}
+
+    echo "Layer $layer: using $sourceScanPathFile"
+    cp "$sourceScanPathFile" "$case/constant/scanPath"
 done
+shopt -u extglob
 
-# extrude mesh in each directory
+# 3. Extrude mesh in case directories
 for (( layer=0; layer<$nLayers; layer++ ))
 do
     case=${caseList[$layer]}
@@ -122,7 +149,7 @@ do
     fi
 done
 
-# update simulation times and run layers sequentially
+# 4. Run all layers
 layerTime="$(cd ${caseList[0]} && foamDictionary -entry endTime -value system/controlDict)"
 
 for (( layer=0; layer<$nLayers; layer++ ))
@@ -142,7 +169,7 @@ do
         foamDictionary -entry startTime -set $time system/controlDict
         foamDictionary -entry endTime -set $endTime system/controlDict
 
-        # update wait time for scan path (assumes repeating scan)
+        # update wait time for scan path
         path=(`sed '2q;d' constant/scanPath`)
         path[5]=$time
         path=`echo $(echo ${path[@]}) | tr ' ' '\t\t'`
