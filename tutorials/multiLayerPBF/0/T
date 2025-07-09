@@ -22,7 +22,7 @@ boundaryField
 {
     bottom
     {
-        type            zeroGradient;
+        type            fixedValue;
         value           uniform 300;
     }
     top
@@ -35,7 +35,7 @@ boundaryField
     }
     sides
     {
-        type            zeroGradient;
+        type            fixedValue;
         value           uniform 300;
     }
 }

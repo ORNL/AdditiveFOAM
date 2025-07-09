@@ -33,7 +33,7 @@ path="$projectDir/applications/utilities/multiLayer"
 # Create scan paths from constant/createScanPathDict
 createScanPath
 
-$path/runLayers -nLayers 4 -nCellsPerLayer 4 -layerThickness 40e-6
+$path/runLayers -nLayers 2 -nCellsPerLayer 4 -layerThickness 40e-6
 $path/reconstructLayers
 
 #------------------------------------------------------------------------------
