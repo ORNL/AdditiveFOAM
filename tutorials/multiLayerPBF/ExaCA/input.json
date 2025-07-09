@@ -18,9 +18,7 @@
        "LayerwiseTempRead": true,
        "TemperatureFiles": [
         "./layer0/ExaCA/time-temperature.csv",
-        "./layer1/ExaCA/time-temperature.csv",
-        "./layer2/ExaCA/time-temperature.csv",
-        "./layer3/ExaCA/time-temperature.csv"]
+        "./layer1/ExaCA/time-temperature.csv"]
    },
    "Substrate": {
       "MeanBaseplateGrainSize": 8.3,
