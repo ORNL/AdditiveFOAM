@@ -43,7 +43,10 @@ volScalarField alpha1
     zeroGradientFvPatchScalarField::typeName
 );
 
-IFstream thermoFile(runTime.constant()/"thermoPath");
+IFstream thermoFile
+(
+    runTime.rootPath()/runTime.globalCaseName()/runTime.constant()/"thermoPath"
+);
 
 graph thermo
 (
