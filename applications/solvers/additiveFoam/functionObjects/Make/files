@@ -1,0 +1,4 @@
+ExaCA/ExaCA.C
+solidificationData/solidificationData.C
+
+LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamFunctionObjects
