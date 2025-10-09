@@ -55,27 +55,30 @@ maxAlphaCo      1;
 
 functions
 {
-    solidificationData
-    {
-        libs ("libadditiveFoamFunctionObjects.so");
-        
-        type solidificationData;
-                
-        box         (-1 -1 -1) (1 1 1);
-        isoValue    1620;
-    }
-/*
-    ExaCA
-    {
-        libs ("libadditiveFoamFunctionObjects.so");
-        
-        type ExaCA;
-                
-        box         (0.0005 -0.00025 -0.0002) (0.0015 0.00025 0);
-        dx          2.5e-6;
-        isoValue    1620;
-    }
-*/
+    #ifeq ${ENABLE_SOLIDIFICATION_DATA} true
+        solidificationData
+        {
+            libs ("libadditiveFoamFunctionObjects.so");
+            
+            type solidificationData;
+                    
+            box         (-1 -1 -1) (1 1 1);
+            isoValue    1620;
+        }
+    #endif;
+
+    #ifeq ${ENABLE_EXACA_DATA} true
+        ExaCA
+        {
+            libs ("libadditiveFoamFunctionObjects.so");
+            
+            type ExaCA;
+                    
+            box         (0.0005 -0.00025 -0.0002) (0.0015 0.00025 0);
+            dx          2.5e-6;
+            isoValue    1620;
+        }
+    #endif;
 }
 
 // ************************************************************************* //

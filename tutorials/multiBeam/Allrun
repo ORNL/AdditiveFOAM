@@ -17,6 +17,20 @@ while [ "$#" -gt 0 ]; do
 done
 
 #------------------------------------------------------------------------------
+# AdditiveFOAM Function Objects
+
+# ExaCA (optional - default: false)
+#export ENABLE_EXACA_DATA=true
+
+# solidificationData (optional - default: false)
+#export ENABLE_SOLIDIFICATION_DATA=true
+
+# force ExaCA functionObject for '-withExaCA' flag
+if [ "$withExaCA" = true ]; then
+    export ENABLE_EXACA_DATA=true
+fi
+
+#------------------------------------------------------------------------------
 # AdditiveFOAM
 runApplication blockMesh
 runApplication decomposePar

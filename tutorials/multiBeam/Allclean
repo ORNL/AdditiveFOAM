@@ -6,8 +6,6 @@ cd ${0%/*} || exit 1    # Run from this directory
 
 cleanCase
 #------------------------------------------------------------------------------
-rm -rf ExaCA/Output*
-rm -rf ExaCA/time-temperature.csv
-
+rm -rf ExaCA/*.csv
 rm -rf solidificationData
 #------------------------------------------------------------------------------
