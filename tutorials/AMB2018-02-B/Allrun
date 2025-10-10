@@ -42,13 +42,13 @@ runApplication reconstructPar
 
 #------------------------------------------------------------------------------
 # Reconstruct function object data
-if [ $ENABLE_EXACA_DATA = true ]; then
+if [ "$ENABLE_EXACA_DATA" = true ]; then
     echo "x,y,z,tm,ts,cr" > ExaCA/time-temperature.csv
     tail -q -n+2 ExaCA/data_* >> ExaCA/time-temperature.csv
     rm -rf ExaCA/data_*
 fi
 
-if [ $ENABLE_SOLIDIFICATION_DATA = true ]; then
+if [ "$ENABLE_SOLIDIFICATION_DATA" = true ]; then
     echo "x,y,z,ts,cr,g,v" > solidificationData/solidification-data.csv
     tail -q -n+2 solidificationData/data_* >> solidificationData/solidification-data.csv
     rm -rf solidificationData/data_*
