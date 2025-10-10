@@ -34,29 +34,38 @@ fi
 # AdditiveFOAM
 runApplication blockMesh
 
-runApplication decomposePar
+# Set $ADDITIVEFOAM_INST_DIR path: defaults to $WM_PROJECT_INST_DIR.
+projectDir="${ADDITIVEFOAM_INST_DIR:-$WM_PROJECT_INST_DIR/AdditiveFOAM}"
+path="$projectDir/applications/utilities/multiLayer"
 
-runParallel $application
+# Create scan paths from constant/createScanPathDict
+createScanPath
 
-runApplication reconstructPar
+$path/runLayers -nLayers 2 -nCellsPerLayer 4 -layerThickness 40e-6
+$path/reconstructLayers
 
 #------------------------------------------------------------------------------
 # Reconstruct function object data
 if [ $ENABLE_EXACA_DATA = true ]; then
-    echo "x,y,z,tm,ts,cr" > ExaCA/time-temperature.csv
-    tail -q -n+2 ExaCA/data_* >> ExaCA/time-temperature.csv
-    rm -rf ExaCA/data_*
+    for d in layer*; do
+        echo "x,y,z,tm,ts,cr" > "$d/ExaCA/time-temperature.csv"
+        tail -q -n+2 "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
+        rm -rf "$d/ExaCA/data_*"
+    done
 fi
 
 if [ $ENABLE_SOLIDIFICATION_DATA = true ]; then
-    echo "x,y,z,ts,cr,g,v" > solidificationData/solidification-data.csv
-    tail -q -n+2 solidificationData/data_* >> solidificationData/solidification-data.csv
-    rm -rf solidificationData/data_*
+    for d in layer*; do    
+        echo "x,y,z,ts,cr,g,v" > "$d/solidificationData/solidification-data.csv"
+        tail -q -n+2 "$d/solidificationData/data_"* >> "$d/solidificationData/solidification-data.csv"
+        rm -rf "$d/solidificationData/data_*"
+    done
 fi
 
 #------------------------------------------------------------------------------
+
 # ExaCA (Version 2.0.1)
-if [ "$withExaCA" = true ]; then
+if [ "$withExaCA" = true ]; then    
     NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
     mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
 fi

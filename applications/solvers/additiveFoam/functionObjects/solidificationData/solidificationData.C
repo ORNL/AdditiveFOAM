@@ -201,7 +201,7 @@ bool Foam::functionObjects::solidificationData::end()
        filePath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
     );
     
-    os << "x,y,z,t,R,G,V" << endl;
+    os << "x,y,z,ts,cr,g,v" << endl;
 
     for(int i=0; i < events.size(); i++)
     {
