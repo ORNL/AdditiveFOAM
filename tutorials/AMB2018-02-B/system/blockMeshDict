@@ -17,7 +17,7 @@ xmin -0.0005;
 xmax 0.0025;
 ymin -0.00025;
 ymax 0.00025;
-zmin -0.0003;
+zmin -0.0005;
 zmax 0.0;
 
 
@@ -35,7 +35,7 @@ vertices
 
 blocks
 (
-    hex (0 1 2 3 4 5 6 7) (150 25 15) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) (240 40 40) simpleGrading (1 1 1)
 );
 
 edges
