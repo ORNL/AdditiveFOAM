@@ -16,10 +16,18 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+#------------------------------------------------------------------------------
+# AdditiveFOAM Function Objects
+
+# ExaCA (optional - default: false)
+#export ENABLE_EXACA_DATA=true
+
+# solidificationData (optional - default: false)
+#export ENABLE_SOLIDIFICATION_DATA=true
+
+# Enable ExaCA function object for '-withExaCA' flag
 if [ "$withExaCA" = true ]; then
-    foamDictionary -entry functions -set "{#includeFunc ExaCA}" system/controlDict
-else
-    foamDictionary -entry functions -set "{}" system/controlDict
+    export ENABLE_EXACA_DATA=true
 fi
 
 #------------------------------------------------------------------------------
@@ -37,14 +45,27 @@ $path/runLayers -nLayers 2 -nCellsPerLayer 4 -layerThickness 40e-6
 $path/reconstructLayers
 
 #------------------------------------------------------------------------------
-# ExaCA (Version 2.0.1)
-if [ "$withExaCA" = true ]; then
+# Reconstruct function object data to layer directories
+if [ "$ENABLE_EXACA_DATA" = true ]; then
     for d in layer*; do
         echo "x,y,z,tm,ts,cr" > "$d/ExaCA/time-temperature.csv"
-        cat "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
-        rm -rf "$d/ExaCA/data_*"
+        tail -q -n+2 "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
+        rm -rf "$d/ExaCA/data_"*
     done
-    
+fi
+
+if [ "$ENABLE_SOLIDIFICATION_DATA" = true ]; then
+    for d in layer*; do    
+        echo "x,y,z,ts,cr,g,v" > "$d/solidificationData/solidification-data.csv"
+        tail -q -n+2 "$d/solidificationData/data_"* >> "$d/solidificationData/solidification-data.csv"
+        rm -rf "$d/solidificationData/data_"*
+    done
+fi
+
+#------------------------------------------------------------------------------
+
+# ExaCA (Version 2.0.1)
+if [ "$withExaCA" = true ]; then    
     NPROCS="$(foamDictionary -expand -entry numberOfSubdomains -value system/decomposeParDict)"
     mpirun -np $NPROCS ~/install/exaca/bin/ExaCA ExaCA/input.json
 fi

@@ -5,6 +5,7 @@
 *.bak
 *.bak[0-9][0-9]
 \#*\#
+.nfs*
 
 # File-browser settings - anywhere
 .directory
@@ -36,6 +37,7 @@ linux*Icc*/
 solaris*Gcc*/
 SunOS*Gcc*/
 platforms/
+gitInfo.H
 
 # Source packages - anywhere
 *.tar.bz2
