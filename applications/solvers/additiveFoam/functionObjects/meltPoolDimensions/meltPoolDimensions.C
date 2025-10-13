@@ -162,8 +162,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
 
                 vector p_rotated
                 (
-                    p.x()*c + p.y()*s,
-                    p.x()*s + p.y()*c,
+                    p.x() * c - p.y() * s,
+                    p.x() * s + p.y() * c,
                     p.z()
                 );
                 
@@ -217,8 +217,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
 
                         vector p_rotated
                         (
-                            p.x()*c + p.y()*s,
-                            p.x()*s + p.y()*c,
+                            p.x() * c - p.y() * s,
+                            p.x() * s + p.y() * c,
                             p.z()
                         );
                         
@@ -252,8 +252,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                         
                         vector p_rotated
                         (
-                            p.x()*c + p.y()*s,
-                            p.x()*s + p.y()*c,
+                            p.x() * c - p.y() * s,
+                            p.x() * s + p.y() * c,
                             p.z()
                         );
                         
