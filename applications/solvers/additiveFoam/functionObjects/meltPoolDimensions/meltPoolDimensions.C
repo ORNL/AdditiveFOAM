@@ -231,6 +231,41 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                 }
             }
         }
+        else
+        {
+            // physical boundary : take face point if above iso value
+            const vectorField& Cf = mesh_.Cf().boundaryField()[patchi];
+          
+            const scalarField& pif(TPf.patchInternalField());
+            
+            forAll(faceCells, facei)
+            {
+                scalar maxFace = max(pif[facei], TPf[facei]);
+                
+                forAll(isoValues_, i)
+                {
+                    const scalar iso_ = isoValues_[i];
+                    
+                    if (maxFace >= iso_)
+                    {
+                        const vector& p = Cf[facei];
+                        
+                        vector p_rotated
+                        (
+                            p.x()*c + p.y()*s,
+                            p.x()*s + p.y()*c,
+                            p.z()
+                        );
+                        
+                        boundBoxes[i].min() =
+                            min(p_rotated, boundBoxes[i].min());
+
+                        boundBoxes[i].max() =
+                            max(p_rotated, boundBoxes[i].max());
+                    }
+                }
+            }
+        }
     }
     
     forAll(isoValues_, i)
