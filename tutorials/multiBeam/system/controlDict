@@ -79,6 +79,19 @@ functions
             isoValue    1620;
         }
     #endif;
+
+
+    #ifeq ${ENABLE_MELTPOOL_DATA} true      
+        meltPoolDimensions
+        {
+            libs ("libadditiveFoamFunctionObjects.so");
+            
+            type            meltPoolDimensions;
+            
+            isoValues       (1620 1410);    
+            scanPathAngle   0.0;
+        }
+    #endif;
 }
 
 // ************************************************************************* //
