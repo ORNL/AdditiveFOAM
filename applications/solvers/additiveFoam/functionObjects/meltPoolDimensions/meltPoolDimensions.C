@@ -160,12 +160,12 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                 vector p =
                     cc[own] + d*(iso_ - T_[own])/(T_[nei] - T_[own]);
 
-                vector p_rotated
-                (
-                    p.x() * c - p.y() * s,
-                    p.x() * s + p.y() * c,
-                    p.z()
-                );
+                    vector p_rotated
+                    (
+                        p.x() * c + p.y() * s,
+                        p.y() * c - p.x() * s,
+                        p.z()
+                    );
                 
                 boundBoxes[i].min() =
                     min(p_rotated, boundBoxes[i].min());
@@ -217,8 +217,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
 
                         vector p_rotated
                         (
-                            p.x() * c - p.y() * s,
-                            p.x() * s + p.y() * c,
+                            p.x() * c + p.y() * s,
+                            p.y() * c - p.x() * s,
                             p.z()
                         );
                         
@@ -252,8 +252,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                         
                         vector p_rotated
                         (
-                            p.x() * c - p.y() * s,
-                            p.x() * s + p.y() * c,
+                            p.x() * c + p.y() * s,
+                            p.y() * c - p.x() * s,
                             p.z()
                         );
                         
