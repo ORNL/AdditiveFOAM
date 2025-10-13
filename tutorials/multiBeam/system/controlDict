@@ -81,7 +81,7 @@ functions
     #endif;
 
 
-    #ifeq ${ENABLE_MELTPOOL_DATA} true      
+    #ifeq ${ENABLE_MELTPOOL_DIMENSIONS} true      
         meltPoolDimensions
         {
             libs ("libadditiveFoamFunctionObjects.so");

@@ -26,7 +26,7 @@ done
 #export ENABLE_SOLIDIFICATION_DATA=true
 
 # meltPoolDimensions (optional - default: false)
-#export ENABLE_MELTPOOL_DATA=true
+#export ENABLE_MELTPOOL_DIMENSIONS=true
 
 # Enable ExaCA function object for '-withExaCA' flag
 if [ "$withExaCA" = true ]; then
