@@ -11,6 +11,7 @@ heatSourceModels/heatSourceModel/heatSourceModel.C
 heatSourceModels/heatSourceModel/heatSourceModelNew.C
 heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
+heatSourceModels/projectedGaussian/projectedGaussian.C
 
 movingHeatSourceModel/movingHeatSourceModel.C
 
