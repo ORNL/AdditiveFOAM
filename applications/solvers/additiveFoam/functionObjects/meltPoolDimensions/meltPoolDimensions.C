@@ -93,7 +93,7 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
                 new OFstream(logFileName)
             );
             
-            logFilePtrs_[i] << "Time,Length,Width,Depth" << endl;
+            logFilePtrs_[i] << "time(s),length(m),width(m),depth(m)" << endl;
         }
     }
 }
