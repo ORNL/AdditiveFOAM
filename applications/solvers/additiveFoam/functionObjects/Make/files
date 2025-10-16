@@ -1,4 +1,5 @@
 ExaCA/ExaCA.C
 solidificationData/solidificationData.C
+meltPoolDimensions/meltPoolDimensions.C
 
 LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamFunctionObjects
