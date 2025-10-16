@@ -9,36 +9,28 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volScalarField;
-    object      T;
+    class       dictionary;
+    object      createScanPathDict;
 }
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 0 0 1 0 0 0];
+minPoint    (0.0 -1e-4);
 
-internalField   uniform 300;
+maxPoint    (0.002 1e-4);
 
-boundaryField
-{
-    bottom
-    {
-        type            fixedValue;
-        value           uniform 300;
-    }
-    top
-    {
-        type            mixedTemperature;
-        h               10.0;
-        emissivity      0.4;
-        Tinf            uniform 300;
-        value           uniform 300;
-    }
-    sides
-    {
-        type            fixedValue;
-        value           uniform 300;
-    }
-}
+angle       180;
 
+hatch       1e-4;
+
+nRotations  2;
+
+power       195;
+
+speed       0.8;
+
+dwellTime   5e-4;
+
+biDirection true;
 
 // ************************************************************************* //

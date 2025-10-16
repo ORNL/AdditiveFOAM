@@ -29,7 +29,6 @@ jobs:
       - name: Build AdditiveFOAM
         run: |
           . /opt/openfoam10/etc/bashrc
-          cd applications/solvers/additiveFoam
           ./Allwmake
       - name: Test AdditiveFOAM
         run: |

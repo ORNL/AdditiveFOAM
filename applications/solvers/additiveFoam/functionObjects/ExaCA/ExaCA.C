@@ -405,6 +405,8 @@ void Foam::functionObjects::ExaCA::interpolate()
         exacaPath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
     );
 
+    os << "x,y,z,tm,ts,cr" << endl;
+
     for(int i=0; i < data.size(); i++)
     {
         int n = data[i].size()-1;

@@ -43,6 +43,8 @@ namespace Foam
                             Struct Point Definition
 \*---------------------------------------------------------------------------*/
 
+const scalar tolerance = 1e-10;
+
 struct Point
 {
     scalar x;
@@ -171,8 +173,10 @@ struct BoundBox
     // Function to check if a point is inside the bounding box
     bool isInside( Point p )
     {
-        return p.x >= minPoint.x && p.x <= maxPoint.x && p.y >= minPoint.y &&
-               p.y <= maxPoint.y;
+        return p.x >= minPoint.x - tolerance &&
+               p.x <= maxPoint.x + tolerance &&
+               p.y >= minPoint.y - tolerance &&
+               p.y <= maxPoint.y + tolerance;
     }
 
     Line cropLine( const Line& line )
@@ -231,7 +235,7 @@ struct BoundBox
             ( x1 - x2 ) * ( y3 - y4 ) - ( y1 - y2 ) * ( x3 - x4 );
 
         // Lines are parallel or colinear, no intersection
-        if ( denominator == 0 )
+        if ( std::abs(denominator) < tolerance )
         {
             return intersection;
         }
@@ -242,7 +246,11 @@ struct BoundBox
         scalar u = -( ( x1 - x2 ) * ( y1 - y3 ) - ( y1 - y2 ) * ( x1 - x3 ) ) /
                    denominator;
 
-        if ( t >= 0 && t <= 1 && u >= 0 && u <= 1 )
+        if
+        (
+            ( t >= -tolerance && t <= 1.0 + tolerance )
+         && ( u >= -tolerance && u <= 1.0 + tolerance )
+        )
         {
             intersection.x = x1 + t * ( x2 - x1 );
             intersection.y = y1 + t * ( y2 - y1 );
@@ -341,6 +349,9 @@ struct Path
                 const bool bi_direction = true ) const
     {
         std::ofstream file( filename );
+
+        int precision = static_cast<int>(std::ceil(-std::log10(tolerance)));
+        file << std::fixed << std::setprecision(precision);
 
         file << "Mode\tX(m)\tY(m)\tZ(m)\tPower(W)\ttParam" << std::endl;
 
