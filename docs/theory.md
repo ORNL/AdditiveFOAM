@@ -1,5 +1,5 @@
 ---
-parent: AdditiveFOAM v1.0 User Guide
+parent: AdditiveFOAM v1.1 User Guide
 title: Theory
 nav_order: 2
 usemathjax: true
