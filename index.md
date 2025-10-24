@@ -51,7 +51,7 @@ If you use AdditiveFoam in your work, please cite the JOSS article [![DOI](https
 }
 ```
 
-Please also consider citing the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
+Please also consider citing the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15413241.svg)](https://doi.org/10.5281/zenodo.15413241) of the version you used as a software citation:
 ```bibtex
 @software{AdditiveFOAM_1.1.0,
   author       = {John Coleman and
