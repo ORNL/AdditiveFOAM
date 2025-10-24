@@ -29,21 +29,45 @@ We encourage you to contribute to AdditiveFOAM! Please check the [guidelines](ht
 
 
 ## Citing
-If you use AdditiveFoam in your work, please cite the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
+If you use AdditiveFoam in your work, please cite the JOSS article [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770):
 ```bibtex
-@software{AdditiveFOAM_1.0.0,
+@article{Coleman2025,
   author       = {John Coleman and
                   Kellis Kincaid and
                   Gerald L. Knapp and
                   Benjamin Stump and
-                  Alexander J. Plotkowski},
-  title        = {AdditiveFOAM: Release 1.0},
-  month        = jun,
-  year         = 2023,
+                  Samuel Temple Reeve and
+                  Matt Rolchigo and
+                  Alex Plotkowski},
+  title        = {AdditiveFOAM: A Continuum Multiphysics Code for Additive Manufacturing},
+  journal      = {Journal of Open Source Software},
+  year         = 2025,
+  publisher    = {The Open Journal},
+  volume       = {10},
+  number       = {109},
+  pages        = {7770}
+  doi          = {10.21105/joss.07770},
+  url          = {https://doi.org/10.21105/joss.07770}
+}
+```
+
+Please also consider citing the Zenodo DOI [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034098.svg)](https://doi.org/10.5281/zenodo.8034098) of the version you used as a software citation:
+```bibtex
+@software{AdditiveFOAM_1.1.0,
+  author       = {John Coleman and
+                  Kellis Kincaid and
+                  Gerald L. Knapp and
+                  Benjamin Stump and
+                  Samuel Temple Reeve and
+                  Matt Rolchigo and
+                  Alex Plotkowski},
+  title        = {AdditiveFOAM: A Continuum Multiphysics Code for Additive Manufacturing},
+  month        = may,
+  year         = 2025,
   publisher    = {Zenodo},
-  version      = {1.0.0},
-  doi          = {10.5281/zenodo.8034098},
-  url          = {https://doi.org/10.5281/zenodo.8034098}
+  version      = {1.1.0},
+  doi          = {10.5281/zenodo.15413241},
+  url          = {https://doi.org/10.5281/zenodo.15413241}
 }
 ```
 
