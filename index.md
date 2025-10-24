@@ -45,7 +45,7 @@ If you use AdditiveFoam in your work, please cite the JOSS article [![DOI](https
   publisher    = {The Open Journal},
   volume       = {10},
   number       = {109},
-  pages        = {7770}
+  pages        = {7770},
   doi          = {10.21105/joss.07770},
   url          = {https://doi.org/10.21105/joss.07770}
 }
