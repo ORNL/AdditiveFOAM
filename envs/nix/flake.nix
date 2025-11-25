@@ -13,18 +13,19 @@
     parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
+        "aarch64-linux"
       ];
 
       perSystem = { pkgs, inputs', ... }: {
         packages = rec {
           default = additivefoam;
             
-          openfoam = pkgs.callPackage ./nix/openfoam.nix { scotch = scotch; };
-          scotch = pkgs.callPackage ./nix/scotch.nix { };
+          openfoam = pkgs.callPackage ./openfoam.nix { scotch = scotch; };
+          scotch = pkgs.callPackage ./scotch.nix { };
           exaca = inputs'.exaca.packages.default;
 
-          additivefoam = pkgs.callPackage ./nix/additivefoam.nix {
-            src = self;
+          additivefoam = pkgs.callPackage ./additivefoam.nix {
+            src = ../..;
             version = "master";
             exaca = exaca;
             openfoam = openfoam;
@@ -32,7 +33,7 @@
         };
 
         imports = [
-          ./nix/dev.nix
+          ./dev.nix
         ];
       };
     }

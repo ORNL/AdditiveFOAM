@@ -14,8 +14,6 @@ stdenv.mkDerivation rec {
   inherit version;
   inherit src;
 
-  sourceRoot = ".";
-
   nativeBuildInputs = [
     makeWrapper
   ];
@@ -41,7 +39,7 @@ stdenv.mkDerivation rec {
 
     source ${openfoam.BASHRC} || true
 
-    APPS_DIR=$(pwd)/source/applications/solvers/additiveFoam
+    APPS_DIR=$(pwd)/applications/solvers/additiveFoam
 
     cd $APPS_DIR/movingHeatSource
     wmake libso
