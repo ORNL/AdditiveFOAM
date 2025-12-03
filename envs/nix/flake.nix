@@ -3,6 +3,11 @@
 {
   description = "An open-source CFD code for additive manufacturing built on OpenFOAM.";
 
+  nixConfig = {
+    extra-substituters = [ "https://additivefoam.cachix.org" ];
+    extra-trusted-public-keys = [ "additivefoam.cachix.org-1:T65eaaS9ruHWDuAohShjknS95viBv9QTCYcZrCHNXzU=" ];
+  };
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     exaca.url   = "github:LLNL/ExaCA?dir=envs/nix";
