@@ -126,6 +126,8 @@ let
     export C_INCLUDE_PATH="${flex}/include''${C_INCLUDE_PATH}"
     export CPLUS_INCLUDE_PATH="${flex}/include''${CPLUS_INCLUDE_PATH}"
 
+    wmakeLnIncludeAll
+
     ./Allwmake -j $NIX_BUILD_CORES -q
 
     runHook postBuild
