@@ -45,10 +45,7 @@ Foam::autoPtr<Foam::absorptionModel> Foam::absorptionModel::New
 
     Info<< "Selecting absorption model " << modelType << endl;
     
-    //- Look up model type from runtime selection table and throw error
-    //  if it doesn't exist
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    const auto cstrIter = dictionaryConstructorTablePtr_->find(modelType);
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {

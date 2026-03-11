@@ -83,8 +83,7 @@ public:
             const dictionary&
         );
 
-        //- Construct by mapping given mixedTypeFvPatchField
-        //  onto a new patch
+        //- Construct by mapping onto a new patch
         marangoniFvPatchVectorField
         (
             const marangoniFvPatchVectorField&,
@@ -93,11 +92,20 @@ public:
             const fvPatchFieldMapper&
         );
 
-        //- Disallow copy without setting internal field reference
+        //- Copy construct
         marangoniFvPatchVectorField
         (
             const marangoniFvPatchVectorField&
-        ) = delete;
+        );
+
+        //- Construct and return a clone
+        virtual tmp<fvPatchVectorField> clone() const
+        {
+            return tmp<fvPatchVectorField>
+            (
+                new marangoniFvPatchVectorField(*this)
+            );
+        }
 
         //- Copy constructor setting internal field reference
         marangoniFvPatchVectorField
@@ -125,15 +133,18 @@ public:
 
             //- Map (and resize as needed) from self given a mapping object
             //  Used to update fields following mesh topology change
-            virtual void autoMap(const fvPatchFieldMapper&);
+            virtual void autoMap
+            (
+                const fvPatchFieldMapper&
+            );
 
             //- Reverse map the given fvPatchField onto this fvPatchField
             //  Used to reconstruct fields
-            virtual void rmap(const fvPatchVectorField&, const labelList&);
-
-            //- Reset the fvPatchField to the given fvPatchField
-            //  Used for mesh to mesh mapping
-            virtual void reset(const fvPatchVectorField&);
+            virtual void rmap
+            (
+                const fvPatchVectorField&,
+                const labelList&
+            );
 
 
         // Evaluation functions

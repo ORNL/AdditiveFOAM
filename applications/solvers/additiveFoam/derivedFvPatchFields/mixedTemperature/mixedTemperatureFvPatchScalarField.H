@@ -38,9 +38,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-
-#ifndef BC_H
-#define BC_H
+#ifndef mixedTemperatureFvPatchScalarField_H
+#define mixedTemperatureFvPatchScalarField_H
 
 #include "mixedFvPatchFields.H"
 #include "Function1.H"
@@ -51,7 +50,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class mixedTemperatureFvPatchScalarField Declaration
+     Class mixedTemperatureFvPatchScalarField Declaration
 \*---------------------------------------------------------------------------*/
 
 class mixedTemperatureFvPatchScalarField
@@ -93,8 +92,7 @@ public:
             const dictionary&
         );
 
-        //- Construct by mapping given mixedTypeFvPatchField
-        //  onto a new patch
+        //- Construct by mapping onto a new patch
         mixedTemperatureFvPatchScalarField
         (
             const mixedTemperatureFvPatchScalarField&,
@@ -103,13 +101,22 @@ public:
             const fvPatchFieldMapper&
         );
 
-        //- Disallow copy without setting internal field reference
+        //- Copy construct
         mixedTemperatureFvPatchScalarField
         (
             const mixedTemperatureFvPatchScalarField&
-        ) = delete;
+        );
 
-        //- Copy constructor setting internal field reference
+        //- Construct and return a clone
+        virtual tmp<fvPatchScalarField> clone() const
+        {
+            return tmp<fvPatchScalarField>
+            (
+                new mixedTemperatureFvPatchScalarField(*this)
+            );
+        }
+
+        //- Construct as copy setting internal field reference
         mixedTemperatureFvPatchScalarField
         (
             const mixedTemperatureFvPatchScalarField&,
@@ -124,11 +131,7 @@ public:
         {
             return tmp<fvPatchScalarField>
             (
-                new mixedTemperatureFvPatchScalarField
-                (
-                    *this,
-                    iF
-                )
+                new mixedTemperatureFvPatchScalarField(*this, iF)
             );
         }
 
@@ -138,16 +141,17 @@ public:
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
-            //  Used to update fields following mesh topology change
-            virtual void autoMap(const fvPatchFieldMapper&);
+            virtual void autoMap
+            (
+                const fvPatchFieldMapper&
+            );
 
             //- Reverse map the given fvPatchField onto this fvPatchField
-            //  Used to reconstruct fields
-            virtual void rmap(const fvPatchScalarField&, const labelList&);
-
-            //- Reset the fvPatchField to the given fvPatchField
-            //  Used for mesh to mesh mapping
-            virtual void reset(const fvPatchScalarField&);
+            virtual void rmap
+            (
+                const fvPatchScalarField&,
+                const labelList&
+            );
 
 
         // Evaluation functions
@@ -157,7 +161,7 @@ public:
 
 
         //- Write
-        virtual void write(Ostream&) const;
+        virtual void write(Ostream& os) const;
 };
 
 

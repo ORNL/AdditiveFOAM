@@ -53,8 +53,8 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh)
 {
-    A_ = heatSourceModelCoeffs_.lookup<scalar>("A");
-    B_ = heatSourceModelCoeffs_.lookup<scalar>("B");
+    A_ = heatSourceModelCoeffs_.get<scalar>("A");
+    B_ = heatSourceModelCoeffs_.get<scalar>("B");
     
     // set initial shape function
     const scalar x_ =

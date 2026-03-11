@@ -29,7 +29,7 @@ const dimensionedScalar rho
 (
     "rho",
     dimDensity,
-    transportProperties.lookup("rho")
+    transportProperties
 );
 
 // Thermal expansion coefficient [1/K]
@@ -37,7 +37,7 @@ const dimensionedScalar beta
 (
     "beta",
     dimless/dimTemperature,
-    transportProperties.lookup("beta")
+    transportProperties
 );
 
 //- Length scale of mushy zone [m]
@@ -45,7 +45,7 @@ const dimensionedScalar DAS
 (
     "DAS",
     dimLength,
-    transportProperties.lookup("DAS")
+    transportProperties
 );
 
 //- Latent heat of fusion [J/kg]
@@ -53,7 +53,7 @@ const dimensionedScalar Lf
 (
     "Lf", 
     dimEnergy/dimMass, 
-    transportProperties.lookup("Lf")
+    transportProperties
 );
 
 //- Liquid dynamic viscosity [m^2/(kg s)]
@@ -61,7 +61,7 @@ const dimensionedScalar mu
 (
     "mu",
     dimDynamicViscosity,
-    transportProperties.lookup("mu")
+    transportProperties
 );
 
 //- Liquid kinematic viscosity [m^2/s]

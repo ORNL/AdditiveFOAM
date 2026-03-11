@@ -40,6 +40,7 @@ Description
 #include "movingHeatSourceModel.H"
 #include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
+#include "IFstream.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

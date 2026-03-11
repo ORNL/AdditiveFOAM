@@ -62,7 +62,7 @@ Foam::functionObjects::solidificationData::solidificationData
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    T_(mesh_.lookupObject<VolField<scalar>>("T")),
+    T_(mesh_.lookupObject<volScalarField>("T")),
     R_
     (
         IOobject
@@ -93,8 +93,8 @@ Foam::functionObjects::solidificationData::~solidificationData()
 
 bool Foam::functionObjects::solidificationData::read(const dictionary& dict)
 {
-    box_ = dict.lookup("box");
-    isoValue_ = dict.lookup<scalar>("isoValue");
+    box_ = dict.get<boundBox>("box");
+    isoValue_ = dict.get<scalar>("isoValue");
     
     return true;
 }
@@ -158,7 +158,7 @@ bool Foam::functionObjects::solidificationData::execute()
         if ((T0_[celli] > isoValue_) && (T_[celli] <= isoValue_))
         {
             const scalar Ri = mag(R_[celli]);
-            const scalar Gi = max(G[celli], small);
+            const scalar Gi = max(G[celli], SMALL);
 
             const vector pt = mesh_.C()[celli];
 

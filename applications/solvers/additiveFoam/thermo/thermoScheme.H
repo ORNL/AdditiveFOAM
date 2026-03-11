@@ -1,5 +1,5 @@
 //- Construct the temperature equation for the chosen time integration scheme
-word ddtScheme = mesh.schemes().ddt(T.name());
+word ddtScheme(mesh.ddtScheme(T.name()));
 
 if
 (
@@ -56,7 +56,7 @@ else
                 fv::ddtScheme<scalar>::New
                 (
                     mesh,
-                    mesh.schemes().ddt(ddtScheme)
+                    mesh.ddtScheme(ddtScheme)
                 )()
             ).ocCoeff();
 

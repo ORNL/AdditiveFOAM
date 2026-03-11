@@ -56,7 +56,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 )
 :
     transformFvPatchField<vector>(p, iF),
-    dSigmadT_(dict.lookup<scalar>("dSigmadT")),
+    dSigmadT_(dict.get<scalar>("dSigmadT")),
     Tmax_(dict.lookupOrDefault<scalar>("Tmax", GREAT))
 {
     evaluate();
@@ -76,6 +76,15 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
     Tmax_(ptf.Tmax_)
 {}
 
+Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
+(
+    const marangoniFvPatchVectorField& ptf
+)
+:
+    transformFvPatchVectorField(ptf),
+    dSigmadT_(ptf.dSigmadT_),
+    Tmax_(ptf.Tmax_)
+{}
 
 Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 (
@@ -110,15 +119,6 @@ void Foam::marangoniFvPatchVectorField::rmap
 }
 
 
-void Foam::marangoniFvPatchVectorField::reset
-(
-    const fvPatchVectorField& ptf
-)
-{
-    transformFvPatchVectorField::reset(ptf);
-}
-
-
 Foam::tmp<Foam::vectorField>
 Foam::marangoniFvPatchVectorField::snGrad() const
 {
@@ -139,7 +139,12 @@ Foam::marangoniFvPatchVectorField::snGrad() const
     const dictionary& dict_ =
         db().lookupObject<IOdictionary>("transportProperties");
 
-    dimensionedScalar mu_("mu", dimDynamicViscosity, dict_.lookup("mu"));
+    dimensionedScalar mu_
+    (
+        "mu",
+        dimDynamicViscosity,
+        dict_.get<dimensionedScalar>("mu").value()
+    );
 
     scalar coeff_(dSigmadT_ / mu_.value());
 
@@ -187,9 +192,9 @@ Foam::marangoniFvPatchVectorField::snGradTransformDiag() const
 void Foam::marangoniFvPatchVectorField::write(Ostream& os) const
 {
     transformFvPatchVectorField::write(os);
-    writeEntry(os, "dSigmadT", dSigmadT_);
-    writeEntry(os, "Tmax", Tmax_);
-    writeEntry(os, "value", *this);
+    os.writeEntry("dSigmadT", dSigmadT_);
+    os.writeEntry("Tmax", Tmax_);
+    transformFvPatchVectorField::writeValueEntry(os);
 }
 
 

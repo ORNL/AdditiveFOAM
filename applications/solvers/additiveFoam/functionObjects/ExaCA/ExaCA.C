@@ -62,7 +62,7 @@ Foam::functionObjects::ExaCA::ExaCA
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    T_(mesh_.lookupObject<VolField<scalar>>("T")),
+    T_(mesh_.lookupObject<volScalarField>("T")),
     vpi_(mesh_),
     Tp_
     (
@@ -94,11 +94,11 @@ Foam::functionObjects::ExaCA::~ExaCA()
 
 bool Foam::functionObjects::ExaCA::read(const dictionary& dict)
 {
-    box_ = dict.lookup("box");
+    box_ = dict.get<boundBox>("box");
     
-    isoValue_ = dict.lookup<scalar>("isoValue");
+    isoValue_ = dict.get<scalar>("isoValue");
     
-    dx_  = dict.lookup<scalar>("dx");
+    dx_ = dict.get<scalar>("dx");
 
     return true;
 }

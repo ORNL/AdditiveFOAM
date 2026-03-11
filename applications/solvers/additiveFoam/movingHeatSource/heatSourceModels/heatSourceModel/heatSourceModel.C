@@ -50,7 +50,7 @@ Foam::IOobject Foam::heatSourceModel::createIOobject
     const fvMesh& mesh
 ) const
 {
-    typeIOobject<IOdictionary> io
+    IOobject io
     (
         dict.name(),
         mesh.time().constant(),
@@ -59,16 +59,16 @@ Foam::IOobject Foam::heatSourceModel::createIOobject
         IOobject::NO_WRITE
     );
 
-    if (io.headerOk())
+    if (io.typeHeaderOk<IOdictionary>(true))
     {
         io.readOpt() = IOobject::MUST_READ_IF_MODIFIED;
-        return io;
     }
     else
     {
         io.readOpt() = IOobject::NO_READ;
-        return io;
     }
+    
+    return io;
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -99,18 +99,18 @@ Foam::heatSourceModel::heatSourceModel
         movingBeam::New(sourceName_, heatSourceDict_, mesh_.time());
 
     dimensions_ =
-        heatSourceModelCoeffs_.lookup<vector>("dimensions");
+        heatSourceModelCoeffs_.get<vector>("dimensions");
 
     staticDimensions_ = dimensions_;
 
     transient_ =
-        heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
+        heatSourceModelCoeffs_.getOrDefault<Switch>("transient", false);
 
     isoValue_ =
-        heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
+        heatSourceModelCoeffs_.getOrDefault<scalar>("isoValue", GREAT);
 
     nPoints_ = 
-        heatSourceModelCoeffs_.lookupOrDefault<labelVector>
+        heatSourceModelCoeffs_.getOrDefault<labelVector>
         (
             "nPoints",
             vector::one
@@ -242,7 +242,7 @@ Foam::heatSourceModel::qDot()
     // sample gaussian distribution at desired resolution
     const scalar power_ = movingBeam_->power();
 
-    if (power_ > small)
+    if (power_ > SMALL)
     {
         const vector position_ = movingBeam_->position();
 
@@ -305,7 +305,7 @@ Foam::heatSourceModel::qDot()
                     labelVector nCellPoints =
                         max
                         (
-                            cmptDivide(cellBb.span() + small*vector::one, dx_),
+                            cmptDivide(cellBb.span() + SMALL*vector::one, dx_),
                             vector::one
                         );
 

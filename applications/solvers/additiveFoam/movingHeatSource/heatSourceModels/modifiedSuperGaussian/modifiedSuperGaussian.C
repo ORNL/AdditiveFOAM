@@ -53,8 +53,8 @@ Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh)
 {
-    k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
-    m_ = heatSourceModelCoeffs_.lookup<scalar>("m");
+    k_ = heatSourceModelCoeffs_.get<scalar>("k");
+    m_ = heatSourceModelCoeffs_.get<scalar>("m");
 }
 
 

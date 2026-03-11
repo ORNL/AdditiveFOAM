@@ -50,20 +50,20 @@ int main(int argc, char *argv[])
         )
     );
     
-    point2D p0 = dict.lookup<point2D>("minPoint");
+    point2D p0 = dict.get<point2D>("minPoint");
     Point minPoint(p0.x(), p0.y());
 
-    point2D p1 = dict.lookup<point2D>("maxPoint");
+    point2D p1 = dict.get<point2D>("maxPoint");
     Point maxPoint(p1.x(), p1.y());   
     
-    scalar angle = dict.lookup<scalar>("angle");
-    scalar hatch = dict.lookup<scalar>("hatch");
+    scalar angle = dict.get<scalar>("angle");
+    scalar hatch = dict.get<scalar>("hatch");
     
-    label nRotations = dict.lookup<label>("nRotations");
+    label nRotations = dict.get<label>("nRotations");
     
-    scalar power = dict.lookup<scalar>("power");
-    scalar speed = dict.lookup<scalar>("speed");
-    scalar dwellTime = dict.lookup<scalar>("dwellTime");
+    scalar power = dict.get<scalar>("power");
+    scalar speed = dict.get<scalar>("speed");
+    scalar dwellTime = dict.get<scalar>("dwellTime");
     
     bool biDirection = dict.lookupOrDefault<bool>("biDirection", true);
     

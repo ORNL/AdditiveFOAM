@@ -129,7 +129,7 @@ void Foam::movingHeatSourceModel::update()
             
             scalar sumWeights = 0.0;
 
-            while ((nextTime - pathTime) > small)
+            while ((nextTime - pathTime) > SMALL)
             {
                 scalar dt = min(beam_dt, max(0, nextTime - pathTime));
 

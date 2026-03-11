@@ -16,18 +16,11 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | [tutorials](tutorials)                                     | Tutorial cases |
 
 ## Installation and Dependencies
-[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
+[![OpenFOAM-v2406](https://img.shields.io/badge/OpenFOAM-v2406-blue.svg)](https://gitlab.com/openfoam/core/openfoam/-/tree/OpenFOAM-v2406?ref_type=tags)
 
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM).
+This version of AdditiveFOAM is built on source code released by [openfoam.com](https://openfoam.com/), which is available in public [OpenFOAM repositories](https://gitlab.com/openfoam/core/openfoam/-/tree/OpenFOAM-v2406?ref_type=tags).
 
-[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
-
-The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedocs.io/en/latest/):  
-```
-spack install additivefoam
-```
-
-See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
+Once OpenFOAM-v2406 is build in your system, you can build AdditiveFOAM with the `Allwmake` script provided in the main directory.
 
 ## Citing
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770)

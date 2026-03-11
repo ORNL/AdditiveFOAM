@@ -9,7 +9,7 @@ dimensionedScalar Tmax
 (
     "Tmax",
     T.dimensions(),
-    pimple.dict().lookupOrDefault<scalar>("Tmax", vGreat)
+    pimple.dict().lookupOrDefault<scalar>("Tmax", VGREAT)
 );
 
 // Integrate the total power input to domain
@@ -18,9 +18,9 @@ const scalar totalPower = fvc::domainIntegrate(sources.qDot()).value();
 Info<< "absorbed power: " << totalPower << endl;
 
 //- prevent iteration of PIMPLE and THERMO where needed
-bool beamOn(totalPower > small);
+bool beamOn(totalPower > SMALL);
 
-bool fluidInDomain((1 - gMin(alpha1)) > small);
+bool fluidInDomain((1 - gMin(alpha1)) > SMALL);
 
 if (!(beamOn || fluidInDomain))
 {

@@ -61,7 +61,7 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    T_(mesh_.lookupObject<VolField<scalar>>("T"))
+    T_(mesh_.lookupObject<volScalarField>("T"))
 {
     read(dict);
     
@@ -109,8 +109,8 @@ Foam::functionObjects::meltPoolDimensions::~meltPoolDimensions()
 
 bool Foam::functionObjects::meltPoolDimensions::read(const dictionary& dict)
 {
-    isoValues_ = dict.lookup<scalarList>("isoValues");
-    scanPathAngle_ = dict.lookupOrDefault<scalar>("scanPathAngle", 0.0);
+    isoValues_ = dict.get<scalarList>("isoValues");
+    scanPathAngle_ = dict.getOrDefault<scalar>("scanPathAngle", 0.0);
     
     return true;
 }
