@@ -51,7 +51,7 @@ $path/reconstructLayers
 # Reconstruct function object data to layer directories
 if [ "$ENABLE_EXACA_DATA" = true ]; then
     for d in layer*; do
-        echo "x,y,z,tm,ts,cr" > "$d/ExaCA/time-temperature.csv"
+        sed '1q' "$d/ExaCA/data_"* > "$d/ExaCA/time-temperature.csv"
         tail -q -n+2 "$d/ExaCA/data_"* >> "$d/ExaCA/time-temperature.csv"
         rm -rf "$d/ExaCA/data_"*
     done
@@ -59,7 +59,7 @@ fi
 
 if [ "$ENABLE_SOLIDIFICATION_DATA" = true ]; then
     for d in layer*; do    
-        echo "x,y,z,ts,cr,g,v" > "$d/solidificationData/solidification-data.csv"
+        sed '1q' "$d/solidificationData/data_"* > "$d/solidificationData/solidification-data.csv"
         tail -q -n+2 "$d/solidificationData/data_"* >> "$d/solidificationData/solidification-data.csv"
         rm -rf "$d/solidificationData/data_"*
     done
