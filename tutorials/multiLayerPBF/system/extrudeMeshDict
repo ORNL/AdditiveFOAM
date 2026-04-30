@@ -21,13 +21,12 @@ sourcePatches   (top);
 
 flipNormals     false;
 
-nLayers         0;
-expansionRatio  1;
-
 extrudeModel    linearDirection;
 
 linearDirectionCoeffs
 {
+    nLayers         0;
+    expansionRatio  1;
     direction       (0 0 1);
     thickness       0;
 }

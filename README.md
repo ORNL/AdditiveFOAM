@@ -16,7 +16,7 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | [tutorials](tutorials)                                     | Tutorial cases |
 
 ## Installation and Dependencies
-[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
+[![OpenFOAM-13](https://img.shields.io/badge/OpenFOAM-13-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-13)
 
 AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM).
 

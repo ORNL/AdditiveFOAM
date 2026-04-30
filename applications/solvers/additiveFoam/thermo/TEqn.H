@@ -7,7 +7,7 @@
         IOobject
         (
             "dFdT",
-            runTime.timeName(),
+            runTime.name(),
             mesh
         ),
         mesh,

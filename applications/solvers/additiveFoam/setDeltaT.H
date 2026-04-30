@@ -5,9 +5,8 @@ if (adjustTimeStep)
 
     const volScalarField::Internal alphaNum
     (
-        mag(fvc::ddt(T))()()
-       /(Tliq - Tsol)
-      *runTime.deltaT()
+        mag(fvc::ddt(T)) / (Tliq - Tsol)
+       *runTime.deltaT()
     );
 
     alphaCoNum = gMax(alphaNum);
@@ -23,8 +22,8 @@ if (adjustTimeStep)
             mesh.magSf()
            *fvc::interpolate(kappa)
            *mesh.surfaceInterpolation::deltaCoeffs()
-        )()()
-       /(mesh.V()*rho.value()*Cp())
+        )
+       /(mesh.V()*rho*Cp)
        *runTime.deltaT()
     );
 

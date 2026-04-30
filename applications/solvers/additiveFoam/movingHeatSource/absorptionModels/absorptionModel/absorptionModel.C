@@ -52,7 +52,7 @@ Foam::IOobject Foam::absorptionModel::createIOobject
     typeIOobject<IOdictionary> io
     (
         dict.name(),
-        mesh.time().timeName(),
+        mesh.time().name(),
         mesh.thisDb(),
         IOobject::MUST_READ,
         IOobject::NO_WRITE

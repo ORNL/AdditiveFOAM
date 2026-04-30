@@ -68,7 +68,7 @@ Foam::functionObjects::solidificationData::solidificationData
         IOobject
         (
             "R",
-            mesh_.time().timeName(),
+            mesh_.time().name(),
             mesh_,
             IOobject::NO_READ,
             IOobject::NO_WRITE

@@ -69,7 +69,7 @@ Foam::functionObjects::ExaCA::ExaCA
         IOobject
         (
             "Tp_",
-            runTime.timeName(),
+            runTime.name(),
             mesh_,
             IOobject::NO_READ,
             IOobject::NO_WRITE

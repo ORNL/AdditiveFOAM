@@ -228,7 +228,7 @@ Foam::heatSourceModel::qDot()
             IOobject
             (
                 "qDot_",
-                mesh_.time().timeName(),
+                mesh_.time().name(),
                 mesh_,
                 IOobject::NO_READ,
                 IOobject::NO_WRITE
@@ -265,7 +265,7 @@ Foam::heatSourceModel::qDot()
             IOobject
             (
                 "weights",
-                mesh_.time().timeName(),
+                mesh_.time().name(),
                 mesh_,
                 IOobject::NO_READ,
                 IOobject::NO_WRITE

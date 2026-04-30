@@ -1,0 +1,4 @@
+graph/curve.C
+graph/graph.C
+
+LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamUtilities

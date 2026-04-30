@@ -28,13 +28,17 @@ Application
 
 \*---------------------------------------------------------------------------*/
 
+#include "argList.H"
+#include "Time.H"
 #include "createFields.H"
+#include "point2D.H"
+
+using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
-{
-
+{    
     #include "setRootCase.H"
     #include "createTime.H"
     

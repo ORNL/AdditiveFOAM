@@ -36,7 +36,7 @@ do
     caseList+=("$baseDir/$layer")
 done
 nLayers=${#caseList[@]}
-echo "Found $nLayers parallel-in-time layers in $baseDir"
+echo "Found $nLayers layers in $baseDir"
 
 for (( layer=$(($nLayers-1)); layer>=0; layer-- ))
 do

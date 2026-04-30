@@ -54,7 +54,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         IOobject
         (
             "qDot",
-            mesh_.time().timeName(),
+            mesh_.time().name(),
             mesh_,
             IOobject::READ_IF_PRESENT,
             IOobject::NO_WRITE
@@ -120,7 +120,7 @@ void Foam::movingHeatSourceModel::update()
                 IOobject
                 (
                     "qDoti",
-                    mesh_.time().timeName(),
+                    mesh_.time().name(),
                     mesh_
                 ),
                 mesh_,

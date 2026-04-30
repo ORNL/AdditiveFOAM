@@ -138,14 +138,14 @@ do
 
     if [ $layer -gt 0 ]
     then   
-        nLayers0="$(foamDictionary -entry nLayers -value $previous/system/extrudeMeshDict)"
+        nLayers0="$(foamDictionary -entry linearDirectionCoeffs/nLayers -value $previous/system/extrudeMeshDict)"
         thickness0="$(foamDictionary -entry linearDirectionCoeffs/thickness -value $previous/system/extrudeMeshDict)"
         thickness=`awk "BEGIN {print $thickness0 + $layerThickness; exit}"`
 
-        foamDictionary -entry nLayers -set "$(($nLayers0+$nCellsPerLayer))" $case/system/extrudeMeshDict
+        foamDictionary -entry linearDirectionCoeffs/nLayers -set "$(($nLayers0+$nCellsPerLayer))" $case/system/extrudeMeshDict
         foamDictionary -entry linearDirectionCoeffs/thickness -set "$thickness" $case/system/extrudeMeshDict
 
-        extrudeMesh -case $case > /dev/null 2>&1
+        extrudeMesh -case $case
     fi
 done
 

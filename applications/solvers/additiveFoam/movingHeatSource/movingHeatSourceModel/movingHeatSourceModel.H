@@ -40,7 +40,6 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "fvCFD.H"
 #include "heatSourceModel.H"
 #include "movingBeam.H"
 

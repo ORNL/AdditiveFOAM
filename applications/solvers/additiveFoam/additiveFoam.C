@@ -31,58 +31,88 @@ Description
     simulations.
     
 \*---------------------------------------------------------------------------*/
-#include "additiveFoamInfo.H"
-#include "fvCFD.H"
+
+#include "argList.H"
+#include "timeSelector.H"
+#include "zeroGradientFvPatchFields.H"
+#include "IFstream.H"
+#include "uniformDimensionedFields.H"
+#include "pressureReference.H"
+#include "findRefCell.H"
+
+#include "fvmDiv.H"
+#include "fvmDdt.H"
+#include "fvcSurfaceIntegrate.H"
+#include "fvcVolumeIntegrate.H"
+#include "fvmLaplacian.H"
+#include "constrainPressure.H"
+#include "constrainHbyA.H"
 #include "pimpleControl.H"
-#include "graph.H"
+#include "fvCorrectPhi.H"
 #include "Polynomial.H"
-#include "interpolateXY/interpolateXY.H"
-#include "movingHeatSourceModel.H"
+
 #include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
+
+// AdditiveFOAM Headers
+#include "additiveFoamInfo.H"
+#include "movingHeatSourceModel.H"
+#include "graph.H"
+#include "interpolateXY.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
-{       
+{
+    using namespace Foam;
+      
     #include "postProcess.H"    
     #include "setRootCase.H"
+    
     AdditiveFoamInfo::write();
+    
     #include "createTime.H"
     #include "createMesh.H"
-    #include "createControl.H"
+    #include "createDyMControls.H"
     #include "createFields.H"
-    #include "createTimeControls.H"
     #include "initContinuityErrs.H"
     
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+    // Initialize time-stepping controls
     scalar DiNum = 0.0;
     scalar alphaCoNum = 0.0;
     movingHeatSourceModel sources(mesh);
 
     Info<< "\nStarting time loop\n" << endl;
-
+    
     while (runTime.run())
     {
         #include "updateProperties.H"
 
-        #include "readTimeControls.H"
+        #include "readDyMControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
         sources.update();
-        
+
+        mesh.update();
+                
         runTime++;
 
-        Info<< "Time = " << runTime.timeName() << nl << endl;
+        Info<< "Time = " << runTime.name() << nl << endl;
 
         #include "solutionControls.H"
-        
-        while (pimple.loop() && fluidInDomain)
+             
+        while (pimple.loop())
         {
-            #include "pU/UEqn.H"
-            #include "pU/pEqn.H"
+            #include "moveMesh.H"
+            
+            if (fluidInDomain)
+            {
+                #include "pU/UEqn.H"
+                #include "pU/pEqn.H"    
+            }
         }
 
         #include "thermo/TEqn.H"
@@ -93,7 +123,7 @@ int main(int argc, char *argv[])
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-
+    
     return 0;
 }
 

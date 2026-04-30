@@ -40,8 +40,8 @@ if (explicitSolve)
             mesh.magSf()
            *fvc::interpolate(kappa)
            *mesh.surfaceInterpolation::deltaCoeffs()
-        )()()
-       /(mesh.V()*rho.value()*Cp())
+        )
+       /(mesh.V()*rho*Cp)
        *runTime.deltaT()
     );
 
