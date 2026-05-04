@@ -87,7 +87,6 @@ Foam::heatSourceModel::heatSourceModel
     heatSourceDict_(dict),
     sourceDict_(heatSourceDict_.optionalSubDict(sourceName_)),
     heatSourceModelCoeffs_(sourceDict_.optionalSubDict(type + "Coeffs")),
-    
     mesh_(mesh),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)

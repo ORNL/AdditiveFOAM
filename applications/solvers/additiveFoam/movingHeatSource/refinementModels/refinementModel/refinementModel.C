@@ -127,7 +127,9 @@ Foam::refinementModel::refinementModel
     //- Set AMR update end time to minimum of solution time and max beam time
     forAll(sources_, i)
     {
-        endTime_ = max(sources_[i].beam().endTime(), endTime_);
+        const movingBeam& beam_ = sources_[i].beam();
+        
+        endTime_ = max(beam_.endTime(), endTime_);
     }
 
     endTime_ = min(endTime_, mesh.time().endTime().value());

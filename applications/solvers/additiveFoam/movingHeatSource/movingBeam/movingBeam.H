@@ -151,25 +151,25 @@ public:
     // Member Functions
     
         //- Return current position of the moving beam
-        inline vector position()
+        inline vector position() const
         {
             return position_;
         }
 
         //- Return current power of the moving beam
-        inline scalar power()
+        inline scalar power() const
         {
             return power_;
         }
 
         //- Return time step for path       
-        inline scalar deltaT()
+        inline scalar deltaT() const
         {
             return deltaT_;
         }
 
         //- Return path end time
-        inline scalar endTime()
+        inline scalar endTime() const
         {
             return endTime_;
         }

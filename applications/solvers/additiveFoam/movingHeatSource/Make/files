@@ -13,9 +13,9 @@ heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
 heatSourceModels/projectedGaussian/projectedGaussian.C
 
-# refinementModels/refinementModel/refinementModel.C
-# refinementModels/refinementModel/refinementModelNew.C
-# refinementModels/norefinementModel/norefinementModel.C
+refinementModels/refinementModel/refinementModel.C
+refinementModels/refinementModel/refinementModelNew.C
+refinementModels/norefinementModel/norefinementModel.C
 # refinementModels/timeStep/timeStep.C
 # refinementModels/staticTimeIntervals/staticTimeIntervals.C
 # refinementModels/dynamicTimeIntervals/dynamicTimeIntervals.C

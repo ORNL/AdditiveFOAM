@@ -157,32 +157,32 @@ public:
 
     // Member Functions
     
-        //- Return access to the movingBeam instance
-        movingBeam& beam()
+        //- Return const access to the movingBeam instance
+        inline const movingBeam& beam() const
         {
             return movingBeam_();
         }
-
+        
         //- Return boolean of heat source type
-        Switch transient()
+        inline Switch transient() const
         {
             return transient_;
         }
 
         //- Return scalar of the isovalue
-        scalar isoValue()
+        inline scalar isoValue() const
         {
             return isoValue_;
         }
 
         //- Return vector of current heat source dimensions
-        const vector dimensions() const
+        inline vector dimensions() const
         {
             return dimensions_;
         }
 
         //- Return vector of original heat source dimensions
-        vector staticDimensions()
+        inline vector staticDimensions() const
         {
             return staticDimensions_;
         }
