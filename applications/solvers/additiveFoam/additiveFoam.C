@@ -54,7 +54,6 @@ Description
 #include "EulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
 
-// AdditiveFOAM Headers
 #include "additiveFoamInfo.H"
 #include "movingHeatSourceModel.H"
 #include "graph.H"

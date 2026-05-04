@@ -151,25 +151,29 @@ public:
     // Member Functions
     
         //- Return current position of the moving beam
-        inline vector position() const
+        inline vector position()
         {
             return position_;
         }
 
         //- Return current power of the moving beam
-        inline scalar power() const
+        inline scalar power()
         {
             return power_;
         }
-        
-        scalar deltaT() const
+
+        //- Return time step for path       
+        inline scalar deltaT()
         {
             return deltaT_;
         }
 
-        //- Read the path file
-        void readPath();
-        
+        //- Return path end time
+        inline scalar endTime()
+        {
+            return endTime_;
+        }
+                
         //- Returns true if the simulation time is less than path endTime
         bool activePath();
         
@@ -181,6 +185,9 @@ public:
 
         //- Adjust solution time step to hit pathInterval
         void adjustDeltaT(scalar& dt);
+        
+        //- Read the path file
+        void readPath();
 };
 
 

@@ -24,24 +24,26 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceModels::heatSourceModel
+    Foam::refinementModel::refinementModel
 
 Description
-    Abstract base class for heatSource models
+    Abstract base class for refinementModel models
 
 SourceFiles
-    heatSourceModel.C
+    refinementModel.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef heatSourceModel_H
-#define heatSourceModel_H
+#ifndef refinementModel_H
+#define refinementModel_H
 
+#include "labelVector.H"
+#include "hexMatcher.H"
 #include "dictionary.H"
 #include "volFields.H"
 #include "movingBeam.H"
-#include "absorptionModel.H"
-#include "labelVector.H"
+#include "treeBoundBox.H"
+#include "heatSourceModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,10 +51,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class heatSourceModel Declaration
+                     Class refinementModel Declaration
 \*---------------------------------------------------------------------------*/
 
-class heatSourceModel
+class refinementModel
 :
     public IOdictionary
 {
@@ -68,136 +70,113 @@ class heatSourceModel
 protected:
 
     // Protected data
-        
-        //- Name of heat source
-        const word& sourceName_;
-        
-        //- Main heat source dictionary
-        const dictionary& heatSourceDict_;
-        
-        //- Sub-dict for individual heat source
-        dictionary sourceDict_;
-        
-        //- Heat source model coefficient sub-dict
-        dictionary heatSourceModelCoeffs_;
-        
-        //- Pointer to mesh info
+    
+        //- PtrList to heatSourceModels
+        const PtrList<heatSourceModel>& sources_;
+
+        //- Pointer to mesh information
         const fvMesh& mesh_;
 
-        //- Flag for transient or static heat source dimensions
-        Switch transient_;
+        //- Main heat source dictionary
+        const dictionary& heatSourceDict_;
+                
+        //- Sub-dictionary for refinementModel entries
+        dictionary refinementDict_;
+        
+        //- Switch for refinementField generation
+        const bool refine_;
+                
+        //- Number of refinement levels
+        label nLevels_;
 
-        //- Isotherm depth tracked in transient heat source model
-        scalar isoValue_;
+        //- Temperature above which refinement occurs
+        scalar refinementTemperature_;
+        
+        //- Distance in (x, y, z) direction to refine from beam center
+        vector buffer_;
+        
+        //- End time of last beam
+        scalar endTime_;
 
-        //- Dimensions of the heat source (dynamic)
-        vector dimensions_;
-
-        //- Dimensions of the heat source (static)
-        vector staticDimensions_;
-
-        //- Number of points along heat source dimensions resolved by sampling
-        labelVector nPoints_;
-
-        //- AutoPtrs to absorption model and moving beam instances
-        autoPtr<absorptionModel> absorptionModel_;
-        autoPtr<movingBeam> movingBeam_;
+        //- Marker field for refinement operations
+        volScalarField refinementField_;
 
 public:
 
     //- Runtime type information
-    TypeName("heatSourceModel");
+    TypeName("refinementModel");
     
     //- Default heatSourceProperties dictionary name
-    static const word heatSourceDictName;
+    static const word refinementModelDictName;
     
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
         autoPtr,
-        heatSourceModel,
+        refinementModel,
         dictionary,
         (
-            const word& sourceName,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         ),
-        (sourceName, dict, mesh)
+        (sources, dict, mesh)
     );
 
 
     // Constructors
 
         //- Construct for mixture
-        heatSourceModel
+        refinementModel
         (
             const word& type,
-            const word& sourceName,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
         
         //- Disallow default bitwise copy construction
-        heatSourceModel(const heatSourceModel&);
+        refinementModel(const refinementModel&);
         
     // Selectors
 
         //- Return a reference to the selected heatSource model
-        static autoPtr<heatSourceModel> New
+        static autoPtr<refinementModel> New
         (
-            const word& sourceName,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
 
     //- Destructor
-    virtual ~heatSourceModel()
+    virtual ~refinementModel()
     {}
 
 
     // Member Functions
     
-        //- Return access to the movingBeam instance
-        movingBeam& beam()
+        //- Return the refinement marker field
+        virtual volScalarField refinementField()
         {
-            return movingBeam_();
-        }
-
-        //- Return boolean of heat source type
-        Switch transient()
-        {
-            return transient_;
-        }
-
-        //- Return scalar of the isovalue
-        scalar isoValue()
-        {
-            return isoValue_;
-        }
-
-        //- Return vector of current heat source dimensions
-        const vector dimensions() const
-        {
-            return dimensions_;
-        }
-
-        //- Return vector of original heat source dimensions
-        vector staticDimensions()
-        {
-            return staticDimensions_;
-        }
-
-        //- Update the transient heat source dimensions
-        void updateDimensions();
-
-        //- Return the volumetric heating field
-        virtual tmp<volScalarField> qDot();
-
-        //- Return the weight of the heat source distribution at a given point
-        virtual scalar weight(const vector& d) = 0;
-
-        //- Return the normalization volume for the integrated distribution
-        virtual dimensionedScalar V0() = 0;
+            return refinementField_;
+        };
+        
+        //- Set refinementField using temperature constraints
+        virtual void refineUsingTemperature();
+        
+        //- Refine along scan path until specified time
+        virtual void refineUsingTime(const scalar& refineTime);
+        
+        //- Refine along scan path until volume of refined region reaches
+        //  provided target. Returns time at which target is reached.
+        virtual dimensionedScalar refineUsingVolume
+        (
+            const dimensionedScalar& refineVol,
+            const scalar& minRefVol = 0.0
+        );
+    
+        //- Update refinementField
+        virtual bool update() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;
@@ -206,7 +185,7 @@ public:
     // Member Operators
 
         //- Disallow default bitwise assignment
-        void operator=(const heatSourceModel&) = delete;
+        void operator=(const refinementModel&) = delete;
 };
 
 
