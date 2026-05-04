@@ -92,27 +92,27 @@ public:
         //- Set position to provided value
         void setPosition(vector position);
 
-        scalar mode()
+        inline scalar mode() const
         {
             return mode_;
         }
         
-        point position()
+        inline point position() const
         {
             return position_;    
         }
                 
-        scalar power()
+        inline scalar power() const
         {
             return power_;
         }
         
-        scalar parameter()
+        inline scalar parameter() const
         {
             return parameter_;
         }
         
-        scalar time()
+        inline scalar time() const
         {
             return time_;
         }
