@@ -173,16 +173,16 @@ public:
         {
             return endTime_;
         }
-                
+ 
+         //- Returns the path index at the provided time
+        label getIndex(const scalar time) const;
+                       
         //- Returns true if the simulation time is less than path endTime
         bool activePath();
         
         //- Move the beam to the provided time
         void move(const scalar time);
         
-        //- Returns the path index at the provided time
-        label findIndex(const scalar time);
-
         //- Adjust solution time step to hit pathInterval
         void adjustDeltaT(scalar& dt);
         

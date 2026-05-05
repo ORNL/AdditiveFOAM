@@ -152,7 +152,7 @@ void Foam::refinementModel::refineUsingTemperature()
     refinementField_.correctBoundaryConditions();
 }
 
-void Foam::refinementModel::refineUsingTime(const Foam::scalar& refineTime)
+void Foam::refinementModel::refineUsingTime(const Foam::scalar& refinementTime)
 {
     //- Calculate the bounding box for each cell
     List<treeBoundBox> cellBbs(mesh_.nCells());
@@ -185,7 +185,7 @@ void Foam::refinementModel::refineUsingTime(const Foam::scalar& refineTime)
 
         vector offset_ = max(buffer_, 1.5*sources_[i].dimensions());
 
-        while ((min(beam_.endTime(), refineTime) - time_) > small)
+        while ((min(beam_.endTime(), refinementTime) - time_) > small)
         {
             vector position_ = beam_.position(time_);
 
@@ -222,12 +222,14 @@ void Foam::refinementModel::refineUsingTime(const Foam::scalar& refineTime)
                 timeToNextPath_ = path_.time() - time_;
             }
 
-            scalar dt_ = min(timeToNextPath_, max(0, refineTime - time_));
+            scalar dt_ = min(timeToNextPath_, max(0, refinementTime - time_));
 
             if (path_.mode() == 0)
             {
+                const vector dimensions_ = sources_[i].dimensions();
+                
                 const scalar scanTime_ =
-                    sources_[i].D2sigma() / path_.parameter();
+                    max(dimensions_.x(), dimensions_.y()) / path.parameter();
 
                 dt_ = min(timeToNextPath_, scanTime_);
             }
@@ -305,33 +307,35 @@ Foam::dimensionedScalar Foam::refinementModel::refineUsingVolume
             else if (cellBbs[celli].overlaps(beamBb))
             {
                 refinementField_[celli] = 1;
-		refVol += mesh_.V()[celli];
+		        refVol += mesh_.V()[celli];
             }
         }
 
         refinementField_.correctBoundaryConditions();
 
         //- Find minimum time step
-        label index = beam.findIndex(refTime);
-        segment path = beam.getSegment(index);
-        scalar timeToNextPath = path.time() - refTime;
+        label index_ = beam.findIndex(refTime);
+        segment path_ = beam.getSegment(index);
+        scalar timeToNextPath_ = path_.time() - refTime;
 
         //- If the path end time is directly hit, step to next path
-        while (mag(timeToNextPath) < small)
+        while (mag(timeToNextPath_) < small)
         {
-            index = index + 1;
-            path = beam.getSegment(index);
-            timeToNextPath = path.time() - refTime;
+            index_ = index_ + 1;
+            path_ = beam.getSegment(index);
+            timeToNextPath_ = path_.time() - refTime;
         }
 
-        dt = timeToNextPath;
+        dt = timeToNextPath_;
 
-        if (path.mode() == 0)
+        if (path_.mode() == 0)
         {
-            const scalar scanTime =
-                sources_[i].D2sigma() / path.parameter();
+            const vector dimensions_ = sources_[i].dimensions();
+            
+            const scalar scanTime_ =
+                max(dimensions_.x(), dimensions_.y()) / path_.parameter();
 
-            dt = min(dt, scanTime);
+            dt = min(dt, scanTime_);
         }
     }
 

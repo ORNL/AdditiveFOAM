@@ -249,7 +249,7 @@ Foam::heatSourceModel::qDot()
         const scalar aspectRatio = 
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
-        dimensionedScalar absorbedPower
+        const dimensionedScalar absorbedPower
         (
             "etaP",
             dimPower,

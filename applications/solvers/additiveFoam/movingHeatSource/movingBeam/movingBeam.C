@@ -66,7 +66,7 @@ Foam::movingBeam::movingBeam
     readPath();
     
     //- Initialize the path index
-    index_ = findIndex(runTime_.value());
+    index_ = getIndex(runTime_.value());
     
     Info << "Initial path index: " << index_ << endl;
     
@@ -157,7 +157,7 @@ bool Foam::movingBeam::activePath()
 void Foam::movingBeam::move(const scalar time)
 {
     // update the current index of the path
-    index_ = findIndex(time);
+    index_ = getIndex(time);
 
     const label i = index_;
 
@@ -194,7 +194,7 @@ void Foam::movingBeam::move(const scalar time)
 
 
 Foam::label
-Foam::movingBeam::findIndex(const scalar time)
+Foam::movingBeam::getIndex(const scalar time) const
 {
     label i = index_;
 
