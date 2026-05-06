@@ -211,7 +211,7 @@ void Foam::refinementModel::refineUsingTime(const Foam::scalar& refinementTime)
 
             //- Calculate time step required to resolve beam motion on mesh
             label index_ = beam_.findIndex(time_);
-            segment path_ = beam_.getSegment(index_);
+            pathVector path_ = beam_.getSegment(index_);
             scalar timeToNextPath_ = path_.time() - time_;
 
             //- If the path end time is directly hit, step to next path

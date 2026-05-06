@@ -156,7 +156,13 @@ public:
 
 
     // Member Functions
-    
+
+        //- Return const access to the movingBeam instance
+        inline movingBeam& beam()
+        {
+            return movingBeam_();
+        }
+          
         //- Return const access to the movingBeam instance
         inline const movingBeam& beam() const
         {

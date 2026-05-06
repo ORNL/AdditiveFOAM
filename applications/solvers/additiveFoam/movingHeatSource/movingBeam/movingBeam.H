@@ -42,7 +42,7 @@ SourceFiles
 
 #include <fstream>
 #include "fvc.H"
-#include "segment.H"
+#include "pathVector.H"
 #include "HashTable.H"
 #include "absorptionModel.H"
 #include "DynamicList.H"
@@ -73,8 +73,8 @@ private:
         //- Individual beam sub-dict
         const dictionary& beamDict_;
 
-        //- List of beam segments
-        DynamicList<segment> path_;
+        //- List of beam pathVectors
+        DynamicList<pathVector> path_;
         
         //- Index of path
         label index_;
@@ -91,7 +91,7 @@ private:
         //- Time step used for heat source integration
         scalar deltaT_;
         
-        //- Adjust solution time to hit path segment start times? (d = true)
+        //- Adjust solution time to hit path vector start times?
         bool hitPathIntervals_;
 
     // Static Data Members
@@ -178,13 +178,13 @@ public:
         label getIndex(const scalar time) const;
                        
         //- Returns true if the simulation time is less than path endTime
-        bool activePath();
-        
+        bool activePath() const;
+                
+        //- Adjust solution time step to hit pathInterval
+        void adjustDeltaT(scalar& dt) const;
+
         //- Move the beam to the provided time
         void move(const scalar time);
-        
-        //- Adjust solution time step to hit pathInterval
-        void adjustDeltaT(scalar& dt);
         
         //- Read the path file
         void readPath();
