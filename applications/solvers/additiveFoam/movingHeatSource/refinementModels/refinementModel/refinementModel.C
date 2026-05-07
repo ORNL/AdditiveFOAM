@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "refinementModel.H"
+#include "fvc.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -60,14 +61,322 @@ Foam::IOobject Foam::refinementModel::createIOobject
     if (io.headerOk())
     {
         io.readOpt() = IOobject::MUST_READ_IF_MODIFIED;
-        return io;
     }
     else
     {
         io.readOpt() = IOobject::NO_READ;
-        return io;
+    }
+
+    return io;
+}
+
+
+void Foam::refinementModel::calculateCellAABBs
+(
+    List<treeBoundBox>& cellAABBs
+) const
+{
+    cellAABBs.setSize(mesh_.nCells());
+
+    const pointField& points = mesh_.points();
+
+    const vector extend = 1e-10*vector::one;
+
+    forAll(mesh_.cells(), celli)
+    {
+        treeBoundBox cellAABB(point::max, point::min);
+
+        const labelList& vertices = mesh_.cellPoints()[celli];
+
+        forAll(vertices, vertexi)
+        {
+            cellAABB.min() =
+                min(cellAABB.min(), points[vertices[vertexi]] - extend);
+
+            cellAABB.max() =
+                max(cellAABB.max(), points[vertices[vertexi]] + extend);
+        }
+
+        cellAABBs[celli] = cellAABB;
     }
 }
+
+
+void Foam::refinementModel::scanPathFrame
+(
+    const point& p0,
+    const point& p1,
+    vector& e0,
+    vector& e1,
+    vector& e2
+) const
+{
+    const vector d = p1 - p0;
+
+    const scalar Lxy = sqrt(sqr(d.x()) + sqr(d.y()));
+
+    if (Lxy < small)
+    {
+        e0 = vector(1, 0, 0);
+        e1 = vector(0, 1, 0);
+    }
+    else
+    {
+        e0 = vector(-d.y()/Lxy, d.x()/Lxy, 0);
+
+        e1 = vector( d.x()/Lxy, d.y()/Lxy, 0);
+    }
+
+    e2 = vector(0, 0, 1);
+}
+
+
+bool Foam::refinementModel::cellAABBOverlapsOBB
+(
+    const treeBoundBox& cellAABB,
+    const point& centre,
+    const vector& e0,
+    const vector& e1,
+    const vector& e2,
+    const vector& L
+) const
+{
+    const point cellCentre = 0.5*(cellAABB.min() + cellAABB.max());
+
+    const vector cellHalfLength = 0.5*(cellAABB.max() - cellAABB.min());
+
+    const vector d = cellCentre - centre;
+
+    const scalar r0 =
+        cellHalfLength.x()*mag(e0.x())
+      + cellHalfLength.y()*mag(e0.y())
+      + cellHalfLength.z()*mag(e0.z());
+
+    if (mag(d & e0) > L.x() + r0)
+    {
+        return false;
+    }
+
+    const scalar r1 =
+        cellHalfLength.x()*mag(e1.x())
+      + cellHalfLength.y()*mag(e1.y())
+      + cellHalfLength.z()*mag(e1.z());
+
+    if (mag(d & e1) > L.y() + r1)
+    {
+        return false;
+    }
+
+    const scalar r2 =
+        cellHalfLength.x()*mag(e2.x())
+      + cellHalfLength.y()*mag(e2.y())
+      + cellHalfLength.z()*mag(e2.z());
+
+    if (mag(d & e2) > L.z() + r2)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+Foam::scalar Foam::refinementModel::markScanPathInterval
+(
+    const scalar intervalStartTime,
+    const scalar intervalEndTime,
+    const List<treeBoundBox>& cellAABBs,
+    const bool commit
+)
+{
+    if ((intervalEndTime - intervalStartTime) <= small)
+    {
+        return Zero;
+    }
+
+    List<label> locallyMarked(mesh_.nCells(), 0);
+
+    scalar addedScanPathRefinementVolume = Zero;
+
+    forAll(sources_, sourcei)
+    {
+        const movingBeam& beam = sources_[sourcei].beam();
+
+        const DynamicList<pathVector>& pathVectors = beam.path();
+
+        if (!pathVectors.size())
+        {
+            continue;
+        }
+
+        const scalar projectionEndTime =
+            min(intervalEndTime, beam.endTime());
+
+        if ((projectionEndTime - intervalStartTime) <= small)
+        {
+            continue;
+        }
+
+        forAll(pathVectors, pathVectori)
+        {
+            const pathVector& pv = pathVectors[pathVectori];
+
+            if (pv.power() <= small)
+            {
+                continue;
+            }
+
+            if ((pv.endTime() - intervalStartTime) <= small)
+            {
+                continue;
+            }
+
+            if ((projectionEndTime - pv.startTime()) <= small)
+            {
+                break;
+            }
+
+            const scalar t0 = max(intervalStartTime, pv.startTime());
+
+            const scalar t1 = min(projectionEndTime, pv.endTime());
+
+            if ((t1 - t0) <= small)
+            {
+                continue;
+            }
+
+            const point p0 = pv.position(t0);
+
+            const point p1 = pv.position(t1);
+
+            vector e0(vector::zero);
+            vector e1(vector::zero);
+            vector e2(vector::zero);
+
+            scanPathFrame(p0, p1, e0, e1, e2);
+
+            const vector d = p1 - p0;
+
+            //- XY scan length, consistent with e1 being defined in the scan
+            //  plane. 3D scan vectors are not currently supported.
+            const scalar scanLength =
+                sqrt(sqr(d.x()) + sqr(d.y()));
+
+            const point centre = 0.5*(p0 + p1);
+
+            //- OBB half-lengths.
+            //  buffer_.x(): half-span along e0, width/lateral direction
+            //  buffer_.y(): endpoint padding along e1, scan direction
+            //  buffer_.z(): half-span along e2, depth/vertical direction
+            const vector L
+            (
+                buffer_.x(),
+                0.5*scanLength + buffer_.y(),
+                buffer_.z()
+            );
+
+            const vector pathAABBHalfLength
+            (
+                mag(e0.x())*L.x()
+              + mag(e1.x())*L.y()
+              + mag(e2.x())*L.z(),
+
+                mag(e0.y())*L.x()
+              + mag(e1.y())*L.y()
+              + mag(e2.y())*L.z(),
+
+                mag(e0.z())*L.x()
+              + mag(e1.z())*L.y()
+              + mag(e2.z())*L.z()
+            );
+
+            treeBoundBox pathAABB
+            (
+                centre - pathAABBHalfLength,
+                centre + pathAABBHalfLength
+            );
+
+            forAll(mesh_.cells(), celli)
+            {
+                if (refinementField_[celli] > 0 || locallyMarked[celli])
+                {
+                    continue;
+                }
+
+                if
+                (
+                    cellAABBs[celli].overlaps(pathAABB)
+                 && cellAABBOverlapsOBB
+                    (
+                        cellAABBs[celli],
+                        centre,
+                        e0,
+                        e1,
+                        e2,
+                        L
+                    )
+                )
+                {
+                    locallyMarked[celli] = 1;
+
+                    addedScanPathRefinementVolume += mesh_.V()[celli];
+
+                    if (commit)
+                    {
+                        refinementField_[celli] = 1;
+                    }
+                }
+            }
+            
+            refinementField_.correctBoundaryConditions();
+        }
+    }
+
+    reduce(addedScanPathRefinementVolume, sumOp<scalar>());
+
+    return addedScanPathRefinementVolume;
+}
+
+
+Foam::scalar Foam::refinementModel::nextPoweredPathEventTime
+(
+    const scalar time
+) const
+{
+    scalar nextEventTime = endTime_;
+
+    forAll(sources_, sourcei)
+    {
+        const movingBeam& beam = sources_[sourcei].beam();
+
+        const DynamicList<pathVector>& pathVectors = beam.path();
+
+        forAll(pathVectors, pathVectori)
+        {
+            const pathVector& pv = pathVectors[pathVectori];
+
+            if (pv.power() <= small)
+            {
+                continue;
+            }
+
+            if ((pv.startTime() - time) > small)
+            {
+                nextEventTime = min(nextEventTime, pv.startTime());
+                break;
+            }
+
+            if ((pv.endTime() - time) > small)
+            {
+                nextEventTime = min(nextEventTime, pv.endTime());
+                break;
+            }
+        }
+    }
+
+    return nextEventTime;
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -84,30 +393,38 @@ Foam::refinementModel::refinementModel
     sources_(sources),
     mesh_(mesh),
     heatSourceDict_(dict),
-    refinementDict_(heatSourceDict_.optionalSubDict("refinementControl")),
+    refinementDict_(heatSourceDict_.optionalSubDict("refinementModel")),
     refine_
     (
-        (type != "none")
-      ? refinementDict_.lookup<bool>("refine")
-      : false
+        refinementDict_.lookupOrDefault<bool>
+        (
+            "refine",
+            false
+        )
     ),
     nLevels_
     (
-        (type != "none")
-      ? refinementDict_.lookup<label>("nLevels")
-      : 0
+        refinementDict_.lookupOrDefault<label>
+        (
+            "nLevels",
+            0
+        )
     ),
     refinementTemperature_
     (
-        (type != "none")
-      ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
-      : GREAT
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "refinementTemperature",
+            GREAT
+        ) 
     ),
     buffer_
-    (
-        (type != "none")
-        ? refinementDict_.lookupOrDefault<vector>("buffer", vector::zero)
-        : vector::zero
+    (   
+        refinementDict_.lookupOrDefault<vector>
+        (
+            "buffer",
+            vector::zero
+        )
     ),
     endTime_(0.0),
     refinementField_
@@ -117,25 +434,24 @@ Foam::refinementModel::refinementModel
             "refinementField",
             mesh_.time().name(),
             mesh_,
-            refine_ ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
-            refine_ ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimless, 0.0)
     )
 {
-    //- Set AMR update end time to minimum of solution time and max beam time
-    forAll(sources_, i)
+    forAll(sources_, sourcei)
     {
-        const movingBeam& beam_ = sources_[i].beam();
-        
-        endTime_ = max(beam_.endTime(), endTime_);
+        endTime_ = max(sources_[sourcei].beam().endTime(), endTime_);
     }
 
     endTime_ = min(endTime_, mesh.time().endTime().value());
 
     Info << "refinementModel: Performing refinement until "
          << endTime_ << " s of simulation time." << endl;
+
+    Info << "refinementModel: Refinement buffer " << buffer_ << endl;
 }
 
 
@@ -144,281 +460,249 @@ Foam::refinementModel::refinementModel
 void Foam::refinementModel::refineUsingTemperature()
 {
     const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
-    
-    const dimensionedScalar Tr(dimTemperature, refinementTemperature_);
 
-    refinementField_ = pos0(T - Tr);
+    refinementField_ =
+        pos0(T - dimensionedScalar(dimTemperature, refinementTemperature_));
 
     refinementField_.correctBoundaryConditions();
 }
 
-void Foam::refinementModel::refineUsingTime(const Foam::scalar& refinementTime)
+
+void Foam::refinementModel::refineUsingTime
+(
+    const Foam::scalar& refinementTime
+)
 {
-    //- Calculate the bounding box for each cell
-    List<treeBoundBox> cellBbs(mesh_.nCells());
-    const pointField& points = mesh_.points();
-    const vector extend = 1e-10 * vector::one;
-    
-    forAll(mesh_.cells(), celli)
+    List<treeBoundBox> cellAABBs;
+
+    calculateCellAABBs(cellAABBs);
+
+    const scalar projectionStartTime = mesh_.time().value();
+
+    const scalar projectionEndTime = min(endTime_, refinementTime);
+
+    if ((projectionEndTime - projectionStartTime) > small)
     {
-        treeBoundBox cellBb(point::max, point::min);
-
-        const labelList& vertices = mesh_.cellPoints()[celli];
-
-        forAll(vertices, j)
-        {
-            cellBb.min()
-                = min(cellBb.min(), points[vertices[j]] - extend);
-            cellBb.max()
-                = max(cellBb.max(), points[vertices[j]] + extend);
-        }
-
-        cellBbs[celli] = cellBb;
+        markScanPathInterval
+        (
+            projectionStartTime,
+            projectionEndTime,
+            cellAABBs,
+            true
+        );
     }
-    
-    //- Update the refinement marker field
-    forAll(sources_, i)
-    {
-        const movingBeam& beam_ = sources_[i].beam();
-        
-        scalar time_ = mesh_.time().value();
 
-        vector offset_ = max(buffer_, 1.5*sources_[i].dimensions());
-
-        while ((min(beam_.endTime(), refinementTime) - time_) > small)
-        {
-            vector position_ = beam_.position(time_);
-
-            treeBoundBox beamBb
-            (
-                position_ - offset_,
-                position_ + offset_
-            );
-            
-            forAll(mesh_.cells(), celli)
-            {
-                if (refinementField_[celli] > 0)
-                {
-                    // Do nothing, cell already marked for refiment
-                }
-                else if (cellBbs[celli].overlaps(beamBb))
-                {
-                    refinementField_[celli] = 1;
-                }
-            }
-            
-            refinementField_.correctBoundaryConditions();
-
-            //- Calculate time step required to resolve beam motion on mesh
-            label index_ = beam_.findIndex(time_);
-            pathVector path_ = beam_.getSegment(index_);
-            scalar timeToNextPath_ = path_.time() - time_;
-
-            //- If the path end time is directly hit, step to next path
-            while (mag(timeToNextPath_) < small)
-            {
-                index_ = index_ + 1;
-                path_ = beam_.getSegment(index_);
-                timeToNextPath_ = path_.time() - time_;
-            }
-
-            scalar dt_ = min(timeToNextPath_, max(0, refinementTime - time_));
-
-            if (path_.mode() == 0)
-            {
-                const vector dimensions_ = sources_[i].dimensions();
-                
-                const scalar scanTime_ =
-                    max(dimensions_.x(), dimensions_.y()) / path.parameter();
-
-                dt_ = min(timeToNextPath_, scanTime_);
-            }
-
-            time_ += dt_;
-        }
-    }
-    
-    return;
+    refinementField_.correctBoundaryConditions();
 }
 
 
 Foam::dimensionedScalar Foam::refinementModel::refineUsingVolume
 (
-    const Foam::dimensionedScalar& refineVol,
-    const Foam::scalar& minRefVol
+    const Foam::dimensionedScalar& refinementVolume,
+    const Foam::scalar&
 )
-{    
-    const Foam::scalar minIntervalTime = 0.0;
-    
-    //- Set next refinement time to current time
-    scalar refTime = mesh_.time().value();
-    
-    //- Find minimum refinement time
-    scalar minRefTime = refTime + minIntervalTime;
+{
+    const scalar projectionStartTime = mesh_.time().value();
 
-    //- Calculate the bounding box for each cell
-    List<treeBoundBox> cellBbs(mesh_.nCells());
-    const pointField& points = mesh_.points();
-    const vector extend = 1e-10 * vector::one;
+    const label maximumVolumeSearchIterations =
+        refinementDict_.lookupOrDefault<label>("volumeSearchMaxIter", 10);
 
-    forAll(mesh_.cells(), celli)
-    {
-        treeBoundBox cellBb(point::max, point::min);
-
-        const labelList& vertices = mesh_.cellPoints()[celli];
-
-        forAll(vertices, j)
-        {
-            cellBb.min()
-                = min(cellBb.min(), points[vertices[j]] - extend);
-            cellBb.max()
-                = max(cellBb.max(), points[vertices[j]] + extend);
-        }
-
-        cellBbs[celli] = cellBb;
-    }
-
-    //- Mark current positions of all beams for refinement and find
-    //  minimum time step for all beams
-    scalar dt = 0.0;
-    scalar refVol = 0.0;
-
-    forAll(sources_, i)
-    {
-        //- Mark refinement field for beam at current time
-        const movingBeam& beam = sources_[i].beam();
-
-        vector offset = max(buffer_, 1.5 * sources_[i].dimensions());
-
-        vector position = beam.position(refTime);
-
-        treeBoundBox beamBb
+    const scalar volumeSearchTimeTolerance =
+        refinementDict_.lookupOrDefault<scalar>
         (
-            position - offset,
-            position + offset
+            "volumeSearchTimeTolerance",
+            1e-5
         );
 
-        forAll(mesh_.cells(), celli)
-        {
-            if (refinementField_[celli] > 0)
-            {
-                // Do nothing, cell already marked for refiment
-            }
-            else if (cellBbs[celli].overlaps(beamBb))
-            {
-                refinementField_[celli] = 1;
-		        refVol += mesh_.V()[celli];
-            }
-        }
+    const scalar minRefinementVolumeFactor =
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "minRefinementVolumeFactor",
+            1.0
+        );
 
-        refinementField_.correctBoundaryConditions();
+    //- Characteristic symmetric spot volume:
+    //  (2*buffer.x) * (2*buffer.y) * (2*buffer.z)
+    const scalar characteristicRefinementVolume =
+        8.0*buffer_.x()*buffer_.y()*buffer_.z();
 
-        //- Find minimum time step
-        label index_ = beam.findIndex(refTime);
-        segment path_ = beam.getSegment(index);
-        scalar timeToNextPath_ = path_.time() - refTime;
+    const scalar minimumScanPathRefinementVolume =
+        minRefinementVolumeFactor*characteristicRefinementVolume;
 
-        //- If the path end time is directly hit, step to next path
-        while (mag(timeToNextPath_) < small)
-        {
-            index_ = index_ + 1;
-            path_ = beam.getSegment(index);
-            timeToNextPath_ = path_.time() - refTime;
-        }
+    List<treeBoundBox> cellAABBs;
 
-        dt = timeToNextPath_;
+    calculateCellAABBs(cellAABBs);
 
-        if (path_.mode() == 0)
-        {
-            const vector dimensions_ = sources_[i].dimensions();
-            
-            const scalar scanTime_ =
-                max(dimensions_.x(), dimensions_.y()) / path_.parameter();
+    const scalar existingRefinementVolume =
+        fvc::domainIntegrate(refinementField_).value();
 
-            dt = min(dt, scanTime_);
-        }
-    }
+    scalar refinementEndTime = projectionStartTime;
 
-    // Get volume of cells refined by current position only
-    reduce(refVol, sumOp<scalar>());
+    scalar committedScanPathRefinementVolume = Zero;
 
-    Info << "Refinement volume of current position only: " << refVol << endl;
+    const scalar targetGlobalRefinementVolume = refinementVolume.value();
 
-    //- Get volume of cells refined from other criteria, i.e. melt pool,
-    //  apart from those which were marked from the current beam position
-    const scalar meltPoolVol = fvc::domainIntegrate(refinementField_).value() - refVol;
-
-    Info << "Refinement volume of melt pool only: " << meltPoolVol << endl;
-
-    //- March along scan path(s) and refine until target volume is reached
-    while
+    if
     (
-        ((refVol + meltPoolVol) < refineVol.value())
-     || (refTime < minRefTime)
-     || (refVol < minRefVol)
+        existingRefinementVolume >= targetGlobalRefinementVolume
+     && minimumScanPathRefinementVolume <= small
     )
     {
-        //- Check that end time not reached
-        if (refTime > endTime_)
+        Info << "Existing global refinement volume already satisfies target."
+             << endl;
+
+        Info << "Minimum scan-path refinement volume: "
+             << minimumScanPathRefinementVolume << endl;
+
+        Info << "Actual scan-path refinement volume: "
+             << committedScanPathRefinementVolume << endl;
+
+        Info << "Actual global refinement volume: "
+             << existingRefinementVolume << endl;
+
+        return dimensionedScalar(dimTime, refinementEndTime);
+    }
+
+    while ((endTime_ - refinementEndTime) > small)
+    {
+        scalar nextProjectionEndTime =
+            min(nextPoweredPathEventTime(refinementEndTime), endTime_);
+
+        if ((nextProjectionEndTime - refinementEndTime) <= small)
         {
             break;
         }
 
-        scalar refVoli = 0.0;
-
-        forAll(sources_, i)
-        {
-            const movingBeam& beam = sources_[i].beam();
-
-            vector offset = max(buffer_, 1.5 * sources_[i].dimensions());
-
-            vector position = beam.position(refTime);
-
-            treeBoundBox beamBb
+        const scalar trialScanPathRefinementVolume =
+            markScanPathInterval
             (
-                position - offset,
-                position + offset
+                refinementEndTime,
+                nextProjectionEndTime,
+                cellAABBs,
+                false
             );
 
-            forAll(mesh_.cells(), celli)
+        const scalar trialTotalScanPathRefinementVolume =
+            committedScanPathRefinementVolume
+          + trialScanPathRefinementVolume;
+
+        const scalar trialGlobalRefinementVolume =
+            existingRefinementVolume
+          + trialTotalScanPathRefinementVolume;
+
+        const bool targetReached =
+        (
+            trialGlobalRefinementVolume >= targetGlobalRefinementVolume
+         && trialTotalScanPathRefinementVolume
+            >= minimumScanPathRefinementVolume
+        );
+
+        if (targetReached)
+        {
+            scalar lowerRefinementTime = refinementEndTime;
+
+            scalar upperRefinementTime = nextProjectionEndTime;
+
+            for
+            (
+                label iteration = 0;
+                iteration < maximumVolumeSearchIterations;
+                ++iteration
+            )
             {
-                if (refinementField_[celli] > 0)
+                if
+                (
+                    (upperRefinementTime - lowerRefinementTime)
+                 <= volumeSearchTimeTolerance
+                )
                 {
-                    // Do nothing, cell already marked for refiment
+                    break;
                 }
-                else if (cellBbs[celli].overlaps(beamBb))
+
+                const scalar midpointRefinementTime =
+                    0.5*(lowerRefinementTime + upperRefinementTime);
+
+                const scalar midpointScanPathRefinementVolume =
+                    markScanPathInterval
+                    (
+                        refinementEndTime,
+                        midpointRefinementTime,
+                        cellAABBs,
+                        false
+                    );
+
+                const scalar midpointTotalScanPathRefinementVolume =
+                    committedScanPathRefinementVolume
+                  + midpointScanPathRefinementVolume;
+
+                const scalar midpointGlobalRefinementVolume =
+                    existingRefinementVolume
+                  + midpointTotalScanPathRefinementVolume;
+
+                if
+                (
+                    midpointGlobalRefinementVolume
+                        >= targetGlobalRefinementVolume
+                 && midpointTotalScanPathRefinementVolume
+                        >= minimumScanPathRefinementVolume
+                )
                 {
-                    refinementField_[celli] = 1;
-                    refVoli += mesh_.V()[celli];
+                    upperRefinementTime = midpointRefinementTime;
+                }
+                else
+                {
+                    lowerRefinementTime = midpointRefinementTime;
                 }
             }
+
+            committedScanPathRefinementVolume +=
+                markScanPathInterval
+                (
+                    refinementEndTime,
+                    upperRefinementTime,
+                    cellAABBs,
+                    true
+                );
+
+            refinementEndTime = upperRefinementTime;
+
+            break;
         }
 
-        reduce(refVoli, sumOp<scalar>());
+        committedScanPathRefinementVolume +=
+            markScanPathInterval
+            (
+                refinementEndTime,
+                nextProjectionEndTime,
+                cellAABBs,
+                true
+            );
 
-        refVol += refVoli;
-
-        refTime += dt;
+        refinementEndTime = nextProjectionEndTime;
     }
 
     refinementField_.correctBoundaryConditions();
 
-    Info << "Actual refinement volume: " << refVol << endl;
+    Info << "Minimum scan-path refinement volume: "
+         << minimumScanPathRefinementVolume << endl;
 
-    return dimensionedScalar(dimTime, refTime);
+    Info << "Actual scan-path refinement volume: "
+         << committedScanPathRefinementVolume << endl;
+
+    Info << "Actual global refinement volume: "
+         << existingRefinementVolume + committedScanPathRefinementVolume
+         << endl;
+
+    Info << "Refinement volume search ended at time: "
+         << refinementEndTime << endl;
+
+    return dimensionedScalar(dimTime, refinementEndTime);
 }
 
 
 bool Foam::refinementModel::read()
 {
-    if (regIOobject::read())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return regIOobject::read();
 }
 
 // ************************************************************************* //

@@ -46,7 +46,7 @@ SourceFiles
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
@@ -82,13 +82,13 @@ public:
 
     // Member Functions
 
-        //- Always return true to allow mesh.update() to work uninterupted
+        //- Return true
         virtual bool update()
         {
             return true;
         }
 
-        //- Return true always
+        //- Return true
         virtual bool read()
         {
             return true;

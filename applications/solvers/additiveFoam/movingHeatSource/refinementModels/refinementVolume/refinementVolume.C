@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -32,9 +32,10 @@ License
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
     defineTypeNameAndDebug(refinementVolume, 0);
+
     addToRunTimeSelectionTable
     (
         refinementModel,
@@ -46,73 +47,134 @@ namespace refinementModel
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::refinementModel::refinementVolume::refinementVolume
+Foam::refinementModels::refinementVolume::refinementVolume
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    refinementModel(typeName, sources, dict, mesh),
+    Foam::refinementModel(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    targetCellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 5000)),
-    targetRefinementVolume_(0.0),
-    minRefinementVolume_(0.0),
-    updateTime_(dimTime, 0.0),
+    targetCellsPerProc_(coeffs_.lookupOrDefault<label>("cellsPerProc", 5000)),
+    targetRefinementVolume_(Zero),
+    minRefinementVolume_(Zero),
+    updateTime_(dimTime, Zero),
     cellLoadBalanceRatio_(1.0)
 {
-    minRefinementVolume_ = 32.0 * cmptProduct(buffer_);
+    const scalar minRefinementVolumeFactor =
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "minRefinementVolumeFactor",
+            1.0
+        );
 
+    //- Characteristic symmetric spot volume:
+    //  (2*buffer.x) * (2*buffer.y) * (2*buffer.z)
+    minRefinementVolume_ =
+        minRefinementVolumeFactor*8.0*cmptProduct(buffer_);
 
-    Info << "minRefinementVolume_: " << minRefinementVolume_ << endl;
+    Info<< typeName << ": Minimum scan-path refinement volume: "
+        << minRefinementVolume_ << endl;
 
-    label nCells0 = mesh_.nCells();
-    reduce(nCells0, sumOp<label>());
+    label nCellsTotal = mesh_.nCells();
+    reduce(nCellsTotal, sumOp<label>());
 
-    // OPTION 1:
-    scalar refinementCells_ = minRefinementVolume_ * nCells0 / gSum(mesh_.V());
-    
-    label minCellsPerCpu_ =
-    (
-        nCells0
-      + refinementCells_ * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0)
-    ) / Pstream::nProcs();
+    const scalar meshVolume = gSum(mesh_.V());
 
-    targetCellsPerProc_ = max(targetCellsPerProc_, minCellsPerCpu_);
+    const scalar averageCellVolume = meshVolume/scalar(nCellsTotal);
+
+    const scalar refinementCellMultiplier =
+        Foam::pow(2.0, 3.0*nLevels_) - 1.0;
+
+    if (refinementCellMultiplier <= small)
+    {
+        FatalErrorInFunction
+            << typeName << " requires nLevels > 0"
+            << nl
+            << exit(FatalError);
+    }
+
+    const scalar minimumRefinementCells =
+        minRefinementVolume_/averageCellVolume*refinementCellMultiplier;
+
+    const scalar minimumCellsPerProcScalar =
+        (scalar(nCellsTotal) + minimumRefinementCells)/Pstream::nProcs();
+
+    label minimumCellsPerProc = label(minimumCellsPerProcScalar);
+
+    if (scalar(minimumCellsPerProc) < minimumCellsPerProcScalar)
+    {
+        ++minimumCellsPerProc;
+    }
+
+    targetCellsPerProc_ =
+        max(targetCellsPerProc_, minimumCellsPerProc);
+
+    const scalar targetTotalCells =
+        scalar(targetCellsPerProc_)*Pstream::nProcs();
+
+    const scalar availableRefinedCells =
+        max(targetTotalCells - scalar(nCellsTotal), scalar(0));
+
+    const scalar targetVolumeSafetyFactor =
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "targetVolumeSafetyFactor",
+            0.5
+        );
 
     targetRefinementVolume_ =
-        0.5
-      * (gSum(mesh_.V()) / nCells0)
-      * max(targetCellsPerProc_*Pstream::nProcs() - nCells0, 0.0)
-      / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
+        max
+        (
+            targetVolumeSafetyFactor
+           *averageCellVolume
+           *availableRefinedCells
+           /refinementCellMultiplier,
+            minRefinementVolume_
+        );
 
-    Info << "targetRefinementVolume_: " << targetRefinementVolume_ << endl;
-    Info << "targetCellsPerProc_: " << targetCellsPerProc_ << endl;
-  
-    updateTime_ = refinementModel::refineUsingVolume(targetRefinementVolume_);
-    
-    Info << "Initial AMR update time: " << updateTime_ << endl;
+    Info<< typeName << ": Target refinement volume: "
+        << targetRefinementVolume_ << endl;
+
+    Info<< typeName << ": Target cells per processor: "
+        << targetCellsPerProc_ << endl;
+
+    updateTime_ =
+        Foam::refinementModel::refineUsingVolume
+        (
+            dimensionedScalar
+            (
+                "targetRefinementVolume",
+                dimVolume,
+                targetRefinementVolume_
+            )
+        );
+
+    Info<< typeName << ": Initial AMR update time: "
+        << updateTime_ << endl;
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModel::refinementVolume::update()
+bool Foam::refinementModels::refinementVolume::update()
 {
-    // 0a. Calculate the total number of cells in mesh
     label nCellsTotal = mesh_.nCells();
     reduce(nCellsTotal, sumOp<label>());
-    scalar currentCellsPerProc = nCellsTotal / Pstream::nProcs();
-    
-    // 0b. Calculate cellLoadBalanceRatio from current number of cells and target
-    cellLoadBalanceRatio_ = targetCellsPerProc_ / currentCellsPerProc;
-       
-    if(updateTime_.value() - mesh_.time().value() < small)
-    {
-        // 1. Reactive refinement based on temperature
-        refinementModel::refineUsingTemperature();
 
-        // 2. Scan path completed
+    const scalar currentCellsPerProc =
+        scalar(nCellsTotal)/Pstream::nProcs();
+
+    cellLoadBalanceRatio_ =
+        scalar(targetCellsPerProc_)/max(currentCellsPerProc, small);
+
+    if ((updateTime_.value() - mesh_.time().value()) < small)
+    {
+        //- Reactive refinement based on temperature
+        Foam::refinementModel::refineUsingTemperature();
+
+        //- Scan path completed
         if ((endTime_ - mesh_.time().value()) < small)
         {
             Info<< typeName << ": "
@@ -120,45 +182,77 @@ bool Foam::refinementModel::refinementVolume::update()
                 << "Continuing AMR checks for possible mesh coarsening."
                 << endl;
 
-            // TODO: Fix hardcoded dilation
-            updateTime_ = mesh_.time() + 10*mesh_.time().deltaT();
+            const scalar postScanUpdateIntervalFactor =
+                coeffs_.lookupOrDefault<scalar>
+                (
+                    "postScanUpdateIntervalFactor",
+                    10.0
+                );
+
+            updateTime_ =
+                mesh_.time()
+              + postScanUpdateIntervalFactor*mesh_.time().deltaT();
+
             return true;
         }
+
+        const scalar maxTargetVolumeGrowth =
+            coeffs_.lookupOrDefault<scalar>
+            (
+                "maxTargetVolumeGrowth",
+                1.25
+            );
+
+        const scalar maxTargetVolumeShrink =
+            coeffs_.lookupOrDefault<scalar>
+            (
+                "maxTargetVolumeShrink",
+                0.8
+            );
+
+        const scalar targetVolumeRatio =
+            min
+            (
+                max(cellLoadBalanceRatio_, maxTargetVolumeShrink),
+                maxTargetVolumeGrowth
+            );
 
         targetRefinementVolume_ =
             max
             (
-                targetRefinementVolume_ * cellLoadBalanceRatio_,
-                cmptProduct(buffer_)
+                targetRefinementVolume_*targetVolumeRatio,
+                minRefinementVolume_
             );
 
-        // 3. Predictive refinement using dynamic target volume    
         updateTime_ =
-            refinementModel::refineUsingVolume(targetRefinementVolume_, minRefinementVolume_);
-            
-            
-        // TODO: Should we control dilation and shrinking here?
+            Foam::refinementModel::refineUsingVolume
+            (
+                dimensionedScalar
+                (
+                    "targetRefinementVolume",
+                    dimVolume,
+                    targetRefinementVolume_
+                )
+            );
+
         Info<< typeName << ":" << endl
-            << "Target refinement volume: " << targetRefinementVolume_ << endl
-            << "Min refinement volume: " << minRefinementVolume_ << endl
-            << "Next refinement check is: " << updateTime_ << endl            
-            << "Average load imbalance: " << cellLoadBalanceRatio_ << endl;
+            << "    Target refinement volume: "
+            << targetRefinementVolume_ << endl
+            << "    Minimum scan-path refinement volume: "
+            << minRefinementVolume_ << endl
+            << "    Next refinement check: "
+            << updateTime_ << endl
+            << "    Target/current cell ratio: "
+            << cellLoadBalanceRatio_ << endl;
     }
 
     return true;
 }
 
 
-bool Foam::refinementModel::refinementVolume::read()
+bool Foam::refinementModels::refinementVolume::read()
 {
-    if (refinementModel::read())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return Foam::refinementModel::read();
 }
 
 

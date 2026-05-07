@@ -36,14 +36,13 @@ Foam::autoPtr<Foam::refinementModel> Foam::refinementModel::New
     const fvMesh& mesh
 )
 {
-    //- Initialize modelType to a non-model word
-    word modelType("none");
-    
-    //- Get model type from refinement control subdict
-    dictionary refinementControlDict(dict.optionalSubDict("refinementControl"));
-    
-    modelType =
-        refinementControlDict.lookupOrDefault<word>
+    //- Get refinement model settings subdictionary
+    const dictionary& refinementModelDict =
+        dict.subDict("refinementModel");
+
+    //- Get model type
+    const word modelType =
+        refinementModelDict.lookupOrDefault<word>
         (
             "refinementModel",
             "none"
@@ -51,23 +50,20 @@ Foam::autoPtr<Foam::refinementModel> Foam::refinementModel::New
 
     Info<< "Selecting refinement control model " << modelType << endl;
 
-    //- Look up model type from runtime selection table and throw error
-    //  if it doesn't exist
     dictionaryConstructorTable::iterator cstrIter =
         dictionaryConstructorTablePtr_->find(modelType);
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
         FatalErrorInFunction
-            << "Unknown " << refinementModel::typeName<< " type "
+            << "Unknown " << refinementModel::typeName << " type "
             << modelType << nl << nl
-            << "Valid  refinementModel are : " << endl
+            << "Valid refinementModel types are:" << nl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalError);
     }
 
     return autoPtr<refinementModel>(cstrIter()(sources, dict, mesh));
 }
-
 
 // ************************************************************************* //

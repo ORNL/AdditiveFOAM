@@ -32,7 +32,7 @@ License
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
     defineTypeNameAndDebug(timeStep, 0);
     addToRunTimeSelectionTable
@@ -46,7 +46,7 @@ namespace refinementModel
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::refinementModel::timeStep::timeStep
+Foam::refinementModels::timeStep::timeStep
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
@@ -60,19 +60,19 @@ Foam::refinementModel::timeStep::timeStep
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModel::timeStep::update()
+bool Foam::refinementModels::timeStep::update()
 {
-    //- Refine in regions above specified temperature
     refinementModel::refineUsingTemperature();
     
-    //- Refine current beam position
-    refinementModel::refineUsingTime(mesh_.time().value() + 2 * SMALL);
+    dimensionedScalar nextTime_ = mesh_.time() + mesh_.time().deltaT();
+    
+    refinementModel::refineUsingTime(nextTime_.value());
 
     return true;
 }
 
 
-bool Foam::refinementModel::timeStep::read()
+bool Foam::refinementModels::timeStep::read()
 {
     if (refinementModel::read())
     {

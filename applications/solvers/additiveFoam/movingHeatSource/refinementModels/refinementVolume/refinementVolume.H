@@ -24,13 +24,16 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementModel::refinementVolume
+    Foam::refinementModels::refinementVolume
 
 Description
-    This refinement control scheme marches along the scan path until the
-    volume of the refined region meets or exceeds a target value calculated
-    from the target mesh size, and the ratio of the volumes of the refined and
-    base-sized cells.
+    This refinement control scheme projects along the scan path until the
+    global volume of the refined region meets or exceeds a target value
+    estimated from a target mesh size.
+
+    The scan-path contribution is counted as the discrete union of newly
+    marked cells, so overlapping path vectors and overlapping sources do not
+    double count refinement volume.
 
 SourceFiles
     refinementVolume.C
@@ -46,7 +49,7 @@ SourceFiles
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
@@ -55,31 +58,33 @@ namespace refinementModel
 
 class refinementVolume
 :
-    public refinementModel
+    public Foam::refinementModel
 {
     // Private Data
-    
-        //- Dictionary
+
+        //- Coefficients dictionary
         dictionary coeffs_;
-        
+
+
 protected:
 
-    //- Protected data
-        
-        //- Target cells per processor (default 5k)
+    // Protected Data
+
+        //- Target cells per processor
         label targetCellsPerProc_;
-                
-        //- Target volume of refined region
+
+        //- Target global refinement volume
         scalar targetRefinementVolume_;
 
-        //- Minimum refinement volume
+        //- Minimum scan-path refinement volume
         scalar minRefinementVolume_;
-        
-        //- Time at which to update again
+
+        //- Time at which to update refinement again
         dimensionedScalar updateTime_;
-        
-        //- Load imbalance ratio to check AMR performance
+
+        //- Ratio of target cells per processor to current cells per processor
         scalar cellLoadBalanceRatio_;
+
 
 public:
 
@@ -105,7 +110,7 @@ public:
 
     // Member Functions
 
-        //- Update the refinement marker field and return true at each interval
+        //- Update the refinement marker field
         virtual bool update();
 
         //- Read the heatSourceProperties dictionary
@@ -115,7 +120,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace refinementModel
+} // End namespace refinementModels
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

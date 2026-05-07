@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
-        
+
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"

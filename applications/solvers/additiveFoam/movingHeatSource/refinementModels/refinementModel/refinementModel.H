@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -38,7 +38,6 @@ SourceFiles
 #define refinementModel_H
 
 #include "labelVector.H"
-#include "hexMatcher.H"
 #include "dictionary.H"
 #include "volFields.H"
 #include "movingBeam.H"
@@ -58,19 +57,56 @@ class refinementModel
 :
     public IOdictionary
 {
-    // Private member functions
-    
+    // Private Member Functions
+
         //- Construct the base IO object
         IOobject createIOobject
         (
             const dictionary& dict,
             const fvMesh& mesh
         ) const;
-    
+
+        //- Calculate cell axis-aligned bounding boxes
+        void calculateCellAABBs(List<treeBoundBox>& cellAABBs) const;
+
+        //- Calculate local scan-path coordinate frame
+        void scanPathFrame
+        (
+            const point& p0,
+            const point& p1,
+            vector& e0,
+            vector& e1,
+            vector& e2
+        ) const;
+
+        //- Return true if a cell AABB overlaps a yawed path OBB
+        bool cellAABBOverlapsOBB
+        (
+            const treeBoundBox& cellAABB,
+            const point& centre,
+            const vector& e0,
+            const vector& e1,
+            const vector& e2,
+            const vector& L
+        ) const;
+
+        //- Mark/count cells swept by powered path vectors over a time interval
+        scalar markScanPathInterval
+        (
+            const scalar intervalStartTime,
+            const scalar intervalEndTime,
+            const List<treeBoundBox>& cellAABBs,
+            const bool commit
+        );
+
+        //- Return next powered path-vector start or end time after time
+        scalar nextPoweredPathEventTime(const scalar time) const;
+
+
 protected:
 
-    // Protected data
-    
+    // Protected Data
+
         //- PtrList to heatSourceModels
         const PtrList<heatSourceModel>& sources_;
 
@@ -79,36 +115,40 @@ protected:
 
         //- Main heat source dictionary
         const dictionary& heatSourceDict_;
-                
+
         //- Sub-dictionary for refinementModel entries
         dictionary refinementDict_;
-        
+
         //- Switch for refinementField generation
         const bool refine_;
-                
+
         //- Number of refinement levels
         label nLevels_;
 
         //- Temperature above which refinement occurs
         scalar refinementTemperature_;
-        
-        //- Distance in (x, y, z) direction to refine from beam center
+
+        //- Refinement extent for scan-path OBB slabs
+        //  x: half-span along e0, width/lateral direction
+        //  y: endpoint padding along e1, scan direction
+        //  z: half-span along e2, depth/vertical direction
         vector buffer_;
-        
+
         //- End time of last beam
         scalar endTime_;
 
         //- Marker field for refinement operations
         volScalarField refinementField_;
 
+
 public:
 
     //- Runtime type information
     TypeName("refinementModel");
-    
-    //- Default heatSourceProperties dictionary name
+
+    //- Default refinement model dictionary name
     static const word refinementModelDictName;
-    
+
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
@@ -126,7 +166,7 @@ public:
 
     // Constructors
 
-        //- Construct for mixture
+        //- Construct from components
         refinementModel
         (
             const word& type,
@@ -134,13 +174,14 @@ public:
             const dictionary& dict,
             const fvMesh& mesh
         );
-        
+
         //- Disallow default bitwise copy construction
         refinementModel(const refinementModel&);
-        
+
+
     // Selectors
 
-        //- Return a reference to the selected heatSource model
+        //- Return a reference to the selected refinement model
         static autoPtr<refinementModel> New
         (
             const PtrList<heatSourceModel>& sources,
@@ -148,40 +189,43 @@ public:
             const fvMesh& mesh
         );
 
+
     //- Destructor
     virtual ~refinementModel()
     {}
 
 
     // Member Functions
-    
+
         //- Return the refinement marker field
         virtual volScalarField refinementField()
         {
             return refinementField_;
-        };
-        
+        }
+
         //- Set refinementField using temperature constraints
         virtual void refineUsingTemperature();
-        
+
         //- Refine along scan path until specified time
-        virtual void refineUsingTime(const scalar& refineTime);
-        
-        //- Refine along scan path until volume of refined region reaches
+        virtual void refineUsingTime(const scalar& refinementTime);
+
+        //- Refine along scan path until global refinement volume reaches
         //  provided target. Returns time at which target is reached.
+        //  The second argument is kept for backwards-compatible call sites;
+        //  use minRefinementVolumeFactor in the refinement dictionary instead.
         virtual dimensionedScalar refineUsingVolume
         (
-            const dimensionedScalar& refineVol,
-            const scalar& minRefVol = 0.0
+            const dimensionedScalar& refinementVolume,
+            const scalar& unusedMinimumScanPathRefinementVolume = 0.0
         );
-    
+
         //- Update refinementField
         virtual bool update() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;
-        
-        
+
+
     // Member Operators
 
         //- Disallow default bitwise assignment

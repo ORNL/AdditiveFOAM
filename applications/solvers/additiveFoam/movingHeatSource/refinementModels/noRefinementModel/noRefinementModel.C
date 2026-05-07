@@ -32,7 +32,7 @@ License
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
     defineTypeNameAndDebug(noRefinementModel, 0);
     addToRunTimeSelectionTable(refinementModel, noRefinementModel, dictionary);
@@ -41,7 +41,7 @@ namespace refinementModel
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::refinementModel::noRefinementModel::noRefinementModel
+Foam::refinementModels::noRefinementModel::noRefinementModel
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,

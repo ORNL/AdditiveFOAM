@@ -42,6 +42,7 @@ SourceFiles
 
 #include "heatSourceModel.H"
 #include "movingBeam.H"
+#include "refinementModel.H"
 
 namespace Foam
 {
@@ -70,6 +71,9 @@ private:
                 
         //- Pointer list to each beam instance
         PtrList<heatSourceModel> sources_;
+        
+        //- Pointer to refinement model
+        autoPtr<refinementModel> refinementModel_;
 
 public:
 

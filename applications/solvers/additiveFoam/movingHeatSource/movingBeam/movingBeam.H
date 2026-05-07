@@ -173,6 +173,12 @@ public:
         {
             return endTime_;
         }
+
+        //- Return access to the scan path vectors
+        inline const DynamicList<pathVector>& path() const
+        {
+            return path_;
+        }
  
          //- Returns the path index at the provided time
         label getIndex(const scalar time) const;

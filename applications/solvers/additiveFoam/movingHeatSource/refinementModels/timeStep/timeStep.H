@@ -45,7 +45,7 @@ SourceFiles
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
@@ -81,7 +81,7 @@ public:
 
     // Member Functions
 
-        //- Update the refinement marker field and return true at each interval
+        //- Update every time step
         virtual bool update();
 
         //- Read the heatSourceProperties dictionary

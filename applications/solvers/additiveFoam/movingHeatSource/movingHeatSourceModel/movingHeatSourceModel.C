@@ -61,7 +61,8 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         ),
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)
-    )    
+    ),
+    refinementModel_(nullptr)
 {
     sources_.resize(sourceNames_.size());
         
@@ -80,6 +81,8 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             ).ptr()
         );
     }
+    
+    refinementModel_ = refinementModel::New(sources_, dict_, mesh_);
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //
@@ -147,6 +150,10 @@ void Foam::movingHeatSourceModel::update()
             qDot_ += qDoti;
         }
     }
+    
+    qDot_.correctBoundaryConditions();
+    
+    refinementModel_->update();
 }
 
 // ************************************************************************* //
