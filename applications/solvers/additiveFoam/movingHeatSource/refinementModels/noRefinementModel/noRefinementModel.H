@@ -27,10 +27,7 @@ Class
     Foam::refinementModel::none
 
 Description
-    This refinement control scheme divides the simulation into an even
-    number of intervals equal to the simulation end time divided by the
-    number of intervals. Refinement for each beam is carried out on each
-    interval.
+    No refinement.
 
 SourceFiles
     none.C

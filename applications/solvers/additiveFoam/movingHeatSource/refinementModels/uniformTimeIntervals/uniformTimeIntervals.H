@@ -24,24 +24,21 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementModels::refinementVolume
+    Foam::refinementModels::uniformTimeIntervals
 
 Description
-    This refinement control scheme projects along the scan path until the
-    global volume of the refined region meets or exceeds a target value
-    estimated from a target mesh size.
-
-    The scan-path contribution is counted as the discrete union of newly
-    marked cells, so overlapping path vectors and overlapping sources do not
-    double count refinement volume.
+    This refinement control scheme divides the total scan-path duration into
+    a fixed number of uniform time intervals. At each interval, the refinement
+    marker field is updated using the current temperature field and the
+    projected scan path over the next interval.
 
 SourceFiles
-    refinementVolume.C
+    uniformTimeIntervals.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef refinementVolume_H
-#define refinementVolume_H
+#ifndef uniformTimeIntervals_H
+#define uniformTimeIntervals_H
 
 #include "refinementModel.H"
 
@@ -53,10 +50,10 @@ namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class refinementVolume
+                       Class uniformTimeIntervals
 \*---------------------------------------------------------------------------*/
 
-class refinementVolume
+class uniformTimeIntervals
 :
     public Foam::refinementModel
 {
@@ -70,32 +67,26 @@ protected:
 
     // Protected Data
 
-        //- Target cells per processor
-        label targetCellsPerProc_;
+        //- Number of uniform scan-path intervals
+        label nIntervals_;
 
-        //- Target global refinement volume
-        scalar targetRefinementVolume_;
-
-        //- Minimum scan-path refinement volume
-        scalar minRefinementVolume_;
+        //- Duration of each interval
+        scalar intervalLength_;
 
         //- Time at which to update refinement again
-        dimensionedScalar updateTime_;
-
-        //- Ratio of target cells per processor to current cells per processor
-        scalar cellLoadBalanceRatio_;
+        scalar updateTime_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("refinementVolume");
+    TypeName("uniformTimeIntervals");
 
 
     // Constructors
 
         //- Construct from components
-        refinementVolume
+        uniformTimeIntervals
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
@@ -104,7 +95,7 @@ public:
 
 
     //- Destructor
-    virtual ~refinementVolume()
+    virtual ~uniformTimeIntervals()
     {}
 
 

@@ -62,11 +62,11 @@ Foam::refinementModels::timeStep::timeStep
 
 bool Foam::refinementModels::timeStep::update()
 {
-    refinementModel::refineUsingTemperature();
+    refinementModel::markTemperature();
     
     dimensionedScalar nextTime_ = mesh_.time() + mesh_.time().deltaT();
     
-    refinementModel::refineUsingTime(nextTime_.value());
+    refinementModel::markScanPathTime(nextTime_.value());
 
     return true;
 }

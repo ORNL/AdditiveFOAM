@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -15,30 +15,23 @@ License
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 Class
-    Foam::refinementModel::staticTimeIntervals
+    Foam::refinementModels::targetCellLoad
 
 Description
-    This refinement control scheme divides the simulation into an even
-    number of intervals equal to the simulation end time divided by the
-    number of intervals. Refinement for each beam is carried out on each
-    interval.
+    This refinement model estimates a target scan-path refine volume from a
+    target cell count per processor. The scan path is projected until the
+    global union of marked refinement cells reaches that target volume.
+    
+    The target volume is adjusted over time based on the current cell load.
 
 SourceFiles
-    staticTimeIntervals.C
+    targetCellLoad.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef staticTimeIntervals_H
-#define staticTimeIntervals_H
+#ifndef targetCellLoad_H
+#define targetCellLoad_H
 
 #include "refinementModel.H"
 
@@ -46,45 +39,65 @@ SourceFiles
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
-                            Class staticTimeIntervals
+                           Class targetCellLoad
 \*---------------------------------------------------------------------------*/
 
-class staticTimeIntervals
+class targetCellLoad
 :
-    public refinementModel
+    public Foam::refinementModel
 {
     // Private Data
-    
-        //- Dictionary
+
+        //- Coefficients dictionary
         dictionary coeffs_;
-        
+
+
 protected:
 
-    //- Protected data
-        
-        //- Number of intervals
-        scalar intervals_;
-        
-        //- Time duration of each interval
-        scalar intervalLength_;
-        
-        //- Time for next update
-        scalar updateTime_;  
+    // Protected Data
+
+        //- Target cells per processor
+        label targetCellsPerProc_;
+
+        //- Fraction of estimated available cell budget used for target volume
+        scalar initialTargetVolumeFactor_;
+
+        //- Max growth factor for target refine volume per AMR update
+        scalar maxTargetVolumeGrowth_;
+
+        //- Max shrink factor for target refine volume per AMR update
+        scalar maxTargetVolumeShrink_;
+
+        //- AMR check interval after scan path completion, in time-step units
+        scalar postScanUpdateIntervalFactor_;
+
+        //- Target global refine volume
+        scalar targetRefineVolume_;
+
+        //- Minimum scan-path refine volume
+        scalar minRefineVolume_;
+
+        //- Time at which to update refinement again
+        dimensionedScalar updateTime_;
+
+        //- Ratio of target cells per processor to current cells per processor
+        scalar targetToCurrentCellRatio_;
+
 
 public:
 
     //- Runtime type information
-    TypeName("staticTimeIntervals");
+    TypeName("targetCellLoad");
 
 
     // Constructors
 
         //- Construct from components
-        staticTimeIntervals
+        targetCellLoad
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
@@ -93,13 +106,13 @@ public:
 
 
     //- Destructor
-    virtual ~staticTimeIntervals()
+    virtual ~targetCellLoad()
     {}
 
 
     // Member Functions
 
-        //- Update the refinement marker field and return true at each interval
+        //- Update the refinement marker field
         virtual bool update();
 
         //- Read the heatSourceProperties dictionary
@@ -109,7 +122,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace refinementModel
+} // End namespace refinementModels
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

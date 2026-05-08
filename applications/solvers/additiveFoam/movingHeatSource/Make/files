@@ -17,8 +17,8 @@ refinementModels/refinementModel/refinementModel.C
 refinementModels/refinementModel/refinementModelNew.C
 refinementModels/noRefinementModel/noRefinementModel.C
 refinementModels/timeStep/timeStep.C
-# refinementModels/staticTimeIntervals/staticTimeIntervals.C
-refinementModels/refinementVolume/refinementVolume.C
+refinementModels/targetCellLoad/targetCellLoad.C
+refinementModels/uniformTimeIntervals/uniformTimeIntervals.C
 
 movingHeatSourceModel/movingHeatSourceModel.C
 

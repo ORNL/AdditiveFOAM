@@ -25,20 +25,21 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "staticTimeIntervals.H"
+#include "uniformTimeIntervals.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace refinementModel
+namespace refinementModels
 {
-    defineTypeNameAndDebug(staticTimeIntervals, 0);
+    defineTypeNameAndDebug(uniformTimeIntervals, 0);
+
     addToRunTimeSelectionTable
     (
         refinementModel,
-        staticTimeIntervals,
+        uniformTimeIntervals,
         dictionary
     );
 }
@@ -46,75 +47,80 @@ namespace refinementModel
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::refinementModel::staticTimeIntervals::staticTimeIntervals
+Foam::refinementModels::uniformTimeIntervals::uniformTimeIntervals
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    refinementModel(typeName, sources, dict, mesh),
+    Foam::refinementModel(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    intervals_(coeffs_.lookup<scalar>("intervals")),
-    intervalLength_(0.0),
-    updateTime_(0.0)
+    nIntervals_(coeffs_.lookup<label>("intervals")),
+    intervalLength_(Zero),
+    updateTime_(Zero)
 {
-    //- Set interval time to the number of intervals between start and end
+    //- Set interval length from the active scan-path duration
     intervalLength_ =
-        max(0, endTime_ - mesh.time().startTime().value()) / intervals_;
+        max(scalar(0), endTime_ - mesh.time().startTime().value())
+       /nIntervals_;
 
-    Info << "staticTimeIntervals: Interval time duration set to " 
-         << intervalLength_ << " s." << endl;
+    Info<< typeName << ": Interval duration set to "
+        << intervalLength_ << " s." << endl;
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModel::staticTimeIntervals::update()
+bool Foam::refinementModels::uniformTimeIntervals::update()
 {
-    if (updateTime_ - mesh_.time().value() < small)
+    if ((updateTime_ - mesh_.time().value()) < small)
     {
-        // Update next refinement time
+        //- Update next refinement time
         updateTime_ = mesh_.time().value() + intervalLength_;
 
-        //- Refine in regions above specified temperature
-        refinementModel::refineUsingTemperature();
+        //- Reactive refinement based on temperature
+        Foam::refinementModel::markTemperature();
 
-        //- Don't perform additional refinements if scan path is completed
+        //- Scan path completed
         if ((endTime_ - mesh_.time().value()) < small)
         {
-            Info << "staticTimeIntervals: Scan path completed. Continuing AMR"
-                 << " checks for possible mesh coarsening" << endl;
-                 
+            Info<< typeName << ": "
+                << "Scan path completed. "
+                << "Continuing AMR checks for possible mesh coarsening."
+                << endl;
+
             updateTime_ = mesh_.time().value() + intervalLength_;
-                 
+
             return true;
         }
-        
-        Info << "staticTimeIntervals: Updating AMR marker field." << endl;
-        
-        refinementModel::refineUsingTime(updateTime_);
+
+        Info<< typeName << ": Updating AMR marker field." << endl;
+
+        //- Predictive refinement along scan path over the next interval
+        Foam::refinementModel::markScanPathTime(updateTime_);
     }
 
     return true;
 }
 
 
-bool Foam::refinementModel::staticTimeIntervals::read()
+bool Foam::refinementModels::uniformTimeIntervals::read()
 {
-    if (refinementModel::read())
+    if (Foam::refinementModel::read())
     {
-        refinementDict_ = optionalSubDict(type() + "Coeffs");
+        coeffs_ = refinementDict_.optionalSubDict(typeName + "Coeffs");
 
-        //- Mandatory entries
-        refinementDict_.lookup("intervals") >> intervals_;
+        coeffs_.lookup("intervals") >> nIntervals_;
+
+        intervalLength_ =
+            max(scalar(0), endTime_ - mesh_.time().startTime().value())
+           /nIntervals_;
 
         return true;
     }
-    else
-    {
-        return false;
-    }
+
+    return false;
 }
 
 

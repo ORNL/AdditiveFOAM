@@ -15,14 +15,6 @@ License
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "refinementModel.H"
@@ -122,16 +114,19 @@ void Foam::refinementModel::scanPathFrame
     }
     else
     {
-        e0 = vector(-d.y()/Lxy, d.x()/Lxy, 0);
+        //- Scan direction
+        e0 = vector(d.x()/Lxy, d.y()/Lxy, 0);
 
-        e1 = vector( d.x()/Lxy, d.y()/Lxy, 0);
+        //- Transverse direction
+        e1 = vector(-d.y()/Lxy, d.x()/Lxy, 0);
     }
 
+    //- Depth/vertical direction
     e2 = vector(0, 0, 1);
 }
 
 
-bool Foam::refinementModel::cellAABBOverlapsOBB
+bool Foam::refinementModel::cellOverlapsOBB
 (
     const treeBoundBox& cellAABB,
     const point& centre,
@@ -181,22 +176,22 @@ bool Foam::refinementModel::cellAABBOverlapsOBB
 }
 
 
-Foam::scalar Foam::refinementModel::markScanPathInterval
+Foam::scalar Foam::refinementModel::markScanPath
 (
-    const scalar intervalStartTime,
-    const scalar intervalEndTime,
+    const scalar startTime,
+    const scalar endTime,
     const List<treeBoundBox>& cellAABBs,
     const bool commit
 )
 {
-    if ((intervalEndTime - intervalStartTime) <= small)
+    if ((endTime - startTime) <= small)
     {
         return Zero;
     }
 
     List<label> locallyMarked(mesh_.nCells(), 0);
 
-    scalar addedScanPathRefinementVolume = Zero;
+    scalar addedScanPathRefineVolume = Zero;
 
     forAll(sources_, sourcei)
     {
@@ -209,10 +204,9 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
             continue;
         }
 
-        const scalar projectionEndTime =
-            min(intervalEndTime, beam.endTime());
+        const scalar projectedEndTime = min(endTime, beam.endTime());
 
-        if ((projectionEndTime - intervalStartTime) <= small)
+        if ((projectedEndTime - startTime) <= small)
         {
             continue;
         }
@@ -226,19 +220,19 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
                 continue;
             }
 
-            if ((pv.endTime() - intervalStartTime) <= small)
+            if ((pv.endTime() - startTime) <= small)
             {
                 continue;
             }
 
-            if ((projectionEndTime - pv.startTime()) <= small)
+            if ((projectedEndTime - pv.startTime()) <= small)
             {
                 break;
             }
 
-            const scalar t0 = max(intervalStartTime, pv.startTime());
+            const scalar t0 = max(startTime, pv.startTime());
 
-            const scalar t1 = min(projectionEndTime, pv.endTime());
+            const scalar t1 = min(projectedEndTime, pv.endTime());
 
             if ((t1 - t0) <= small)
             {
@@ -257,21 +251,14 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
 
             const vector d = p1 - p0;
 
-            //- XY scan length, consistent with e1 being defined in the scan
-            //  plane. 3D scan vectors are not currently supported.
-            const scalar scanLength =
-                sqrt(sqr(d.x()) + sqr(d.y()));
+            const scalar scanLength = sqrt(sqr(d.x()) + sqr(d.y()));
 
             const point centre = 0.5*(p0 + p1);
 
-            //- OBB half-lengths.
-            //  buffer_.x(): half-span along e0, width/lateral direction
-            //  buffer_.y(): endpoint padding along e1, scan direction
-            //  buffer_.z(): half-span along e2, depth/vertical direction
             const vector L
             (
-                buffer_.x(),
-                0.5*scanLength + buffer_.y(),
+                0.5*scanLength + buffer_.x(),
+                buffer_.y(),
                 buffer_.z()
             );
 
@@ -306,7 +293,7 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
                 if
                 (
                     cellAABBs[celli].overlaps(pathAABB)
-                 && cellAABBOverlapsOBB
+                 && cellOverlapsOBB
                     (
                         cellAABBs[celli],
                         centre,
@@ -319,7 +306,7 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
                 {
                     locallyMarked[celli] = 1;
 
-                    addedScanPathRefinementVolume += mesh_.V()[celli];
+                    addedScanPathRefineVolume += mesh_.V()[celli];
 
                     if (commit)
                     {
@@ -327,14 +314,12 @@ Foam::scalar Foam::refinementModel::markScanPathInterval
                     }
                 }
             }
-            
-            refinementField_.correctBoundaryConditions();
         }
     }
 
-    reduce(addedScanPathRefinementVolume, sumOp<scalar>());
+    reduce(addedScanPathRefineVolume, sumOp<scalar>());
 
-    return addedScanPathRefinementVolume;
+    return addedScanPathRefineVolume;
 }
 
 
@@ -378,6 +363,26 @@ Foam::scalar Foam::refinementModel::nextPoweredPathEventTime
 }
 
 
+Foam::scalar Foam::refinementModel::refineBufferVolume() const
+{
+    //  (2*buffer.x) * (2*buffer.y) * (2*buffer.z)
+    return 8.0*cmptProduct(buffer_);
+}
+
+
+Foam::scalar Foam::refinementModel::minRefineVolume() const
+{
+    const scalar minRefineVolumeFactor =
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "minRefineVolumeFactor",
+            1.0
+        );
+
+    return minRefineVolumeFactor*refineBufferVolume();
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::refinementModel::refinementModel
@@ -393,38 +398,30 @@ Foam::refinementModel::refinementModel
     sources_(sources),
     mesh_(mesh),
     heatSourceDict_(dict),
-    refinementDict_(heatSourceDict_.optionalSubDict("refinementModel")),
+    refinementDict_(heatSourceDict_.subDict("refinementModel")),
     refine_
     (
-        refinementDict_.lookupOrDefault<bool>
-        (
-            "refine",
-            false
-        )
+        (type != "none")
+      ? refinementDict_.lookup<bool>("refine")
+      : false
     ),
     nLevels_
     (
-        refinementDict_.lookupOrDefault<label>
-        (
-            "nLevels",
-            0
-        )
+        (type != "none")
+      ? refinementDict_.lookup<label>("nLevels")
+      : 0
     ),
     refinementTemperature_
     (
-        refinementDict_.lookupOrDefault<scalar>
-        (
-            "refinementTemperature",
-            GREAT
-        ) 
+        (type != "none")
+      ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
+      : GREAT
     ),
     buffer_
-    (   
-        refinementDict_.lookupOrDefault<vector>
-        (
-            "buffer",
-            vector::zero
-        )
+    (
+        (type != "none")
+      ? refinementDict_.lookupOrDefault<vector>("buffer", vector::zero)
+      : vector::zero
     ),
     endTime_(0.0),
     refinementField_
@@ -434,8 +431,8 @@ Foam::refinementModel::refinementModel
             "refinementField",
             mesh_.time().name(),
             mesh_,
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            refine_ ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
+            refine_ ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimless, 0.0)
@@ -457,7 +454,7 @@ Foam::refinementModel::refinementModel
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::refinementModel::refineUsingTemperature()
+void Foam::refinementModel::markTemperature()
 {
     const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
 
@@ -468,9 +465,9 @@ void Foam::refinementModel::refineUsingTemperature()
 }
 
 
-void Foam::refinementModel::refineUsingTime
+void Foam::refinementModel::markScanPathTime
 (
-    const Foam::scalar& refinementTime
+    const Foam::scalar& refineTime
 )
 {
     List<treeBoundBox> cellAABBs;
@@ -479,14 +476,14 @@ void Foam::refinementModel::refineUsingTime
 
     const scalar projectionStartTime = mesh_.time().value();
 
-    const scalar projectionEndTime = min(endTime_, refinementTime);
+    const scalar projectedEndTime = min(endTime_, refineTime);
 
-    if ((projectionEndTime - projectionStartTime) > small)
+    if ((projectedEndTime - projectionStartTime) > small)
     {
-        markScanPathInterval
+        markScanPath
         (
             projectionStartTime,
-            projectionEndTime,
+            projectedEndTime,
             cellAABBs,
             true
         );
@@ -496,207 +493,205 @@ void Foam::refinementModel::refineUsingTime
 }
 
 
-Foam::dimensionedScalar Foam::refinementModel::refineUsingVolume
+Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
 (
-    const Foam::dimensionedScalar& refinementVolume,
-    const Foam::scalar&
+    const Foam::dimensionedScalar& targetRefineVolume
 )
 {
     const scalar projectionStartTime = mesh_.time().value();
 
-    const label maximumVolumeSearchIterations =
-        refinementDict_.lookupOrDefault<label>("volumeSearchMaxIter", 10);
+    const label maxVolumeSearchIter =
+        refinementDict_.lookupOrDefault<label>("volumeSearchMaxIter", 30);
 
     const scalar volumeSearchTimeTolerance =
         refinementDict_.lookupOrDefault<scalar>
         (
             "volumeSearchTimeTolerance",
-            1e-5
+            small
         );
 
-    const scalar minRefinementVolumeFactor =
-        refinementDict_.lookupOrDefault<scalar>
-        (
-            "minRefinementVolumeFactor",
-            1.0
-        );
-
-    //- Characteristic symmetric spot volume:
-    //  (2*buffer.x) * (2*buffer.y) * (2*buffer.z)
-    const scalar characteristicRefinementVolume =
-        8.0*buffer_.x()*buffer_.y()*buffer_.z();
-
-    const scalar minimumScanPathRefinementVolume =
-        minRefinementVolumeFactor*characteristicRefinementVolume;
+    const scalar minScanPathRefineVolume = minRefineVolume();
 
     List<treeBoundBox> cellAABBs;
 
     calculateCellAABBs(cellAABBs);
 
-    const scalar existingRefinementVolume =
+    const scalar existingRefineVolume =
         fvc::domainIntegrate(refinementField_).value();
 
-    scalar refinementEndTime = projectionStartTime;
+    scalar refineEndTime = projectionStartTime;
 
-    scalar committedScanPathRefinementVolume = Zero;
+    scalar committedScanPathRefineVolume = Zero;
 
-    const scalar targetGlobalRefinementVolume = refinementVolume.value();
+    const scalar targetGlobalRefineVolume = targetRefineVolume.value();
 
-    if
+    const bool globalTargetReached =
     (
-        existingRefinementVolume >= targetGlobalRefinementVolume
-     && minimumScanPathRefinementVolume <= small
-    )
+        (existingRefineVolume >= targetGlobalRefineVolume)
+     && (minScanPathRefineVolume <= small)
+    );
+                
+    if (globalTargetReached)
     {
-        Info << "Existing global refinement volume already satisfies target."
+        Info << "Existing global refine volume already satisfies target."
              << endl;
 
-        Info << "Minimum scan-path refinement volume: "
-             << minimumScanPathRefinementVolume << endl;
+        Info << "Min scan-path refine volume: "
+             << minScanPathRefineVolume << endl;
 
-        Info << "Actual scan-path refinement volume: "
-             << committedScanPathRefinementVolume << endl;
+        Info << "Actual scan-path refine volume: "
+             << committedScanPathRefineVolume << endl;
 
-        Info << "Actual global refinement volume: "
-             << existingRefinementVolume << endl;
+        Info << "Actual global refine volume: "
+             << existingRefineVolume << endl;
 
-        return dimensionedScalar(dimTime, refinementEndTime);
+        return dimensionedScalar(dimTime, refineEndTime);
     }
 
-    while ((endTime_ - refinementEndTime) > small)
+    while ((endTime_ - refineEndTime) > small)
     {
-        scalar nextProjectionEndTime =
-            min(nextPoweredPathEventTime(refinementEndTime), endTime_);
+        scalar nextProjectedEndTime =
+            min(nextPoweredPathEventTime(refineEndTime), endTime_);
 
-        if ((nextProjectionEndTime - refinementEndTime) <= small)
+        if ((nextProjectedEndTime - refineEndTime) <= small)
         {
             break;
         }
 
-        const scalar trialScanPathRefinementVolume =
-            markScanPathInterval
+        const scalar trialScanPathRefineVolume =
+            markScanPath
             (
-                refinementEndTime,
-                nextProjectionEndTime,
+                refineEndTime,
+                nextProjectedEndTime,
                 cellAABBs,
                 false
             );
 
-        const scalar trialTotalScanPathRefinementVolume =
-            committedScanPathRefinementVolume
-          + trialScanPathRefinementVolume;
+        const scalar trialTotalScanPathRefineVolume =
+            committedScanPathRefineVolume
+          + trialScanPathRefineVolume;
 
-        const scalar trialGlobalRefinementVolume =
-            existingRefinementVolume
-          + trialTotalScanPathRefinementVolume;
+        const scalar trialGlobalRefineVolume =
+            existingRefineVolume
+          + trialTotalScanPathRefineVolume;
 
         const bool targetReached =
         (
-            trialGlobalRefinementVolume >= targetGlobalRefinementVolume
-         && trialTotalScanPathRefinementVolume
-            >= minimumScanPathRefinementVolume
+            (trialGlobalRefineVolume >= targetGlobalRefineVolume)
+         && (trialTotalScanPathRefineVolume >= minScanPathRefineVolume)
         );
 
         if (targetReached)
         {
-            scalar lowerRefinementTime = refinementEndTime;
+            scalar lowerRefineTime = refineEndTime;
 
-            scalar upperRefinementTime = nextProjectionEndTime;
+            scalar upperRefineTime = nextProjectedEndTime;
 
             for
             (
                 label iteration = 0;
-                iteration < maximumVolumeSearchIterations;
+                iteration < maxVolumeSearchIter;
                 ++iteration
             )
             {
                 if
                 (
-                    (upperRefinementTime - lowerRefinementTime)
+                    (upperRefineTime - lowerRefineTime)
                  <= volumeSearchTimeTolerance
                 )
                 {
                     break;
                 }
 
-                const scalar midpointRefinementTime =
-                    0.5*(lowerRefinementTime + upperRefinementTime);
+                const scalar midpointRefineTime =
+                    0.5*(lowerRefineTime + upperRefineTime);
 
-                const scalar midpointScanPathRefinementVolume =
-                    markScanPathInterval
+                const scalar midpointScanPathRefineVolume =
+                    markScanPath
                     (
-                        refinementEndTime,
-                        midpointRefinementTime,
+                        refineEndTime,
+                        midpointRefineTime,
                         cellAABBs,
                         false
                     );
 
-                const scalar midpointTotalScanPathRefinementVolume =
-                    committedScanPathRefinementVolume
-                  + midpointScanPathRefinementVolume;
+                const scalar midpointTotalScanPathRefineVolume =
+                    committedScanPathRefineVolume
+                  + midpointScanPathRefineVolume;
 
-                const scalar midpointGlobalRefinementVolume =
-                    existingRefinementVolume
-                  + midpointTotalScanPathRefinementVolume;
+                const scalar midpointGlobalRefineVolume =
+                    existingRefineVolume
+                  + midpointTotalScanPathRefineVolume;
 
-                if
+                const bool midpointTargetReached =
                 (
-                    midpointGlobalRefinementVolume
-                        >= targetGlobalRefinementVolume
-                 && midpointTotalScanPathRefinementVolume
-                        >= minimumScanPathRefinementVolume
-                )
+                    (midpointGlobalRefineVolume >= targetGlobalRefineVolume)
+                 && (midpointTotalScanPathRefineVolume >= minScanPathRefineVolume)
+                );
+        
+                Info<< "refinementModel: volume search iteration "
+                    << iteration << nl
+                    << "    lowerRefineTime: " << lowerRefineTime << nl
+                    << "    midpointRefineTime: " << midpointRefineTime << nl
+                    << "    upperRefineTime: " << upperRefineTime << nl
+                    << "    midpoint scan-path refine volume: "
+                    << midpointTotalScanPathRefineVolume << nl
+                    << "    midpoint global refine volume: "
+                    << midpointGlobalRefineVolume << nl
+                    << "    target reached: "
+                    << midpointTargetReached << endl;
+
+                if (midpointTargetReached)
                 {
-                    upperRefinementTime = midpointRefinementTime;
+                    upperRefineTime = midpointRefineTime;
                 }
                 else
                 {
-                    lowerRefinementTime = midpointRefinementTime;
+                    lowerRefineTime = midpointRefineTime;
                 }
             }
 
-            committedScanPathRefinementVolume +=
-                markScanPathInterval
+            committedScanPathRefineVolume +=
+                markScanPath
                 (
-                    refinementEndTime,
-                    upperRefinementTime,
+                    refineEndTime,
+                    upperRefineTime,
                     cellAABBs,
                     true
                 );
 
-            refinementEndTime = upperRefinementTime;
+            refineEndTime = upperRefineTime;
 
             break;
         }
 
-        committedScanPathRefinementVolume +=
-            markScanPathInterval
+        committedScanPathRefineVolume +=
+            markScanPath
             (
-                refinementEndTime,
-                nextProjectionEndTime,
+                refineEndTime,
+                nextProjectedEndTime,
                 cellAABBs,
                 true
             );
 
-        refinementEndTime = nextProjectionEndTime;
+        refineEndTime = nextProjectedEndTime;
     }
 
     refinementField_.correctBoundaryConditions();
 
-    Info << "Minimum scan-path refinement volume: "
-         << minimumScanPathRefinementVolume << endl;
+    Info << "Min scan-path refine volume: "
+         << minScanPathRefineVolume << endl;
 
-    Info << "Actual scan-path refinement volume: "
-         << committedScanPathRefinementVolume << endl;
+    Info << "Actual scan-path refine volume: "
+         << committedScanPathRefineVolume << endl;
 
-    Info << "Actual global refinement volume: "
-         << existingRefinementVolume + committedScanPathRefinementVolume
-         << endl;
+    Info << "Actual global refine volume: "
+         << existingRefineVolume + committedScanPathRefineVolume << endl;
 
-    Info << "Refinement volume search ended at time: "
-         << refinementEndTime << endl;
+    Info << "Refine volume search ended at time: "
+         << refineEndTime << endl;
 
-    return dimensionedScalar(dimTime, refinementEndTime);
+    return dimensionedScalar(dimTime, refineEndTime);
 }
 
 

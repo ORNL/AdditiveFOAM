@@ -15,29 +15,13 @@ License
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
-Class
-    Foam::refinementModel::refinementModel
-
-Description
-    Abstract base class for refinementModel models
-
-SourceFiles
-    refinementModel.C
-
 \*---------------------------------------------------------------------------*/
 
 #ifndef refinementModel_H
 #define refinementModel_H
 
 #include "labelVector.H"
+#include "hexMatcher.H"
 #include "dictionary.H"
 #include "volFields.H"
 #include "movingBeam.H"
@@ -80,7 +64,7 @@ class refinementModel
         ) const;
 
         //- Return true if a cell AABB overlaps a yawed path OBB
-        bool cellAABBOverlapsOBB
+        bool cellOverlapsOBB
         (
             const treeBoundBox& cellAABB,
             const point& centre,
@@ -91,10 +75,10 @@ class refinementModel
         ) const;
 
         //- Mark/count cells swept by powered path vectors over a time interval
-        scalar markScanPathInterval
+        scalar markScanPath
         (
-            const scalar intervalStartTime,
-            const scalar intervalEndTime,
+            const scalar startTime,
+            const scalar endTime,
             const List<treeBoundBox>& cellAABBs,
             const bool commit
         );
@@ -129,8 +113,8 @@ protected:
         scalar refinementTemperature_;
 
         //- Refinement extent for scan-path OBB slabs
-        //  x: half-span along e0, width/lateral direction
-        //  y: endpoint padding along e1, scan direction
+        //  x: endpoint padding along e0, scan direction
+        //  y: half-span along e1, transverse direction
         //  z: half-span along e2, depth/vertical direction
         vector buffer_;
 
@@ -139,6 +123,15 @@ protected:
 
         //- Marker field for refinement operations
         volScalarField refinementField_;
+
+
+    // Protected Member Functions
+
+        //- Return characteristic buffer-sized refine volume
+        scalar refineBufferVolume() const;
+
+        //- Return minimum future scan-path refine volume
+        scalar minRefineVolume() const;
 
 
 public:
@@ -197,27 +190,51 @@ public:
 
     // Member Functions
 
-        //- Return the refinement marker field
-        virtual volScalarField refinementField()
+        //- Return access to the refinement marker field
+        virtual volScalarField& refinementField()
         {
             return refinementField_;
         }
 
-        //- Set refinementField using temperature constraints
-        virtual void refineUsingTemperature();
+        //- Return const access to the refinement marker field
+        virtual const volScalarField& refinementField() const
+        {
+            return refinementField_;
+        }
 
-        //- Refine along scan path until specified time
-        virtual void refineUsingTime(const scalar& refinementTime);
+        //- Mark refinement field using temperature constraints
+        virtual void markTemperature();
 
-        //- Refine along scan path until global refinement volume reaches
-        //  provided target. Returns time at which target is reached.
-        //  The second argument is kept for backwards-compatible call sites;
-        //  use minRefinementVolumeFactor in the refinement dictionary instead.
+        //- Mark refinement field by projecting scan path to specified time
+        virtual void markScanPathTime(const scalar& refineTime);
+
+        //- Mark refinement field by projecting scan path to target volume
+        virtual dimensionedScalar markScanPathVolume
+        (
+            const dimensionedScalar& targetRefineVolume
+        );
+
+        //- Backwards-compatible wrapper
+        virtual void refineUsingTemperature()
+        {
+            markTemperature();
+        }
+
+        //- Backwards-compatible wrapper
+        virtual void refineUsingTime(const scalar& refineTime)
+        {
+            markScanPathTime(refineTime);
+        }
+
+        //- Backwards-compatible wrapper
         virtual dimensionedScalar refineUsingVolume
         (
-            const dimensionedScalar& refinementVolume,
-            const scalar& unusedMinimumScanPathRefinementVolume = 0.0
-        );
+            const dimensionedScalar& targetRefineVolume,
+            const scalar& = 0.0
+        )
+        {
+            return markScanPathVolume(targetRefineVolume);
+        }
 
         //- Update refinementField
         virtual bool update() = 0;

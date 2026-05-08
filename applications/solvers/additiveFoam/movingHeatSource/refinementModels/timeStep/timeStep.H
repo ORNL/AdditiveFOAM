@@ -27,9 +27,9 @@ Class
     Foam::refinementModel::timeStep
 
 Description
-    This basic refinement control scheme refines the mesh at every time step,
-    marking cells which overlap the beam's current position or (optionally) are
-    above a specified temperature.
+    This refinement model marks refinementField at every time step, including
+    cells which overlap the current beam positions and are above the target 
+    temperature.
 
 SourceFiles
     timeStep.C
