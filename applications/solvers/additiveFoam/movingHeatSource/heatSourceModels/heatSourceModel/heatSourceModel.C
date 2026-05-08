@@ -28,6 +28,7 @@ License
 #include "heatSourceModel.H"
 #include "labelVector.H"
 #include "hexMatcher.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
