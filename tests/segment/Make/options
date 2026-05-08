@@ -1,0 +1,11 @@
+EXE_INC = \
+    -I../vendor/doctest \
+    -I../../applications/solvers/additiveFoam/movingHeatSource/segment \
+    -I$(LIB_SRC)/OpenFOAM/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lmovingBeamModels \
+    -lOpenFOAM \
+    -lfiniteVolume \
+    -lmeshTools

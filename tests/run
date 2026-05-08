@@ -1,0 +1,24 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1
+
+set -eu
+
+if [ -z "${FOAM_USER_APPBIN:-}" ]; then
+    echo "Source the OpenFOAM environment before running ./tests/run" >&2
+    exit 1
+fi
+
+test_binaries="
+$FOAM_USER_APPBIN/additiveFoamSegmentTests
+"
+
+for test_binary in $test_binaries
+do
+    if [ ! -x "$test_binary" ]; then
+        echo "Missing test binary: $test_binary" >&2
+        echo "Build the test suite first with ./tests/Allwmake" >&2
+        exit 1
+    fi
+
+    "$test_binary"
+done

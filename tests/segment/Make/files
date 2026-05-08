@@ -1,0 +1,4 @@
+../shared/testMain.C
+segmentTests.C
+
+EXE = $(FOAM_USER_APPBIN)/additiveFoamSegmentTests

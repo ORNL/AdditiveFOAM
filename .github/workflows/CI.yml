@@ -21,18 +21,22 @@ jobs:
        
     runs-on: ubuntu-latest
     container:
-      image: docker.io/openfoam/openfoam10-paraview510
+      image: microfluidica/openfoam:13
       options: --user root
     steps:
       - name: Checkout AdditiveFOAM
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
           ./Allwmake
+      - name: Build native tests
+        run: |
+          ./tests/Allwmake
+      - name: Run native tests
+        run: |
+          ./tests/run
       - name: Test AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created

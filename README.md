@@ -8,6 +8,8 @@
 
 The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.github.io/AdditiveFOAM/).
 
+For local test commands and guidance on adding native C++ tests, see [TESTING.md](TESTING.md).
+
 ### Repository Features
 | Link                                                | Description                              |
 |-----------------------------------------------------------|------------------------------------------|
