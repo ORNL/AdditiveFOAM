@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+      - candidate-v2.0.0
 concurrency:
   group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{github.event_name == 'pull_request'}}
