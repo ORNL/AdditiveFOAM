@@ -14,7 +14,7 @@ jobs:
   CI:
     defaults:
       run:
-        shell: bash -leo pipefail {0}
+        shell: bash -eo pipefail {0}
     strategy:
       matrix:
         cxx: ['g++']
