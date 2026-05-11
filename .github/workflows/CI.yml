@@ -29,19 +29,19 @@ jobs:
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          . /openfoam/profile.rc
+          . /opt/openfoam13/etc/bashrc
           ./Allwmake
       - name: Build native tests
         run: |
-          . /openfoam/profile.rc
+          . /opt/openfoam13/etc/bashrc
           ./tests/Allwmake
       - name: Run native tests
         run: |
-          . /openfoam/profile.rc
+          . /opt/openfoam13/etc/bashrc
           ./tests/run
       - name: Test AdditiveFOAM
         run: |
-          . /openfoam/profile.rc
+          . /opt/openfoam13/etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           # FIXME: use built-in "additiveFoam" smaller case when created
