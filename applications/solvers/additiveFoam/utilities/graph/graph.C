@@ -40,9 +40,9 @@ namespace Foam
 Foam::word Foam::graph::wordify(const Foam::string& sname)
 {
     string wname = sname;
-    wname.replace(' ', '_');
-    wname.replace('(', '_');
-    wname.replace(')', "");
+    wname.replaceAll(' ', '_');
+    wname.replaceAll('(', '_');
+    wname.replaceAll(')', "");
 
     return word(wname);
 }

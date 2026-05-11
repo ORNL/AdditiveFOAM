@@ -25,10 +25,14 @@ From the repository root:
 
 ## Current Coverage
 
-The first native executable is `additiveFoamSegmentTests`. It validates `Foam::segment` from `libmovingBeamModels` by checking:
+The native suite currently builds four executables:
 
-- default construction yields the documented zeroed point-source state
-- construction from a space-delimited string populates mode, position, power, and parameter
+- `additiveFoamSegmentTests` validates `Foam::segment` default construction and parsing.
+- `additiveFoamMovingBeamTests` covers scan-path timing, index selection, interpolation, and timestep adjustment in `Foam::movingBeam`.
+- `additiveFoamMovingHeatSourceModelTests` exercises absorption-model and heat-source-model math for the current beam model implementations.
+- `additiveFoamUtilityTests` protects `interpolateXY` and the graph utilities used by solver setup and post-processing.
+
+The `movingBeam` and heat-source-model tests use a small file-backed fixture case under [`tests/fixtures/movingHeatSourceCase`](tests/fixtures/movingHeatSourceCase) so the constructors read real OpenFOAM dictionaries and scan-path files.
 
 ## Adding A New Native Test
 

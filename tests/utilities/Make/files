@@ -1,0 +1,4 @@
+../shared/testMain.C
+utilityTests.C
+
+EXE = $(FOAM_USER_APPBIN)/additiveFoamUtilityTests

@@ -1,0 +1,164 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      heatSourceDict;
+}
+
+sources
+(
+    testBeam
+    skipBeam
+    noHitBeam
+    kellyConeBeam
+    kellyCylinderBeam
+    modifiedBeam
+    projectedBeam
+);
+
+testBeam
+{
+    heatSourceModel      superGaussian;
+    absorptionModel      constant;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    constantCoeffs
+    {
+        eta             0.35;
+    }
+
+    superGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+    }
+}
+
+skipBeam
+{
+    heatSourceModel      superGaussian;
+    absorptionModel      constant;
+    pathName             skipPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    constantCoeffs
+    {
+        eta             0.35;
+    }
+
+    superGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+    }
+}
+
+noHitBeam
+{
+    heatSourceModel      superGaussian;
+    absorptionModel      constant;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     false;
+
+    constantCoeffs
+    {
+        eta             0.35;
+    }
+
+    superGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+    }
+}
+
+kellyConeBeam
+{
+    heatSourceModel      superGaussian;
+    absorptionModel      Kelly;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    KellyCoeffs
+    {
+        geometry        cone;
+        eta0            0.45;
+        etaMin          0.15;
+    }
+
+    superGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+    }
+}
+
+kellyCylinderBeam
+{
+    heatSourceModel      superGaussian;
+    absorptionModel      Kelly;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    KellyCoeffs
+    {
+        geometry        cylinder;
+        eta0            0.45;
+        etaMin          0.15;
+    }
+
+    superGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+    }
+}
+
+modifiedBeam
+{
+    heatSourceModel      modifiedSuperGaussian;
+    absorptionModel      constant;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    constantCoeffs
+    {
+        eta             0.35;
+    }
+
+    modifiedSuperGaussianCoeffs
+    {
+        dimensions      (2 2 4);
+        k               2;
+        m               2;
+    }
+}
+
+projectedBeam
+{
+    heatSourceModel      projectedGaussian;
+    absorptionModel      constant;
+    pathName             beamPath.dat;
+    deltaT               0.4;
+    hitPathIntervals     true;
+
+    constantCoeffs
+    {
+        eta             0.35;
+    }
+
+    projectedGaussianCoeffs
+    {
+        dimensions      (1 2 16);
+        A               3;
+        B               0;
+    }
+}

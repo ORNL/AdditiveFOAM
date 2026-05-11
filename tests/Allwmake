@@ -9,3 +9,6 @@ fi
 . "$WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments"
 
 wmake $targetType segment
+wmake $targetType movingBeam
+wmake $targetType movingHeatSourceModels
+wmake $targetType utilities

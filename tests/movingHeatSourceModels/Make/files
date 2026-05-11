@@ -1,0 +1,4 @@
+../shared/testMain.C
+movingHeatSourceModelTests.C
+
+EXE = $(FOAM_USER_APPBIN)/additiveFoamMovingHeatSourceModelTests

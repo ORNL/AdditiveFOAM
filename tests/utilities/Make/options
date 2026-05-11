@@ -1,0 +1,13 @@
+EXE_INC = \
+    -I../vendor/doctest \
+    -I../../applications/solvers/additiveFoam/utilities/interpolateXY \
+    -I../../applications/solvers/additiveFoam/utilities/graph \
+    -I$(LIB_SRC)/OpenFOAM/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -ladditiveFoamUtilities \
+    -lOpenFOAM \
+    -lfiniteVolume \
+    -lmeshTools

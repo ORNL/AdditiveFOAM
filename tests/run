@@ -10,6 +10,9 @@ fi
 
 test_binaries="
 $FOAM_USER_APPBIN/additiveFoamSegmentTests
+$FOAM_USER_APPBIN/additiveFoamMovingBeamTests
+$FOAM_USER_APPBIN/additiveFoamMovingHeatSourceModelTests
+$FOAM_USER_APPBIN/additiveFoamUtilityTests
 "
 
 for test_binary in $test_binaries
