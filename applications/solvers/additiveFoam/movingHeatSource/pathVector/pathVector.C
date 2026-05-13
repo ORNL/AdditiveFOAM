@@ -96,29 +96,4 @@ Foam::point Foam::pathVector::position(const scalar time) const
     return startPosition_ + fraction*displacement_;
 }
 
-/*
-bool Foam::pathVector::contains(const scalar t) const
-{
-    return
-    (
-        ((t - startTime_) >= -small)
-     && ((endTime_ - t) > small)
-    );
-}
-
-
-bool Foam::pathVector::overlaps
-(
-    const scalar t0,
-    const scalar t1
-) const
-{
-    return
-    (
-        ((endTime_ - t0) > small)
-     && ((t1 - startTime_) > small)
-    );
-}
-*/
-
 // ************************************************************************* //
