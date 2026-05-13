@@ -173,18 +173,6 @@ public:
 
             //- Return position at the provided time
             point position(const scalar time) const;
-
-/*
-            //- Return true if the provided time is within the path vector
-            bool contains(const scalar time) const;
-
-            //- Return true if the provided time interval overlaps the path
-            bool overlaps
-            (
-                const scalar startTime,
-                const scalar endTime
-            ) const;
-*/
 };
 
 
