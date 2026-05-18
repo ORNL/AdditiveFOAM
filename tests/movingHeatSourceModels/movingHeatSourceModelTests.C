@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "doctest.h"
+#include <gtest/gtest.h>
 
 #include "KellyAbsorption.H"
 #include "constantAbsorption.H"
@@ -11,16 +11,6 @@
 
 namespace
 {
-
-bool scalarClose
-(
-    const Foam::scalar lhs,
-    const Foam::scalar rhs,
-    const Foam::scalar tol = 1e-9
-)
-{
-    return Foam::mag(lhs - rhs) <= tol;
-}
 
 Foam::IOdictionary makeHeatSourceDict(Foam::Time& runTime)
 {
@@ -73,7 +63,7 @@ Foam::scalar projectedK
 
 } // namespace
 
-TEST_CASE("constant absorption returns the configured eta for any aspect ratio")
+TEST(movingHeatSourceModelTests, constantAbsorptionReturnsTheConfiguredEtaForAnyAspectRatio)
 {
     auto runTime = additiveFoamTest::makeTime();
     Foam::fvMesh mesh(additiveFoamTest::makeFixtureMesh(*runTime));
@@ -81,11 +71,11 @@ TEST_CASE("constant absorption returns the configured eta for any aspect ratio")
 
     Foam::absorptionModels::constant model("testBeam", heatSourceDict, mesh);
 
-    CHECK(scalarClose(model.eta(0.5), 0.35));
-    CHECK(scalarClose(model.eta(7.5), 0.35));
+    EXPECT_NEAR(model.eta(0.5), 0.35, 1e-9);
+    EXPECT_NEAR(model.eta(7.5), 0.35, 1e-9);
 }
 
-TEST_CASE("Kelly absorption matches the cone and cylinder formulas and respects etaMin")
+TEST(movingHeatSourceModelTests, KellyAbsorptionMatchesTheConeAndCylinderFormulasAndRespectsEtaMin)
 {
     auto runTime = additiveFoamTest::makeTime();
     Foam::fvMesh mesh(additiveFoamTest::makeFixtureMesh(*runTime));
@@ -96,13 +86,13 @@ TEST_CASE("Kelly absorption matches the cone and cylinder formulas and respects 
 
     const Foam::scalar aspectRatio = 2.0;
 
-    CHECK(scalarClose(cone.eta(aspectRatio), expectedKellyEta("cone", aspectRatio, 0.45, 0.15)));
-    CHECK(scalarClose(cylinder.eta(aspectRatio), expectedKellyEta("cylinder", aspectRatio, 0.45, 0.15)));
-    CHECK(scalarClose(cone.eta(1.0), 0.15));
-    CHECK(scalarClose(cylinder.eta(0.75), 0.15));
+    EXPECT_NEAR(cone.eta(aspectRatio), expectedKellyEta("cone", aspectRatio, 0.45, 0.15), 1e-9);
+    EXPECT_NEAR(cylinder.eta(aspectRatio), expectedKellyEta("cylinder", aspectRatio, 0.45, 0.15), 1e-9);
+    EXPECT_NEAR(cone.eta(1.0), 0.15, 1e-9);
+    EXPECT_NEAR(cylinder.eta(0.75), 0.15, 1e-9);
 }
 
-TEST_CASE("superGaussian weight is centered and symmetric and V0 matches the normalization formula")
+TEST(movingHeatSourceModelTests, superGaussianWeightIsCenteredAndSymmetricAndV0MatchesTheNormalizationFormula)
 {
     auto runTime = additiveFoamTest::makeTime();
     Foam::fvMesh mesh(additiveFoamTest::makeFixtureMesh(*runTime));
@@ -119,9 +109,9 @@ TEST_CASE("superGaussian weight is centered and symmetric and V0 matches the nor
         )
     );
 
-    CHECK(scalarClose(model.weight(Foam::vector::zero), 1.0));
-    CHECK(scalarClose(model.weight(Foam::vector(1.0, 0.0, 0.0)), model.weight(Foam::vector(-1.0, 0.0, 0.0))));
-    CHECK(model.weight(Foam::vector(1.0, 0.0, 0.0)) < 1.0);
+    EXPECT_NEAR(model.weight(Foam::vector::zero), 1.0, 1e-9);
+    EXPECT_NEAR(model.weight(Foam::vector(1.0, 0.0, 0.0)), model.weight(Foam::vector(-1.0, 0.0, 0.0)), 1e-9);
+    EXPECT_LT(model.weight(Foam::vector(1.0, 0.0, 0.0)), 1.0);
 
     const Foam::scalar k = 2.0;
     const Foam::scalar a = Foam::pow(2.0, 1.0 / k);
@@ -130,10 +120,10 @@ TEST_CASE("superGaussian weight is centered and symmetric and V0 matches the nor
         (2.0 / 3.0) * s.x() * s.y() * s.z()
       * Foam::constant::mathematical::pi * Foam::tgamma(1.0 + 3.0 / k);
 
-    CHECK(scalarClose(model.V0().value(), expectedV0));
+    EXPECT_NEAR(model.V0().value(), expectedV0, 1e-9);
 }
 
-TEST_CASE("modifiedSuperGaussian truncates beyond the beam depth and remains symmetric in-plane")
+TEST(movingHeatSourceModelTests, modifiedSuperGaussianTruncatesBeyondTheBeamDepthAndRemainsSymmetricInPlane)
 {
     auto runTime = additiveFoamTest::makeTime();
     Foam::fvMesh mesh(additiveFoamTest::makeFixtureMesh(*runTime));
@@ -150,13 +140,13 @@ TEST_CASE("modifiedSuperGaussian truncates beyond the beam depth and remains sym
         )
     );
 
-    CHECK(scalarClose(model.weight(Foam::vector::zero), 1.0));
-    CHECK(scalarClose(model.weight(Foam::vector(0.5, 0.0, 1.0)), model.weight(Foam::vector(-0.5, 0.0, 1.0))));
-    CHECK(scalarClose(model.weight(Foam::vector(0.0, 0.0, 4.0)), 0.0));
-    CHECK(model.V0().value() > 0.0);
+    EXPECT_NEAR(model.weight(Foam::vector::zero), 1.0, 1e-9);
+    EXPECT_NEAR(model.weight(Foam::vector(0.5, 0.0, 1.0)), model.weight(Foam::vector(-0.5, 0.0, 1.0)), 1e-9);
+    EXPECT_NEAR(model.weight(Foam::vector(0.0, 0.0, 4.0)), 0.0, 1e-9);
+    EXPECT_GT(model.V0().value(), 0.0);
 }
 
-TEST_CASE("projectedGaussian clamps the derived exponent and decays away from the center")
+TEST(movingHeatSourceModelTests, projectedGaussianClampsTheDerivedExponentAndDecaysAwayFromTheCenter)
 {
     auto runTime = additiveFoamTest::makeTime();
     Foam::fvMesh mesh(additiveFoamTest::makeFixtureMesh(*runTime));
@@ -173,9 +163,9 @@ TEST_CASE("projectedGaussian clamps the derived exponent and decays away from th
         )
     );
 
-    CHECK(scalarClose(model.weight(Foam::vector::zero), 1.0));
-    CHECK(model.weight(Foam::vector(0.25, 0.0, 0.0)) < 1.0);
-    CHECK(model.weight(Foam::vector(0.0, 0.0, 16.0)) < model.weight(Foam::vector(0.0, 0.0, 1.0)));
+    EXPECT_NEAR(model.weight(Foam::vector::zero), 1.0, 1e-9);
+    EXPECT_LT(model.weight(Foam::vector(0.25, 0.0, 0.0)), 1.0);
+    EXPECT_LT(model.weight(Foam::vector(0.0, 0.0, 16.0)), model.weight(Foam::vector(0.0, 0.0, 1.0)));
 
     const Foam::scalar aspectRatio = 16.0 / Foam::min(1.0, 2.0);
     const Foam::scalar k = projectedK(aspectRatio, 3.0, 0.0);
@@ -183,6 +173,6 @@ TEST_CASE("projectedGaussian clamps the derived exponent and decays away from th
         0.5 * Foam::constant::mathematical::pi * 1.0 * 2.0 * 16.0
       * Foam::tgamma(1.0 / k) / (k * std::pow(3.0, 1.0 / k));
 
-    CHECK(scalarClose(k, 512.0));
-    CHECK(scalarClose(model.V0().value(), expectedV0));
+    EXPECT_NEAR(k, 512.0, 1e-9);
+    EXPECT_NEAR(model.V0().value(), expectedV0, 1e-9);
 }

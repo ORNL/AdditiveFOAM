@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include <gtest/gtest.h>
 
 #include "OStringStream.H"
 #include "graph.H"
@@ -7,19 +7,9 @@
 namespace
 {
 
-bool scalarClose
-(
-    const Foam::scalar lhs,
-    const Foam::scalar rhs,
-    const Foam::scalar tol = 1e-9
-)
-{
-    return Foam::mag(lhs - rhs) <= tol;
-}
-
 } // namespace
 
-TEST_CASE("interpolateXY handles exact hits, interpolation, clamping, and unsorted x data")
+TEST(utilityTests, interpolateXYHandlesExactHitsInterpolationClampingAndUnsortedXData)
 {
     Foam::scalarField xOld(3);
     xOld[0] = 3.0;
@@ -31,17 +21,17 @@ TEST_CASE("interpolateXY handles exact hits, interpolation, clamping, and unsort
     yOld[1] = 10.0;
     yOld[2] = 20.0;
 
-    CHECK(scalarClose(Foam::interpolateXY(2.0, xOld, yOld), 20.0));
-    CHECK(scalarClose(Foam::interpolateXY(1.5, xOld, yOld), 15.0));
-    CHECK(scalarClose(Foam::interpolateXY(0.0, xOld, yOld), 10.0));
-    CHECK(scalarClose(Foam::interpolateXY(4.0, xOld, yOld), 30.0));
+    EXPECT_NEAR(Foam::interpolateXY(2.0, xOld, yOld), 20.0, 1e-9);
+    EXPECT_NEAR(Foam::interpolateXY(1.5, xOld, yOld), 15.0, 1e-9);
+    EXPECT_NEAR(Foam::interpolateXY(0.0, xOld, yOld), 10.0, 1e-9);
+    EXPECT_NEAR(Foam::interpolateXY(4.0, xOld, yOld), 30.0, 1e-9);
 
     const Foam::labelPair labels = Foam::interpolateXYLabels(1.5, xOld, yOld);
-    CHECK_EQ(labels.first(), 1);
-    CHECK_EQ(labels.second(), 2);
+    EXPECT_EQ(labels.first(), 1);
+    EXPECT_EQ(labels.second(), 2);
 }
 
-TEST_CASE("graph wordify normalizes labels and y() returns the only curve")
+TEST(utilityTests, graphWordifyNormalizesLabelsAndYReturnsTheOnlyCurve)
 {
     Foam::scalarField x(2);
     x[0] = 0.0;
@@ -51,15 +41,15 @@ TEST_CASE("graph wordify normalizes labels and y() returns the only curve")
     y[0] = 2.0;
     y[1] = 3.0;
 
-    CHECK_EQ(Foam::graph::wordify("Melt Pool (mm)"), Foam::word("Melt_Pool__mm"));
+    EXPECT_EQ(Foam::graph::wordify("Melt Pool (mm)"), Foam::word("Melt_Pool__mm"));
 
     Foam::graph g("title", "x", "Melt Pool (mm)", x, y);
 
-    CHECK_EQ(g.y()[0], Foam::scalar(2.0));
-    CHECK_EQ(g.y()[1], Foam::scalar(3.0));
+    EXPECT_DOUBLE_EQ(g.y()[0], Foam::scalar(2.0));
+    EXPECT_DOUBLE_EQ(g.y()[1], Foam::scalar(3.0));
 }
 
-TEST_CASE("graph writeTable emits the stored xy pairs")
+TEST(utilityTests, graphWriteTableEmitsTheStoredXYPairs)
 {
     Foam::scalarField x(2);
     x[0] = 0.0;
@@ -75,8 +65,8 @@ TEST_CASE("graph writeTable emits the stored xy pairs")
 
     const std::string output = os.str();
 
-    CHECK(output.find("0") != std::string::npos);
-    CHECK(output.find("1") != std::string::npos);
-    CHECK(output.find("2") != std::string::npos);
-    CHECK(output.find("3") != std::string::npos);
+    EXPECT_NE(output.find("0"), std::string::npos);
+    EXPECT_NE(output.find("1"), std::string::npos);
+    EXPECT_NE(output.find("2"), std::string::npos);
+    EXPECT_NE(output.find("3"), std::string::npos);
 }

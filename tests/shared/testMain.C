@@ -1,6 +1,7 @@
-#include "doctest.h"
+#include <gtest/gtest.h>
 
-int main()
+int main(int argc, char** argv)
 {
-    return doctest::runTests();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

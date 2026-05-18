@@ -32,13 +32,26 @@ jobs:
           . /opt/openfoam13/etc/bashrc || true
           test -n "$WM_PROJECT_DIR"
           ./Allwmake
+      - name: Install GoogleTest
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends cmake libgtest-dev
+          if ! find /usr/lib /usr/local/lib -name 'libgtest.a' -o -name 'libgtest.so' | grep -q .; then
+            cmake -S /usr/src/googletest -B /tmp/googletest-build
+            cmake --build /tmp/googletest-build -j2
+            cp /tmp/googletest-build/lib/libgtest*.a /usr/local/lib/
+          fi
+          test -f /usr/include/gtest/gtest.h
+          find /usr/lib /usr/local/lib -name 'libgtest.a' -o -name 'libgtest.so' | grep -q .
       - name: Build native tests
         run: |
           . /opt/openfoam13/etc/bashrc || true
+          test -n "$WM_PROJECT_DIR"
           ./tests/Allwmake
       - name: Run native tests
         run: |
           . /opt/openfoam13/etc/bashrc || true
+          test -n "$WM_PROJECT_DIR"
           ./tests/run
       - name: Test AdditiveFOAM
         run: |

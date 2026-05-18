@@ -6,6 +6,59 @@ if [ -z "${WM_PROJECT_DIR:-}" ]; then
     exit 1
 fi
 
+find_gtest_include_dir()
+{
+    for candidate in \
+        "${GTEST_INCLUDE_DIR:-}" \
+        "${GTEST_ROOT:-}/include" \
+        /usr/include \
+        /usr/local/include
+    do
+        if [ -n "$candidate" ] && [ -f "$candidate/gtest/gtest.h" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+find_gtest_lib_dir()
+{
+    for candidate in \
+        "${GTEST_LIB_DIR:-}" \
+        "${GTEST_ROOT:-}/lib" \
+        "${GTEST_ROOT:-}/lib64" \
+        /usr/lib/x86_64-linux-gnu \
+        /usr/lib64 \
+        /usr/lib \
+        /usr/local/lib64 \
+        /usr/local/lib
+    do
+        if [ -n "$candidate" ] && \
+           { [ -f "$candidate/libgtest.a" ] || [ -f "$candidate/libgtest.so" ]; }
+        then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+GTEST_INCLUDE_DIR=$(find_gtest_include_dir) || {
+    echo "Unable to find GoogleTest headers. Install gtest or set GTEST_ROOT/GTEST_INCLUDE_DIR." >&2
+    exit 1
+}
+
+GTEST_LIB_DIR=$(find_gtest_lib_dir) || {
+    echo "Unable to find the GoogleTest library. Install gtest or set GTEST_ROOT/GTEST_LIB_DIR." >&2
+    exit 1
+}
+
+export GTEST_INCLUDE_DIR
+export GTEST_LIB_DIR
+
 . "$WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments"
 
 wmake $targetType segment
