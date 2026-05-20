@@ -24,88 +24,78 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::movingHeatSourceModel
+    Foam::refinementModel::none
 
 Description
-    Class for multiple moving beam heat sources
+    No refinement.
 
 SourceFiles
-    movingHeatSourceModel.C
-    calculateQDot.C
+    none.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef movingHeatSourceModel_H
-#define movingHeatSourceModel_H
+#ifndef noRefinementModel_H
+#define noRefinementModel_H
+
+#include "refinementModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "heatSourceModel.H"
-#include "movingBeam.H"
-#include "refinementModel.H"
-
 namespace Foam
+{
+namespace refinementModels
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class movingHeatSourceModel Declaration
+                          Class noRefinementModel
 \*---------------------------------------------------------------------------*/
 
-class movingHeatSourceModel
+class noRefinementModel
+:
+    public refinementModel
 {
-private:
-
-    // Private data
-
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-        
-        //- Main movingHeatSourceDict
-        IOdictionary dict_;
-        
-        //- List of individual heat sources
-        wordList sourceNames_;
-        
-        //- Total volumetric power of all beams
-        volScalarField qDot_;
-                
-        //- Pointer list to each beam instance
-        PtrList<heatSourceModel> sources_;
-        
-        //- Pointer to refinement model
-        autoPtr<refinementModel> refinementModel_;
 
 public:
 
+    //- Runtime type information
+    TypeName("none");
+
+
     // Constructors
 
-        // Construct from time and dictionary
-        movingHeatSourceModel
+        //- Default empty constructor
+        noRefinementModel
         (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
             const fvMesh& mesh
         );
 
+
     //- Destructor
-    ~movingHeatSourceModel();
+    virtual ~noRefinementModel()
+    {}
+
 
     // Member Functions
-    
-        //- Return const access to the total volumetric heating
-        const volScalarField& qDot() const
+
+        //- Return true
+        virtual bool update()
         {
-            return qDot_;
+            return true;
         }
-        
-        //- Adjust deltaT using the current state of each beam
-        void adjustDeltaT(scalar& deltaT);
-        
-        //- Update total qDot field
-        void update();
+
+        //- Return true
+        virtual bool read()
+        {
+            return true;
+        }
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace refinementModel
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -113,4 +103,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

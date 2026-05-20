@@ -1,0 +1,261 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+                Copyright (C) 2023 Oak Ridge National Laboratory
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+\*---------------------------------------------------------------------------*/
+
+#ifndef refinementModel_H
+#define refinementModel_H
+
+#include "labelVector.H"
+#include "hexMatcher.H"
+#include "dictionary.H"
+#include "volFields.H"
+#include "movingBeam.H"
+#include "treeBoundBox.H"
+#include "heatSourceModel.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+/*---------------------------------------------------------------------------*\
+                     Class refinementModel Declaration
+\*---------------------------------------------------------------------------*/
+
+class refinementModel
+:
+    public IOdictionary
+{
+    // Private Member Functions
+
+        //- Construct the base IO object
+        IOobject createIOobject
+        (
+            const dictionary& dict,
+            const fvMesh& mesh
+        ) const;
+
+        //- Calculate cell axis-aligned bounding boxes
+        void calculateCellAABBs(List<treeBoundBox>& cellAABBs) const;
+
+        //- Calculate local scan-path coordinate frame
+        void scanPathFrame
+        (
+            const point& p0,
+            const point& p1,
+            vector& e0,
+            vector& e1,
+            vector& e2
+        ) const;
+
+        //- Return true if a cell AABB overlaps a yawed path OBB
+        bool cellOverlapsOBB
+        (
+            const treeBoundBox& cellAABB,
+            const point& centre,
+            const vector& e0,
+            const vector& e1,
+            const vector& e2,
+            const vector& L
+        ) const;
+
+        //- Mark/count cells swept by powered path vectors over a time interval
+        scalar markScanPath
+        (
+            const scalar startTime,
+            const scalar endTime,
+            const List<treeBoundBox>& cellAABBs,
+            const bool commit
+        );
+
+        //- Return next powered path-vector start or end time after time
+        scalar nextPoweredPathEventTime(const scalar time) const;
+
+
+protected:
+
+    // Protected Data
+
+        //- PtrList to heatSourceModels
+        const PtrList<heatSourceModel>& sources_;
+
+        //- Pointer to mesh information
+        const fvMesh& mesh_;
+
+        //- Main heat source dictionary
+        const dictionary& heatSourceDict_;
+
+        //- Sub-dictionary for refinementModel entries
+        dictionary refinementDict_;
+
+        //- Switch for refinementField generation
+        const bool refine_;
+
+        //- Number of refinement levels
+        label nLevels_;
+
+        //- Temperature above which refinement occurs
+        scalar refinementTemperature_;
+
+        //- Refinement extent for scan-path OBB slabs
+        //  x: endpoint padding along e0, scan direction
+        //  y: half-span along e1, transverse direction
+        //  z: half-span along e2, depth/vertical direction
+        vector buffer_;
+
+        //- End time of last beam
+        scalar endTime_;
+
+        //- Marker field for refinement operations
+        volScalarField refinementField_;
+
+
+    // Protected Member Functions
+
+        //- Return characteristic buffer-sized refine volume
+        scalar refineBufferVolume() const;
+
+        //- Return minimum future scan-path refine volume
+        scalar minRefineVolume() const;
+
+
+public:
+
+    //- Runtime type information
+    TypeName("refinementModel");
+
+    //- Default refinement model dictionary name
+    static const word refinementModelDictName;
+
+    // Declare run-time constructor selection table
+    declareRunTimeSelectionTable
+    (
+        autoPtr,
+        refinementModel,
+        dictionary,
+        (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
+            const fvMesh& mesh
+        ),
+        (sources, dict, mesh)
+    );
+
+
+    // Constructors
+
+        //- Construct from components
+        refinementModel
+        (
+            const word& type,
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
+
+        //- Disallow default bitwise copy construction
+        refinementModel(const refinementModel&);
+
+
+    // Selectors
+
+        //- Return a reference to the selected refinement model
+        static autoPtr<refinementModel> New
+        (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
+
+
+    //- Destructor
+    virtual ~refinementModel()
+    {}
+
+
+    // Member Functions
+
+        //- Return access to the refinement marker field
+        virtual volScalarField& refinementField()
+        {
+            return refinementField_;
+        }
+
+        //- Return const access to the refinement marker field
+        virtual const volScalarField& refinementField() const
+        {
+            return refinementField_;
+        }
+
+        //- Mark refinement field using temperature constraints
+        virtual void markTemperature();
+
+        //- Mark refinement field by projecting scan path to specified time
+        virtual void markScanPathTime(const scalar& refineTime);
+
+        //- Mark refinement field by projecting scan path to target volume
+        virtual dimensionedScalar markScanPathVolume
+        (
+            const dimensionedScalar& targetRefineVolume
+        );
+
+        //- Backwards-compatible wrapper
+        virtual void refineUsingTemperature()
+        {
+            markTemperature();
+        }
+
+        //- Backwards-compatible wrapper
+        virtual void refineUsingTime(const scalar& refineTime)
+        {
+            markScanPathTime(refineTime);
+        }
+
+        //- Backwards-compatible wrapper
+        virtual dimensionedScalar refineUsingVolume
+        (
+            const dimensionedScalar& targetRefineVolume,
+            const scalar& = 0.0
+        )
+        {
+            return markScanPathVolume(targetRefineVolume);
+        }
+
+        //- Update refinementField
+        virtual bool update() = 0;
+
+        //- Read the heat source dictionary
+        virtual bool read() = 0;
+
+
+    // Member Operators
+
+        //- Disallow default bitwise assignment
+        void operator=(const refinementModel&) = delete;
+};
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //

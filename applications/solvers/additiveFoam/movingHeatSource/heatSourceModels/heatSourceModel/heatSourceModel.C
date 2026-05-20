@@ -87,7 +87,6 @@ Foam::heatSourceModel::heatSourceModel
     heatSourceDict_(dict),
     sourceDict_(heatSourceDict_.optionalSubDict(sourceName_)),
     heatSourceModelCoeffs_(sourceDict_.optionalSubDict(type + "Coeffs")),
-    
     mesh_(mesh),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
@@ -250,7 +249,7 @@ Foam::heatSourceModel::qDot()
         const scalar aspectRatio = 
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
-        dimensionedScalar absorbedPower
+        const dimensionedScalar absorbedPower
         (
             "etaP",
             dimPower,

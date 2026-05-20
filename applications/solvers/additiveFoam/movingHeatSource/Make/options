@@ -2,7 +2,8 @@ EXE_INC = \
     -ImovingBeam \
     -IheatSourceModels \
     -IabsorptionModels \
-    -Isegment \
+    -IpathVector \
+    -IrefinementModel \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/OpenFOAM/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude

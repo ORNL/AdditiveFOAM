@@ -38,6 +38,11 @@ boundaryField
         type            zeroGradient;
         value           uniform 300;
     }
+    
+    internalFaces
+    {
+        type            internal;
+    }
 }
 
 

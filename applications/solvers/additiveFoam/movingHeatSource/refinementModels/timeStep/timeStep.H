@@ -24,102 +24,74 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    segment
+    Foam::refinementModel::timeStep
 
 Description
-    Class for properties of a moving heat source
-    
-    mode:      0 or 1 (0 = line source, 1 = point source)
-    position:  position of the heat source center
-    power:     power of the heat source
-    parameter: (mode = 0: time interval, mode = 1: scan velocity)
+    This refinement model marks refinementField at every time step, including
+    cells which overlap the current beam positions and are above the target 
+    temperature.
 
 SourceFiles
-    segment.C
+    timeStep.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef segment_H
-#define segment_H
+#ifndef timeStep_H
+#define timeStep_H
+
+#include "refinementModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#include "point.H"
 
 namespace Foam
 {
+namespace refinementModels
+{
 
 /*---------------------------------------------------------------------------*\
-                      Class segment Declaration
+                            Class timeStep
 \*---------------------------------------------------------------------------*/
 
-class segment
+class timeStep
+:
+    public refinementModel
 {
-private:
-
-    // Private data
-
-        scalar mode_;
-
-        point position_;
-
-        scalar power_;
-
-        scalar parameter_;
-        
-        scalar time_;
 
 public:
 
+    //- Runtime type information
+    TypeName("timeStep");
+
+
     // Constructors
 
-        //- Default construction
-        segment();
-
-        //- Construct from space-delimited string
-        segment(std::string);
+        //- Construct from components
+        timeStep
+        (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
 
 
     //- Destructor
-    virtual ~segment()
+    virtual ~timeStep()
     {}
+
 
     // Member Functions
 
-        //- Set time to provided value
-        void setTime(scalar time);
+        //- Update every time step
+        virtual bool update();
 
-        //- Set position to provided value
-        void setPosition(vector position);
-
-        scalar mode()
-        {
-            return mode_;
-        }
-        
-        point position()
-        {
-            return position_;    
-        }
-                
-        scalar power()
-        {
-            return power_;
-        }
-        
-        scalar parameter()
-        {
-            return parameter_;
-        }
-        
-        scalar time()
-        {
-            return time_;
-        }
+        //- Read the heatSourceProperties dictionary
+        virtual bool read();
 };
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+} // End namespace refinementModel
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

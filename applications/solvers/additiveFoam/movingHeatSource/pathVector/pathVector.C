@@ -23,57 +23,77 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    segment
-
-Description
-
 \*---------------------------------------------------------------------------*/
 
-#include "segment.H"
-#include "IFstream.H"
-#include "IStringStream.H"
-
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-// Set the segment time to provided value
-void Foam::segment::setTime(scalar time)
-{
-    time_ = time;
-}
-
-void Foam::segment::setPosition(point position)
-{
-    position_ = position;
-}
+#include "pathVector.H"
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-// construct default segment as a zero point source
-Foam::segment::segment()
+
+Foam::pathVector::pathVector()
 :
-    mode_(1),
-    position_(Zero),
+    startPosition_(Zero),
+    endPosition_(Zero),
+    startTime_(Zero),
+    endTime_(Zero),
     power_(Zero),
-    parameter_(Zero),
-    time_(Zero)
-{
-}
+    displacement_(Zero),
+    distance_(Zero),
+    duration_(Zero),
+    speed_(Zero)
+{}
 
-// set the segement properties given a space-delimited string
-Foam::segment::segment(std::string line)
+
+Foam::pathVector::pathVector
+(
+    const point& startPosition,
+    const point& endPosition,
+    const scalar startTime,
+    const scalar endTime,
+    const scalar power
+)
+:
+    startPosition_(startPosition),
+    endPosition_(endPosition),
+    startTime_(startTime),
+    endTime_(endTime),
+    power_(power),
+    displacement_(Zero),
+    distance_(Zero),
+    duration_(Zero),
+    speed_(Zero)
 {
-    std::stringstream lineStream(line);
+    displacement_ = endPosition_ - startPosition_;
     
-    lineStream
-        >> mode_ 
-        >> position_.x()
-        >> position_.y()
-        >> position_.z() 
-        >> power_
-        >> parameter_;
+    distance_ = mag(displacement_);
+
+    duration_ = max(endTime_ - startTime_, scalar(0));
+
+    if (duration_ > small)
+    {
+        speed_ = distance_/duration_;
+    }
+    else
+    {
+        speed_ = Zero;
+    }
 }
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+Foam::point Foam::pathVector::position(const scalar time) const
+{
+    if (duration_ <= small)
+    {
+        return endPosition_;
+    }
+
+    scalar fraction = (time - startTime_)/duration_;
+
+    fraction = min(max(fraction, scalar(0)), scalar(1));
+
+    return startPosition_ + fraction*displacement_;
+}
 
 // ************************************************************************* //

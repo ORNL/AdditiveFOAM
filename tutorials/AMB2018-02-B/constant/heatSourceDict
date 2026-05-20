@@ -17,12 +17,6 @@ FoamFile
 
 sources (beam);
 
-/*---------------------------------------------------------------------------*\
-Citation:
-    G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
-    Calibrating uncertain parameters in melt pool simulations of additive 
-    manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
-\*---------------------------------------------------------------------------*/
 beam
 {
     pathName            scanPath;    
@@ -41,6 +35,31 @@ beam
         k               2.0;
         dimensions      (85.0e-6 85.0e-6 30e-6);
         nPoints         (10 10 10);
+    }
+}
+
+refinementModel
+{
+    refine                  true;
+    nLevels                 1;
+    refinementTemperature   1000;
+
+    refinementModel         targetCellLoad;
+
+    buffer                  (85.0e-6 85.0e-6 100e-6);
+
+    minRefineVolumeFactor   4;
+
+    volumeSearchMaxIter        10;
+    volumeSearchTimeTolerance  1e-4;
+
+    targetCellLoadCoeffs
+    {
+        cellsPerProc                   5000;
+        targetVolumeSafetyFactor       1.0;
+        maxTargetVolumeGrowth          1.25;
+        maxTargetVolumeShrink          0.8;
+        postScanUpdateIntervalFactor   10;
     }
 }
 

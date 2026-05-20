@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "movingBeam.H"
+#include <sstream>
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -50,32 +51,44 @@ Foam::movingBeam::movingBeam
     dict_(dict),
     runTime_(runTime),
     beamDict_(dict_.optionalSubDict(sourceName_)),
-    path_(1, segment()),
+    path_(0),
     index_(0),
     position_(Zero),
-    power_(0.0),
-    endTime_(0.0),
+    power_(Zero),
+    endTime_(Zero),
     deltaT_(GREAT),
     hitPathIntervals_(true)
 {
     //- Get beam parameters
     deltaT_ = beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
-    hitPathIntervals_ = beamDict_.lookupOrDefault<bool>("hitPathIntervals", true);
     
+    hitPathIntervals_ = beamDict_.lookupOrDefault<bool>
+    (
+        "hitPathIntervals",
+        true
+    );
+        
     //- Read scan path file
     readPath();
     
-    //- Initialize the path index
-    index_ = findIndex(runTime_.value());
-    
-    Info << "Initial path index: " << index_ << endl;
-    
-    //- Find the beam end time
-    for (label i = path_.size() - 1; i > 0; i--)
+    //- Initialize path index
+    if (path_.size())
     {
-        if (path_[i].power() > small)
+        index_ = getIndex(runTime_.value());
+
+        move(runTime_.value());
+    }
+
+    Info << "Initial path index: " << index_ << endl;
+
+    //- Find path end time
+    for (label i = path_.size(); i > 0; --i)
+    {
+        const label pathi = i - 1;
+
+        if (path_[pathi].power() > eps)
         {
-            endTime_ = min(path_[i].time(), runTime_.endTime().value());
+            endTime_ = min(path_[pathi].endTime(), runTime_.endTime().value());
             break;
         }
     }
@@ -114,6 +127,10 @@ void Foam::movingBeam::readPath()
     // skip the header line
     std::getline(is, line);
 
+    scalar time = Zero;
+    
+    point position0 = Zero;
+
     while (std::getline(is, line))
     {
         if (line.empty())
@@ -121,138 +138,133 @@ void Foam::movingBeam::readPath()
             continue;
         }
 
-        path_.append(segment(line));
-    }
+        std::stringstream lineStream(line);
 
-    for (label i=1; i < path_.size(); i++)
-    {
-        if (path_[i].mode() == 1)
+        scalar mode = Zero;
+        
+        point position = Zero;
+        
+        scalar power = Zero;
+        
+        scalar parameter = Zero;
+
+        lineStream
+            >> mode
+            >> position.x()
+            >> position.y()
+            >> position.z()
+            >> power
+            >> parameter;
+
+        point startPosition = position0;
+
+        scalar dt = Zero;
+        
+        //- Spot mode
+        if (mode == 1)
         {
-            path_[i].setTime
+            startPosition = position;
+            
+            dt = parameter;
+        }
+        //- Line mode      
+        else if (mode == 0)
+        {            
+            dt = mag(position - startPosition)/parameter;
+        }
+
+        // add path vectors with non-zero duration to the list
+        if (dt > eps)
+        {
+            path_.append
             (
-                path_[i-1].time() + path_[i].parameter()
+                pathVector
+                (
+                    startPosition,  // startPosition
+                    position,       // endPosition
+                    time,           // startTime
+                    time + dt,      // endTime
+                    power           // power
+                )
             );
         }
-        else
-        {
-            scalar d_ = mag(path_[i].position() - path_[i-1].position());
-                    
-            path_[i].setTime
-            (
-                path_[i-1].time() + d_/path_[i].parameter()
-            );
-        }
-
-        Info << i << tab << path_[i].time() << endl;
+            
+        time += dt;
+        position0 = position;
     }
 }
 
 
-bool Foam::movingBeam::activePath()
+bool Foam::movingBeam::activePath() const
 {
     return ((endTime_ - runTime_.value()) > eps);
 }
 
 
-void Foam::movingBeam::move(const scalar time)
-{
-    // update the current index of the path
-    index_ = findIndex(time);
-
-    const label i = index_;
-
-    // update the beam center
-    if (path_[i].mode() == 1)
-    {
-        position_ = path_[i].position();
-    }
-    else
-    {
-        vector displacement = vector::zero;
-
-        scalar dt = path_[i].time() - path_[i-1].time();
-
-        if (dt > 0)
-        {
-            const vector dx = path_[i].position() - path_[i-1].position();
-            displacement = dx*(time - path_[i-1].time())/dt;
-        }
-
-        position_ = path_[i-1].position() + displacement;
-    }
-
-    // update the beam power
-    if ((time - path_[i-1].time()) > eps)
-    {
-        power_ = path_[i].power();
-    }
-    else
-    {
-        power_ = path_[i-1].power();
-    }
-}
-
-
 Foam::label
-Foam::movingBeam::findIndex(const scalar time)
+Foam::movingBeam::getIndex(const scalar time) const
 {
     label i = index_;
 
     const label n = path_.size() - 1;
 
     // step back path index for safe updating
-    for (i = i; i > 0 && path_[i].time() > time; --i)
+    for (i = i; i > 0 && (time - path_[i].startTime()) <= eps; --i)
     {}
 
     // update the path index to the provided time
-    for (i = i; i < n && path_[i].time() < time; ++i)
+    for (i = i; i < n && (time - path_[i].endTime()) > eps; ++i)
     {}
-
-    // skip any point sources with zero time
-    while (i < n)
-    {
-        if (path_[i].mode() == 1 && path_[i].parameter() == 0)
-        {
-            ++i;
-        }
-        else
-        {
-            break;
-        }
-    }
 
     return min(max(i, 0), n);
 }
 
 
-void Foam::movingBeam::adjustDeltaT(scalar& dt)
+void Foam::movingBeam::adjustDeltaT(scalar& dt) const
 {
-    if (activePath() && hitPathIntervals_)
+    if (!(activePath() && hitPathIntervals_ && path_.size()))
     {
-        scalar timeToNextPath = 0;
-        label i = index_;
+        return;
+    }
+    
+    scalar timeToNextPath = 0;
+    
+    label i = index_;
 
-        while (timeToNextPath < eps)
-        {
-            timeToNextPath = max(0, path_[i].time() - runTime_.value());
+    while (i < path_.size() && timeToNextPath < eps)
+    {
+        timeToNextPath = max(0, path_[i].endTime() - runTime_.value());
 
-            i++;
+        ++i;
+    }
 
-            if (i == path_.size()) 
-            {
-                break;
-            }
-        }
-
+    if (timeToNextPath > eps)
+    {
         const scalar nSteps = timeToNextPath/dt;
                 
         if (nSteps < labelMax)
         {
             // allow time step to dilate 1% to hit target path time
             const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
+            
+            // reduce the time step to hit the next path vector end time
             dt = min(timeToNextPath/nStepsToNextPath, dt);
         }
     }
 }
 
+
+void Foam::movingBeam::move(const scalar time)
+{
+    // update the current index of the path
+    index_ = getIndex(time);
+
+    const pathVector& pv = path_[index_];
+
+    //- Update the beam center
+    position_ = pv.position(time);
+
+    //- Update the beam power
+    power_ = pv.power();
+}
 // ************************************************************************* //
