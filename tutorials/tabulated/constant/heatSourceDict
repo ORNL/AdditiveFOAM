@@ -1,0 +1,47 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      heatSourceProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+sources (beam);
+
+beam
+{
+    pathName            scanPath;    
+
+    absorptionModel     constant;
+    
+    constantCoeffs
+    {
+        eta             0.33;
+    }
+    
+    heatSourceModel     tabulated;
+        
+    tabulatedCoeffs
+    {
+        file        "beamProfile.txt";
+        dimensions  (2.50e-4 2.50e-4 5.0e-5);
+        A           0;
+        B           1;
+        nPoints     (10 10 10);
+    }
+}
+
+refinementModel
+{
+    refinementModel         none;
+}
+// ************************************************************************* //
