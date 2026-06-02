@@ -36,6 +36,11 @@ boundaryField
     {
         type            noSlip;
     }
+
+    internalFaces
+    {
+        type            internal;
+    }
 }
 
 // ************************************************************************* //

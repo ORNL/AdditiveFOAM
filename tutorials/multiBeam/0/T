@@ -25,6 +25,7 @@ boundaryField
         type            zeroGradient;
         value           uniform 300;
     }
+
     top
     {
         type            mixedTemperature;
@@ -33,10 +34,16 @@ boundaryField
         Tinf            uniform 300;
         value           uniform 300;
     }
+
     sides
     {
         type            zeroGradient;
         value           uniform 300;
+    }
+
+    internalFaces
+    {
+        type            internal;
     }
 }
 

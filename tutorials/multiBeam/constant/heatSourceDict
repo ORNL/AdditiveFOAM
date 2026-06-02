@@ -17,12 +17,6 @@ FoamFile
 
 sources (beam1 beam2);
 
-/*---------------------------------------------------------------------------*\
-Citation:
-    G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
-    Calibrating uncertain parameters in melt pool simulations of additive 
-    manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
-\*---------------------------------------------------------------------------*/
 beam1
 {
     pathName            scanPath_1;
@@ -43,12 +37,6 @@ beam1
     }
 }
 
-/*---------------------------------------------------------------------------*\
-Citation:
-    J. Coleman, G.L. Knapp, B. Stump, M. Rolchigo, K. Kincaid, A. Plotkowski,
-    A dynamic volumetric heat source model for laser additive manufacturing,
-    Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
-\*---------------------------------------------------------------------------*/
 beam2
 {
     pathName            scanPath_2;
@@ -71,6 +59,11 @@ beam2
         isoValue        1620;
         nPoints         (10 10 10);
     }
+}
+
+refinementModel
+{
+    refinementModel         none;
 }
 
 // ************************************************************************* //

@@ -25,13 +25,20 @@ boundaryField
     {
         type            zeroGradient;
     }
+
     top
     {
         type            zeroGradient;
     }
+
     sides
     {
         type            zeroGradient;
+    }
+
+    internalFaces
+    {
+        type            internal;
     }
 }
 

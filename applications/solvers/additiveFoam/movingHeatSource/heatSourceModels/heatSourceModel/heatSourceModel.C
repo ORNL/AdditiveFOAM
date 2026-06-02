@@ -335,8 +335,7 @@ Foam::heatSourceModel::qDot()
                                 // calculate weight for point in beam bound box
                                 if (beamBb.overlaps(ptBb))
                                 {
-                                    point d = cmptMag(pt - position_);
-                                    wi += weight(d) * dVi;
+                                    wi += weight(pt - position_) * dVi;
                                 }
                             }
                         }

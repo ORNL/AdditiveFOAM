@@ -71,6 +71,12 @@ boundary
             (3 7 6 2)
         );
     }
+    
+    internalFaces
+    {
+        type internal;
+        faces ();
+    }
 );
 
 mergePatchPairs
