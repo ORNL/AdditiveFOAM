@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      heatSourceProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+sources (beam);
+
+#include "nLightAFX.cfg"
+
+beam
+{
+    pathName            scanPath;    
+
+    absorptionModel     constant;
+    
+    constantCoeffs
+    {
+        eta             0.33;
+    }
+    
+    heatSourceModel     nLightAFX;
+        
+    nLightAFXCoeffs
+    {
+        $Index6;
+        
+        transient   true;
+        isoValue    1620;
+        nPoints     (10 10 10);
+    }
+}
+
+refinementModel
+{
+    refine                  true;
+    nLevels                 1;
+    refinementTemperature   1000;
+
+    refinementModel         targetCellLoad;
+
+    buffer                  (100.0e-6 100.0e-6 100e-6);
+
+    minRefineVolumeFactor   4;
+
+    volumeSearchMaxIter        10;
+    volumeSearchTimeTolerance  1e-4;
+
+    targetCellLoadCoeffs
+    {
+        cellsPerProc                   5000;
+        targetVolumeSafetyFactor       1.0;
+        maxTargetVolumeGrowth          1.25;
+        maxTargetVolumeShrink          0.8;
+        postScanUpdateIntervalFactor   10;
+    }
+}
+
+// ************************************************************************* //

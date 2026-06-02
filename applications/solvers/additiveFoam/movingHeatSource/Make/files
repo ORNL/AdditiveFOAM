@@ -12,6 +12,7 @@ heatSourceModels/heatSourceModel/heatSourceModelNew.C
 heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
 heatSourceModels/projectedGaussian/projectedGaussian.C
+heatSourceModels/nLightAFX/nLightAFX.C
 
 refinementModels/refinementModel/refinementModel.C
 refinementModels/refinementModel/refinementModelNew.C

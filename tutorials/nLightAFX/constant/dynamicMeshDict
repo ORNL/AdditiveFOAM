@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  11
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+topoChanger
+{
+    type    refiner;
+
+    libs    ("libfvMeshTopoChangers.so");
+
+    refineInterval  1;
+
+    field           refinementField;
+
+    lowerRefineLevel 0.1;
+
+    upperRefineLevel 10.0;
+
+    nBufferLayers   5;
+
+    maxRefinement   1;
+
+    maxCells        20000000;
+
+    dumpLevel       true;
+}
+
+distributor
+{
+    type            none;//distributor;
+
+    libs            ("libfvMeshDistributors.so");
+
+    redistributionInterval  1;
+}
+
+
+// ************************************************************************* //
