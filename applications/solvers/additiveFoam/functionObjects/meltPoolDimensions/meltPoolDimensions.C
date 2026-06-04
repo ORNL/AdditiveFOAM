@@ -33,6 +33,7 @@ License
 #include "fvc.H"
 #include "OSspecific.H"
 #include "labelVector.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -69,7 +70,8 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
     {
         const fileName probeDir
         (
-            mesh_.time().rootPath()/mesh_.time().globalCaseName()
+            mesh_.time().rootPath()
+           /mesh_.time().globalCaseName()
            /"postProcessing"/"meltPoolDimensions"
         );
 
@@ -160,7 +162,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                 vector p =
                     cc[own] + d*(iso_ - T_[own])/(T_[nei] - T_[own]);
 
-                    vector p_rotated
+                    vector pRotated
                     (
                         p.x() * c + p.y() * s,
                         p.y() * c - p.x() * s,
@@ -168,10 +170,10 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                     );
                 
                 boundBoxes[i].min() =
-                    min(p_rotated, boundBoxes[i].min());
+                    min(pRotated, boundBoxes[i].min());
 
                 boundBoxes[i].max() =
-                    max(p_rotated, boundBoxes[i].max());
+                    max(pRotated, boundBoxes[i].max());
             }
         }
     }
@@ -215,7 +217,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                         vector p = 
                             cc[own] + d*(iso_ - T_[own])/(fn[facei] - T_[own]);
 
-                        vector p_rotated
+                        vector pRotated
                         (
                             p.x() * c + p.y() * s,
                             p.y() * c - p.x() * s,
@@ -223,10 +225,10 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                         );
                         
                         boundBoxes[i].min() =
-                            min(p_rotated, boundBoxes[i].min());
+                            min(pRotated, boundBoxes[i].min());
 
                         boundBoxes[i].max() =
-                            max(p_rotated, boundBoxes[i].max());
+                            max(pRotated, boundBoxes[i].max());
                     }
                 }
             }
@@ -250,7 +252,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                     {
                         const vector& p = Cf[facei];
                         
-                        vector p_rotated
+                        vector pRotated
                         (
                             p.x() * c + p.y() * s,
                             p.y() * c - p.x() * s,
@@ -258,10 +260,10 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                         );
                         
                         boundBoxes[i].min() =
-                            min(p_rotated, boundBoxes[i].min());
+                            min(pRotated, boundBoxes[i].min());
 
                         boundBoxes[i].max() =
-                            max(p_rotated, boundBoxes[i].max());
+                            max(pRotated, boundBoxes[i].max());
                     }
                 }
             }

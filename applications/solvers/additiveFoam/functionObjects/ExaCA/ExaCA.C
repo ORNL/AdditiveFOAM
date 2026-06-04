@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -29,20 +29,26 @@ License
 #include "Time.H"
 #include "fvMesh.H"
 #include "addToRunTimeSelectionTable.H"
-#include "volFields.H"
+#include "volPointInterpolation.H"
 #include "OFstream.H"
 #include "OSspecific.H"
-#include "labelVector.H"
 #include "pointMVCWeight.H"
+#include "Pstream.H"
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#include "polyTopoChangeMap.H"
+#include "polyMeshMap.H"
+#include "polyDistributionMap.H"
+
+#include <cmath>
+
+// * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 namespace functionObjects
 {
     defineTypeNameAndDebug(ExaCA, 0);
-    
+
     addToRunTimeSelectionTable
     (
         functionObject,
@@ -51,6 +57,7 @@ namespace functionObjects
     );
 }
 }
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -62,25 +69,16 @@ Foam::functionObjects::ExaCA::ExaCA
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    T_(mesh_.lookupObject<VolField<scalar>>("T")),
-    vpi_(mesh_),
-    Tp_
-    (
-        IOobject
-        (
-            "Tp_",
-            runTime.name(),
-            mesh_,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE
-        ),
-        vpi_.interpolate(T_)
-    ),
-    searchEngine_(mesh_, polyMesh::CELL_TETS)
+    T_(mesh_.lookupObject<volScalarField>("T")),
+    meshChanged_(true),
+    nPoints_(labelVector(vector::one)),
+    box_(point::max, point::min),
+    isoValue_(Zero),
+    dx_(Zero)
 {
     read(dict);
-    
-    setOverlapCells();
+
+    updateMeshState();
 }
 
 
@@ -90,22 +88,332 @@ Foam::functionObjects::ExaCA::~ExaCA()
 {}
 
 
+// * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * * //
+
+void Foam::functionObjects::ExaCA::resetMeshState()
+{
+    cellMapIds.clear();
+
+    overlapCells.clear();
+
+    meshChanged_ = true;
+}
+
+
+void Foam::functionObjects::ExaCA::updateMeshState()
+{
+    cellMapIds.clear();
+
+    overlapCells.clear();
+
+    setOverlapCells();
+
+    meshChanged_ = false;
+}
+
+
+Foam::label Foam::functionObjects::ExaCA::pointId
+(
+    const label i,
+    const label j,
+    const label k
+) const
+{
+    return i + nPoints_.x()*(j + nPoints_.y()*k);
+}
+
+
+Foam::label Foam::functionObjects::ExaCA::getCellMap(const label celli)
+{
+    if (cellMapIds.found(celli))
+    {
+        return cellMapIds[celli];
+    }
+
+    const label mapId = cellMaps.size();
+
+    cellMapIds.set(celli, mapId);
+
+    cellMaps.append(makeCellMap(celli));
+
+    return mapId;
+}
+
+
+Foam::functionObjects::ExaCA::cellMap
+Foam::functionObjects::ExaCA::makeCellMap(const label celli) const
+{
+    cellMap cm;
+
+    const pointField& points = mesh_.points();
+
+    const labelList& vertices = mesh_.cellPoints()[celli];
+
+    boundBox cellBb(point::max, point::min);
+
+    const vector extend = 1e-10*vector::one;
+
+    forAll(vertices, vertexi)
+    {
+        const point& p = points[vertices[vertexi]];
+
+        cellBb.min() = min(cellBb.min(), p - extend);
+        cellBb.max() = max(cellBb.max(), p + extend);
+    }
+
+    if (!cellBb.overlaps(box_))
+    {
+        return cm;
+    }
+
+    const point& boxMax = box_.max();
+
+    const label i0 =
+        max
+        (
+            label(0),
+            label(std::ceil((boxMax.x() - cellBb.max().x())/dx_))
+        );
+
+    const label i1 =
+        min
+        (
+            nPoints_.x() - 1,
+            label(std::floor((boxMax.x() - cellBb.min().x())/dx_))
+        );
+
+    const label j0 =
+        max
+        (
+            label(0),
+            label(std::ceil((boxMax.y() - cellBb.max().y())/dx_))
+        );
+
+    const label j1 =
+        min
+        (
+            nPoints_.y() - 1,
+            label(std::floor((boxMax.y() - cellBb.min().y())/dx_))
+        );
+
+    const label k0 =
+        max
+        (
+            label(0),
+            label(std::ceil((boxMax.z() - cellBb.max().z())/dx_))
+        );
+
+    const label k1 =
+        min
+        (
+            nPoints_.z() - 1,
+            label(std::floor((boxMax.z() - cellBb.min().z())/dx_))
+        );
+
+    if (i1 < i0 || j1 < j0 || k1 < k0)
+    {
+        return cm;
+    }
+
+    const cell& cFaces = mesh_.cells()[celli];
+
+    const label nPlanes = cFaces.size();
+
+    scalarField nx(nPlanes);
+    scalarField ny(nPlanes);
+    scalarField nz(nPlanes);
+    scalarField d(nPlanes);
+
+    const vectorField& faceAreas = mesh_.faceAreas();
+    const pointField& faceCentres = mesh_.faceCentres();
+    const labelUList& faceOwner = mesh_.faceOwner();
+
+    forAll(cFaces, cFacei)
+    {
+        const label facei = cFaces[cFacei];
+
+        const vector& Sf = faceAreas[facei];
+        const point& Cf = faceCentres[facei];
+
+        if (faceOwner[facei] == celli)
+        {
+            nx[cFacei] = Sf.x();
+            ny[cFacei] = Sf.y();
+            nz[cFacei] = Sf.z();
+        }
+        else
+        {
+            nx[cFacei] = -Sf.x();
+            ny[cFacei] = -Sf.y();
+            nz[cFacei] = -Sf.z();
+        }
+
+        d[cFacei] =
+            nx[cFacei]*Cf.x()
+          + ny[cFacei]*Cf.y()
+          + nz[cFacei]*Cf.z();
+    }
+
+    const scalar xMax = boxMax.x();
+    const scalar yMax = boxMax.y();
+    const scalar zMax = boxMax.z();
+
+    const scalar eps = 1e-10;
+
+    for (label k = k0; k <= k1; ++k)
+    {
+        const scalar z = zMax - scalar(k)*dx_;
+        const scalar sz = z - eps;
+
+        for (label j = j0; j <= j1; ++j)
+        {
+            const scalar y = yMax - scalar(j)*dx_;
+            const scalar sy = y - eps;
+
+            for (label i = i0; i <= i1; ++i)
+            {
+                const scalar x = xMax - scalar(i)*dx_;
+                const scalar sx = x - eps;
+
+                bool pointInCell = true;
+
+                for (label planei = 0; planei < nPlanes; ++planei)
+                {
+                    if
+                    (
+                        nx[planei]*sx
+                      + ny[planei]*sy
+                      + nz[planei]*sz
+                      - d[planei]
+                      > 0
+                    )
+                    {
+                        pointInCell = false;
+                        break;
+                    }
+                }
+
+                if (!pointInCell)
+                {
+                    continue;
+                }
+
+                const point pt(x, y, z);
+
+                const point spt(sx, sy, sz);
+
+                pointMVCWeight cpw(mesh_, spt, celli);
+
+                cm.pointIds.append(pointId(i, j, k));
+
+                cm.positions.append(pt);
+
+                cm.weights.append(cpw.weights());
+            }
+        }
+    }
+
+    cm.pointIds.shrink();
+
+    cm.positions.shrink();
+
+    cm.weights.shrink();
+
+    return cm;
+}
+
+
+void Foam::functionObjects::ExaCA::appendInterval
+(
+    const label celli,
+    const pointScalarField& Tp0,
+    const pointScalarField& Tp,
+    const scalar t0,
+    const scalar t
+)
+{
+    const label mapId = getCellMap(celli);
+
+    if (!cellMaps[mapId].pointIds.size())
+    {
+        return;
+    }
+
+    const labelList& vertices = mesh_.cellPoints()[celli];
+
+    eventInterval event;
+
+    event.mapId = mapId;
+
+    event.t0 = t0;
+
+    event.t1 = t;
+
+    event.psi0.setSize(vertices.size());
+
+    event.psi.setSize(vertices.size());
+
+    forAll(vertices, pI)
+    {
+        event.psi0[pI] = Tp0[vertices[pI]];
+
+        event.psi[pI] = Tp[vertices[pI]];
+    }
+
+    intervals.append(event);
+}
+
+
+void Foam::functionObjects::ExaCA::writeData() const
+{
+    const fileName exacaPath
+    (
+        mesh_.time().rootPath()/mesh_.time().globalCaseName()/"ExaCA"
+    );
+
+    mkDir(exacaPath);
+
+    OFstream os
+    (
+        exacaPath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
+    );
+
+    os << "x,y,z,tm,ts,cr" << endl;
+
+    forAll(data, i)
+    {
+        const List<scalar>& row = data[i];
+
+        os  << row[0] << ","
+            << row[1] << ","
+            << row[2] << ","
+            << row[3] << ","
+            << row[4] << ","
+            << row[5] << "\n";
+    }
+}
+
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 bool Foam::functionObjects::ExaCA::read(const dictionary& dict)
 {
     box_ = dict.lookup("box");
-    
+
     isoValue_ = dict.lookup<scalar>("isoValue");
-    
-    dx_  = dict.lookup<scalar>("dx");
+
+    dx_ = dict.lookup<scalar>("dx");
+
+    nPoints_ = labelVector(vector::one + box_.span()/dx_);
 
     return true;
 }
 
+
 void Foam::functionObjects::ExaCA::setOverlapCells()
 {
-    // create a compact cell-stencil using the overlap sub-space
+    overlapCells.clear();
+
     const pointField& points = mesh_.points();
 
     boundBox procBb(points);
@@ -139,237 +447,160 @@ void Foam::functionObjects::ExaCA::setOverlapCells()
 
 Foam::wordList Foam::functionObjects::ExaCA::fields() const
 {
-    return wordList::null();
+    return wordList(1, T_.name());
 }
 
 
 bool Foam::functionObjects::ExaCA::execute()
-{    
-    const pointScalarField Tp0_("Tp0_", Tp_);
+{
+    if (meshChanged_)
+    {
+        updateMeshState();
+    }
 
-    Tp_ = vpi_.interpolate(T_);
+    const volPointInterpolation& vpi = volPointInterpolation::New(mesh_);
 
-    // capture events at interface cells: {cell id, time, vertex temperatures}
-    const scalar t_ = mesh_.time().value();
-    const scalar t0_ = t_ - mesh_.time().deltaTValue();
-        
+    const pointScalarField Tp0
+    (
+        IOobject
+        (
+            "Tp0_",
+            mesh_.time().name(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        vpi.interpolate(T_.oldTime())
+    );
+
+    const pointScalarField Tp
+    (
+        IOobject
+        (
+            "Tp_",
+            mesh_.time().name(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        vpi.interpolate(T_)
+    );
+
+    const scalar t = mesh_.time().value();
+
+    const scalar t0 = t - mesh_.time().deltaTValue();
+
     forAll(overlapCells, i)
     {
-        label celli = overlapCells[i];
+        const label celli = overlapCells[i];
 
         const labelList& vertices = mesh_.cellPoints()[celli];
 
         label c0 = 0;
+
         label c1 = 0;
 
         forAll(vertices, pI)
         {
-            if (Tp0_[vertices[pI]] >= isoValue_)
+            if (Tp0[vertices[pI]] >= isoValue_)
             {
                 c0++;
             }
 
-            if (Tp_[vertices[pI]] >= isoValue_)
+            if (Tp[vertices[pI]] >= isoValue_)
             {
                 c1++;
             }
         }
-        
+
         const label n = vertices.size();
 
-        // overshoot correction: interface jumped this cell during time step
-        if ( !(c0 % n) && !(c1 % n) )
+        if (!(c0 % n) && !(c1 % n))
         {
-            if  (c0 != c1)
+            if (c0 != c1)
             {
                 c0 = 0;
+
                 c1 = 1;
             }
         }
-        
-        // capture solidification events
+
         c0 %= n;
+
         c1 %= n;
-        
+
         if (c0 || c1)
         {
-            List<scalar> event(n + 2);
-
-            event[0] = celli;
-        
-            // add previous event
-            if (c1 && !c0)
-            {
-                event[1] = t0_;
-
-                forAll(vertices, pI)
-                {
-                    event[pI + 2] = Tp0_[vertices[pI]];
-                }
-
-                events.append(event);
-            }
-
-            // add current event
-            event[1] = t_;
-
-            forAll(vertices, pI)
-            {
-                event[pI + 2] = Tp_[vertices[pI]];
-            }
-
-            events.append(event);
+            appendInterval(celli, Tp0, Tp, t0, t);
         }
     }
-    
+
     return true;
 }
 
-void Foam::functionObjects::ExaCA::mapPoints()
-{
-    if (events.size() == 0)
-    {
-        return;
-    }
-
-    // find event sub-space before constructing interpolant weights
-    const pointField& points = mesh_.points();
-
-    const vector extend = 1e-10*vector::one;
-
-    boundBox eventBb(point::max, point::min);
-
-    for (label i = 1; i < events.size(); i++)
-    {
-        const label celli = events[i][0];
-
-        if (celli == events[i - 1][0])
-        {
-            continue;
-        }
-
-        const labelList& vertices = mesh_.cellPoints()[celli];
-
-        forAll(vertices, i)
-        {
-            eventBb.min() = min(eventBb.min(), points[vertices[i]] - extend);
-            eventBb.max() = max(eventBb.max(), points[vertices[i]] + extend);
-        }
-    }
-
-    // find interpolant weigthts for each point
-    label pI = 0;
-    label seedi = events[0][0];
-
-    pointsInCell.setSize(mesh_.nCells());
-
-    const labelVector nPoints(vector::one + box_.span() / dx_);
-
-    Info << "starting point loop" << endl;
-
-    for (label k=0; k < nPoints.z(); ++k)
-    {
-        for (label j=0; j < nPoints.y(); ++j)
-        {
-            for (label i=0; i < nPoints.x(); ++i)
-            {
-                const point pt = box_.max() - vector(i, j, k)*dx_;
-
-                if (eventBb.contains(pt))
-                {
-                    // shift point during search to avoid edges in pointMVC
-                    const point spt = pt - vector::one*1e-10;
-
-                    label celli = searchEngine_.findCell(spt, seedi, true);
-
-                    if (celli != -1)
-                    {
-                        positions.append(pt);
-                  
-                        pointMVCWeight cpw(mesh_, spt, celli);
-
-                        weights.append(cpw.weights());
-
-                        pointsInCell[celli].append(pI);
-
-                        pI++;
-                    }
-
-                    seedi = celli;
-                }
-            }
-        }
-    }
-
-    positions.shrink();
-
-    weights.shrink();
-
-    for (auto& pic : pointsInCell)
-    {
-        pic.shrink();
-    }
-}
 
 void Foam::functionObjects::ExaCA::interpolate()
-{    
-    if (events.size() == 0)
+{
+    if (intervals.size() == 0)
     {
+        writeData();
+
         return;
     }
-    
-    // format events in ExaCA reduced data format
-    DynamicList<List<scalar>> data;
 
-    List<scalar> tm;
-    tm.setSize(pointsInCell[events[0][0]].size(), events[0][1]);
+    meltTimes.clear();
 
-    for (label i = 1; i < events.size(); i++)
+    data.clear();
+
+    forAll(intervals, eventi)
     {
-        const List<scalar> prevEvent = events[i - 1];
+        const eventInterval& event = intervals[eventi];
 
-        const List<scalar> currEvent = events[i];
-
-        label celli = currEvent[0];
-
-        if (currEvent[0] != prevEvent[0])
+        if (event.t1 <= event.t0 + small)
         {
-            tm.setSize(pointsInCell[celli].size(), currEvent[1]);
             continue;
         }
 
-        scalar prevTime = prevEvent[1];
+        const cellMap& cm = cellMaps[event.mapId];
 
-        scalar currTime = currEvent[1];
-
-        List<scalar> psi0(prevEvent.size() - 2);
-        List<scalar> psi(currEvent.size() - 2);
-
-        for (int j = 0; j < psi.size(); j++)
-        {
-            psi0[j] = prevEvent[j + 2];
-            psi[j]  = currEvent[j + 2];
-        }
-
-        int p = 0;
-        for (const label& pointi : pointsInCell[celli])
+        forAll(cm.pointIds, pointi)
         {
             scalar tp0 = Zero;
-            scalar tp  = Zero;
 
-            List<scalar> w = weights[pointi];
-            
-            for (int j = 0; j < psi.size(); j++)
+            scalar tp = Zero;
+
+            const scalarField& w = cm.weights[pointi];
+
+            forAll(w, j)
             {
-                tp0 += w[j]*psi0[j];
-                tp  += w[j]*psi[j];
+                tp0 += w[j]*event.psi0[j];
+
+                tp += w[j]*event.psi[j];
             }
+
+            const label caPointId = cm.pointIds[pointi];
 
             if ((tp <= isoValue_) && (tp0 > isoValue_))
             {
-                const point& pt = positions[pointi];
+                const point& pt = cm.positions[pointi];
 
-                scalar m_ = min(max((isoValue_ - tp0)/(tp - tp0), 0), 1);
+                const scalar m =
+                    min
+                    (
+                        max
+                        (
+                            (isoValue_ - tp0)/(tp - tp0),
+                            scalar(0)
+                        ),
+                        scalar(1)
+                    );
+
+                scalar tm = event.t0;
+
+                if (meltTimes.found(caPointId))
+                {
+                    tm = meltTimes[caPointId];
+                }
 
                 data.append
                 (
@@ -377,77 +608,55 @@ void Foam::functionObjects::ExaCA::interpolate()
                         pt[0],
                         pt[1],
                         pt[2],
-                        tm[p],
-                        prevTime + m_*(currTime - prevTime),
-                        (tp0 - tp) / (currTime - prevTime)
+                        tm,
+                        event.t0 + m*(event.t1 - event.t0),
+                        (tp0 - tp)/(event.t1 - event.t0)
                     }
                 );
             }
             else if ((tp > isoValue_) && (tp0 <= isoValue_))
             {
-                scalar m_ = min(max((isoValue_ - tp0)/(tp - tp0), 0), 1);
+                const scalar m =
+                    min
+                    (
+                        max
+                        (
+                            (isoValue_ - tp0)/(tp - tp0),
+                            scalar(0)
+                        ),
+                        scalar(1)
+                    );
 
-                tm[p] = prevTime + m_*(currTime - prevTime);
+                meltTimes.set(caPointId, event.t0 + m*(event.t1 - event.t0));
             }
-
-            p++;
         }
     }
 
-    // write the events for each processor to their own file
-    const fileName exacaPath
-    (
-        mesh_.time().rootPath()/mesh_.time().globalCaseName()/"ExaCA"
-    );
+    data.shrink();
 
-    OFstream os
-    (
-        exacaPath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
-    );
-
-    os << "x,y,z,tm,ts,cr" << endl;
-
-    for(int i=0; i < data.size(); i++)
-    {
-        int n = data[i].size()-1;
-
-        for(int j=0; j < n; j++)
-        {
-            os << data[i][j] << ",";
-        }
-        os << data[i][n] << "\n";
-    }
+    writeData();
 }
+
 
 bool Foam::functionObjects::ExaCA::end()
 {
-    //- sort events by cell and in time
-    events.shrink();
+    intervals.shrink();
 
-    sort(events);
+    cellMaps.shrink();
+
+    Info<< "Number of ExaCA event intervals: "
+        << returnReduce(intervals.size(), sumOp<label>()) << endl;
+
+    Info<< "Number of cached ExaCA cell maps: "
+        << returnReduce(cellMaps.size(), sumOp<label>()) << endl;
+
+    mesh_.time().cpuTimeIncrement();
+
+    interpolate();
 
     Info<< "Number of solidification events: "
-        << returnReduce(events.size(), sumOp<scalar>()) << endl;
+        << returnReduce(data.size(), sumOp<label>()) << endl;
 
-    //- map points to cells
-    mesh_.time().cpuTimeIncrement();
-       
-    mapPoints();
-    
-    Info<< "Successfully mapped points to mesh in: "
-        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
-        << endl << endl;
-
-    //- interpolate and write ExaCA data in reduced data format
-    const fileName exacaPath
-    (
-        mesh_.time().rootPath()/mesh_.time().globalCaseName()/"ExaCA"
-    );
-
-    mkDir(exacaPath);
-    
-    interpolate();
-    
     Info<< "Successfully interpolated and wrote ExaCA data in: "
         << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
         << endl << endl;
@@ -459,6 +668,58 @@ bool Foam::functionObjects::ExaCA::end()
 bool Foam::functionObjects::ExaCA::write()
 {
     return true;
+}
+
+
+void Foam::functionObjects::ExaCA::movePoints
+(
+    const polyMesh& mesh
+)
+{
+    if (&mesh == &mesh_)
+    {
+        resetMeshState();
+    }
+}
+
+
+void Foam::functionObjects::ExaCA::topoChange
+(
+    const polyTopoChangeMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        resetMeshState();
+    }
+}
+
+
+void Foam::functionObjects::ExaCA::mapMesh
+(
+    const polyMeshMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        resetMeshState();
+    }
+}
+
+
+void Foam::functionObjects::ExaCA::distribute
+(
+    const polyDistributionMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        FatalErrorInFunction
+            << "ExaCA does not currently support dynamic mesh redistribution. "
+            << "Moving meshes and topology-changing meshes on a fixed "
+            << "decomposition are supported."
+            << abort(FatalError);
+    }
 }
 
 

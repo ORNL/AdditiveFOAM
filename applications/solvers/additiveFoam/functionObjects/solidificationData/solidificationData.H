@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of the GNU General Public License
+    You should have received a copy of GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
@@ -36,7 +36,12 @@ SourceFiles
 
 #include "fvMeshFunctionObject.H"
 #include "volFields.H"
-#include "meshSearch.H"
+#include "DynamicList.H"
+#include "boundBox.H"
+#include "polyTopoChangeMap.H"
+#include "polyMeshMap.H"
+#include "polyDistributionMap.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -54,21 +59,29 @@ class solidificationData
 {
     // Private Data
 
+        //- Temperature field
         const volScalarField& T_;
-        
+
+        //- Cooling rate field
         volScalarField R_;
 
+        //- Cells that overlap the sampling box
         DynamicList<label> overlapCells;
 
+        //- Solidification events
         DynamicList<List<scalar>> events;
-              
-        boundBox  box_;
 
-        scalar    isoValue_;
-        
-        meshSearch searchEngine_;
+        //- Sampling box
+        boundBox box_;
+
+        //- Solidification isotherm
+        scalar isoValue_;
+
 
     // Private Member Functions
+
+        //- Correct mesh-dependent data
+        void correct();
 
 
 public:
@@ -106,14 +119,26 @@ public:
         //- Return the list of fields required
         virtual wordList fields() const;
 
-        //- Execute, currently does nothing
+        //- Execute
         virtual bool execute();
-                                
+
         //- Execute at the final time-loop
         virtual bool end();
 
         //- Write the solidificationData data
         virtual bool write();
+
+        //- Update for mesh motion
+        virtual void movePoints(const polyMesh& mesh);
+
+        //- Update for topology change
+        virtual void topoChange(const polyTopoChangeMap& map);
+
+        //- Update for mesh mapping
+        virtual void mapMesh(const polyMeshMap& map);
+
+        //- Update for redistribution
+        virtual void distribute(const polyDistributionMap& map);
 
 
     // Member Operators

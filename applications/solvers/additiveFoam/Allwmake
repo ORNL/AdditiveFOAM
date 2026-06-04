@@ -27,8 +27,7 @@ export ADDITIVEFOAM_BUILD_FLAGS="-DGIT_MODULE_ENABLED=1"
 
 #------------------------------------------------------------------------------
 # Build libraries and solver
-#wmake $targetType functionObjects
-
+wmake $targetType functionObjects
 wmake $targetType utilities
 wmake $targetType movingHeatSource
 wmake $targetType
