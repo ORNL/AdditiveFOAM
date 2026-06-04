@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -64,13 +64,13 @@ class Kelly
     public absorptionModel
 {
     // Private Data
-    
+
         //- Conical or cylindrical
         word geometry_;
 
         //- Constant absorption scalar
         dimensionedScalar eta0_;
-        
+
         //- Minimum absorption
         dimensionedScalar etaMin_;
 

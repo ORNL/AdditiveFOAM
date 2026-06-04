@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -38,7 +38,7 @@ Foam::autoPtr<Foam::heatSourceModel> Foam::heatSourceModel::New
 {
     //- Initialize modelType to a non-model word
     word modelType("unselected");
-    
+
     //- Get model type from source subdict
     dictionary sourceDict(dict.optionalSubDict(sourceName));
     sourceDict.lookup("heatSourceModel") >> modelType;

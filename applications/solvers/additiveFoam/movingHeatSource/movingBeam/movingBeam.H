@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -60,37 +60,37 @@ class movingBeam
 private:
 
     // Private data
-    
+
         //- Name of beam
         const word& sourceName_;
-        
+
         //- Main moving heat source dictionary
         const dictionary& dict_;
-        
+
         //- Run time information
         const Time& runTime_;
-        
+
         //- Individual beam sub-dict
         const dictionary& beamDict_;
 
         //- List of beam pathVectors
         DynamicList<pathVector> path_;
-        
+
         //- Index of path
         label index_;
-        
+
         //- Position of beam
         vector position_;
-        
+
         //- Power of beam
         scalar power_;
-        
+
         //- End time of path
         scalar endTime_;
-        
+
         //- Time step used for heat source integration
         scalar deltaT_;
-        
+
         //- Adjust solution time to hit path vector start times?
         bool hitPathIntervals_;
 
@@ -103,7 +103,7 @@ public:
 
     //- Runtime type information
     TypeName("movingBeam");
-    
+
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
@@ -127,10 +127,10 @@ public:
             const dictionary& dict,
             const Time& runTime
         );
-                
+
         //- Disallow default bitwise copy construction
         movingBeam(const movingBeam&);
-        
+
     // Selectors
 
         //- Return a reference to the selected phaseChange model
@@ -141,7 +141,10 @@ public:
             const Time& runTime
         )
         {
-            return autoPtr<movingBeam>(new movingBeam(sourceName, dict, runTime));
+            return autoPtr<movingBeam>
+            (
+                new movingBeam(sourceName, dict, runTime)
+            );
         }
 
     //- Destructor
@@ -149,7 +152,7 @@ public:
     {}
 
     // Member Functions
-    
+
         //- Return current position of the moving beam
         inline vector position() const
         {
@@ -162,7 +165,7 @@ public:
             return power_;
         }
 
-        //- Return time step for path       
+        //- Return time step for path
         inline scalar deltaT() const
         {
             return deltaT_;
@@ -179,19 +182,19 @@ public:
         {
             return path_;
         }
- 
+
          //- Returns the path index at the provided time
         label getIndex(const scalar time) const;
-                       
+
         //- Returns true if the simulation time is less than path endTime
         bool activePath() const;
-                
+
         //- Adjust solution time step to hit pathInterval
         void adjustDeltaT(scalar& dt) const;
 
         //- Move the beam to the provided time
         void move(const scalar time);
-        
+
         //- Read the path file
         void readPath();
 };
@@ -206,4 +209,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

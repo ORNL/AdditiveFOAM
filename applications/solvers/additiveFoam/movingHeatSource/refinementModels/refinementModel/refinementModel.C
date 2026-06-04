@@ -530,7 +530,7 @@ Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
         (existingRefineVolume >= targetGlobalRefineVolume)
      && (minScanPathRefineVolume <= small)
     );
-                
+
     if (globalTargetReached)
     {
         Info << "Existing global refine volume already satisfies target."
@@ -625,10 +625,16 @@ Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
 
                 const bool midpointTargetReached =
                 (
-                    (midpointGlobalRefineVolume >= targetGlobalRefineVolume)
-                 && (midpointTotalScanPathRefineVolume >= minScanPathRefineVolume)
+                    (
+                        midpointGlobalRefineVolume
+                     >= targetGlobalRefineVolume
+                    )
+                 && (
+                        midpointTotalScanPathRefineVolume
+                     >= minScanPathRefineVolume
+                    )
                 );
-        
+
                 Info<< "refinementModel: volume search iteration "
                     << iteration << nl
                     << "    lowerRefineTime: " << lowerRefineTime << nl

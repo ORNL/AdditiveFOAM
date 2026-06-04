@@ -121,22 +121,22 @@ void Foam::mixedTemperatureFvPatchScalarField::updateCoeffs()
     }
 
     mixedFvPatchScalarField::refValue() = (Tinf_);
-    
+
     const scalarField& Tp(*this);
-    
+
     const scalarField& kappa_ =
         patch().lookupPatchField<volScalarField, scalar>("kappa");
-        
+
     const scalar sigma_(5.67e-8);
-    
+
     scalarField hEff_
     (
         h_ + sigma_ * emissivity_ * (sqr(Tp) + sqr(Tinf_)) * (Tp + Tinf_)
     );
-    
-    valueFraction() = 
+
+    valueFraction() =
         1.0 / (1.0 + kappa_ * patch().deltaCoeffs() / max(hEff_, 1e-15));
-        
+
     refGrad() = Zero;
 
     mixedFvPatchScalarField::updateCoeffs();

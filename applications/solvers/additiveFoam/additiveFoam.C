@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -29,7 +29,7 @@ Application
 Description
     A transient heat transfer and fluid flow solver for additive manufacturing
     simulations.
-    
+
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
@@ -64,18 +64,18 @@ Description
 int main(int argc, char *argv[])
 {
     using namespace Foam;
-      
-    #include "postProcess.H"    
+
+    #include "postProcess.H"
     #include "setRootCase.H"
-    
+
     AdditiveFoamInfo::write();
-    
+
     #include "createTime.H"
     #include "createMesh.H"
     #include "createDyMControls.H"
     #include "createFields.H"
     #include "initContinuityErrs.H"
-    
+
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     // Initialize time-stepping controls
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     movingHeatSourceModel sources(mesh);
 
     Info<< "\nStarting time loop\n" << endl;
-    
+
     while (runTime.run())
     {
         #include "updateProperties.H"
@@ -96,21 +96,21 @@ int main(int argc, char *argv[])
         sources.update();
 
         mesh.update();
-                
+
         runTime++;
 
         Info<< "Time = " << runTime.name() << nl << endl;
 
         #include "solutionControls.H"
-             
+
         while (pimple.loop())
         {
             #include "moveMesh.H"
-            
+
             if (fluidInDomain)
             {
                 #include "pU/UEqn.H"
-                #include "pU/pEqn.H"    
+                #include "pU/pEqn.H"
             }
         }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-    
+
     return 0;
 }
 

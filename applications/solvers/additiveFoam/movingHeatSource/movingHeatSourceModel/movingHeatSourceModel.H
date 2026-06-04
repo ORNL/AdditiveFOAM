@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -59,19 +59,19 @@ private:
 
         //- Pointer to mesh information
         const fvMesh& mesh_;
-        
+
         //- Main movingHeatSourceDict
         IOdictionary dict_;
-        
+
         //- List of individual heat sources
         wordList sourceNames_;
-        
+
         //- Total volumetric power of all beams
         volScalarField qDot_;
-                
+
         //- Pointer list to each beam instance
         PtrList<heatSourceModel> sources_;
-        
+
         //- Pointer to refinement model
         autoPtr<refinementModel> refinementModel_;
 
@@ -89,16 +89,16 @@ public:
     ~movingHeatSourceModel();
 
     // Member Functions
-    
+
         //- Return const access to the total volumetric heating
         const volScalarField& qDot() const
         {
             return qDot_;
         }
-        
+
         //- Adjust deltaT using the current state of each beam
         void adjustDeltaT(scalar& deltaT);
-        
+
         //- Update total qDot field
         void update();
 };
@@ -113,4 +113,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

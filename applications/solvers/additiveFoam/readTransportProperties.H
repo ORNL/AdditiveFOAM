@@ -51,8 +51,8 @@ const dimensionedScalar DAS
 //- Latent heat of fusion [J/kg]
 const dimensionedScalar Lf
 (
-    "Lf", 
-    dimEnergy/dimMass, 
+    "Lf",
+    dimEnergy/dimMass,
     transportProperties.lookup("Lf")
 );
 

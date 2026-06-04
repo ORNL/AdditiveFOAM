@@ -13,9 +13,9 @@
         mesh,
         dimensionedScalar("dFdT", dimless/dimTemperature, 0.0)
     );
-    
+
     volScalarField T0("T0", T);
-    
+
     for (int tCorr=0; tCorr < nThermoCorr; tCorr++)
     {
         #include "thermo/thermoSource.H"
@@ -27,7 +27,7 @@
             dimensionedScalar(rho.dimensions()*Cp.dimensions(), 1e15)
            *pos(T - Tmax)
         );
-        
+
         //- solve the energy equation
         solve
         (

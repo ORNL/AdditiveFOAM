@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -59,10 +59,10 @@ class modifiedSuperGaussian
     public heatSourceModel
 {
     // Private Data
-    
+
         //- Pointer to mesh information
         const fvMesh& mesh_;
-        
+
         //- Distribution shape coefficient of modifiedSuperGaussian distribution
         scalar k_;
 

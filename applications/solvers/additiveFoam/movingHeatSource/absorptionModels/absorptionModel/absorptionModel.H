@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -54,7 +54,7 @@ class absorptionModel
     public IOdictionary
 {
     // Private member functions
-    
+
         //- Construct the base IO object
         IOobject createIOobject
         (
@@ -62,7 +62,7 @@ class absorptionModel
             const dictionary& dict,
             const fvMesh& mesh
         ) const;
-    
+
 protected:
 
     // Protected data
@@ -72,7 +72,7 @@ protected:
 
         //- Main heat source dictionary
         const dictionary& heatSourceDict_;
-           
+
            //- Pointer to mesh info
         const fvMesh& mesh_;
 
@@ -81,16 +81,16 @@ protected:
 
         //- Absorption model coefficient dictionary
         dictionary absorptionModelCoeffs_;
-        
+
 
 public:
 
     //- Runtime type information
     TypeName("absorptionModel");
-    
+
     //- Default heatSourceProperties dictionary name
     static const word heatSourceDictName;
-    
+
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
@@ -115,10 +115,10 @@ public:
             const dictionary& dict,
             const fvMesh& mesh
         );
-        
+
         //- Disallow default bitwise copy construction
         absorptionModel(const absorptionModel&);
-        
+
     // Selectors
 
         //- Return a reference to the selected absorption model
@@ -145,7 +145,7 @@ public:
 
         //- Read the absorption properties
         virtual bool read();
-        
+
     // Member Operators
 
         //- Disallow default bitwise assignment

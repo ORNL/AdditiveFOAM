@@ -1,0 +1,67 @@
+minimum_pre_commit_version: "3.7.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        files: &openfoam_cpp_files '\.(C|H|I|cc|cpp|cxx|hh|hpp|hxx)$'
+        exclude: &openfoam_excludes '(^|/)(lnInclude|ThirdParty|platforms|build|processor[0-9]+|postProcessing)/'
+
+      - id: end-of-file-fixer
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+
+      - id: check-merge-conflict
+
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      - id: openfoam-no-tabs
+        name: "OpenFOAM style: no tabs"
+        language: pygrep
+        entry: '\t'
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+
+      # Manual for now because fixing long C++ lines usually requires judgment.
+      # Remove "stages: [manual]" once the existing codebase is clean.
+      - id: openfoam-max-80-columns
+        name: "OpenFOAM style: max 80 characters"
+        language: pygrep
+        entry: '^.{81,}$'
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+        stages: [manual]
+
+      - id: openfoam-space-after-control-keyword
+        name: "OpenFOAM style: use if (...), for (...), while (...), switch (...)"
+        language: pygrep
+        entry: '^(?!\s*#).*\b(if|for|while|switch)\('
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+
+      - id: openfoam-forall-no-space
+        name: "OpenFOAM style: use forAll(...), not forAll (...)"
+        language: pygrep
+        entry: '\b(forAll|forAllReverse|forAllIter|forAllConstIter|forAllIters|forAllConstIters)\s+\('
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+
+  # Manual only: clang-format is useful as a helper, but it cannot exactly
+  # represent OpenFOAM stream/math/operator spacing conventions.
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v22.1.5
+    hooks:
+      - id: clang-format
+        name: "clang-format: approximate OpenFOAM style, requires manual changes"
+        args: [--style=file]
+        files: *openfoam_cpp_files
+        exclude: *openfoam_excludes
+        stages: [manual]

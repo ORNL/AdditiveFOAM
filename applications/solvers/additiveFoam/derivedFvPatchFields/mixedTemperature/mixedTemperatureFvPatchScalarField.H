@@ -85,10 +85,10 @@ class mixedTemperatureFvPatchScalarField
 
         //- Convective heat transfer coefficient [W/m^2/K]
         scalar h_;
-        
+
         //- Effective emissivity of the boundary
         scalar emissivity_;
-        
+
         //- Ambient temperature
         scalarField Tinf_;
 

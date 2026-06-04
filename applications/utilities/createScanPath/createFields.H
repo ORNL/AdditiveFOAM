@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -283,7 +283,7 @@ struct Path
     {
         createPath(bbox, step, angle);
     }
-    
+
     // Function to create path from components
     void createPath(BoundBox bbox, const scalar step, const scalar angle)
     {

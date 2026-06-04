@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -98,7 +98,7 @@ public:
 
         //- Execute, currently does nothing
         virtual bool execute();
-                                
+
         //- Execute at the final time-loop
         virtual bool end();
 

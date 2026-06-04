@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -61,16 +61,16 @@ Foam::movingBeam::movingBeam
 {
     //- Get beam parameters
     deltaT_ = beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
-    
+
     hitPathIntervals_ = beamDict_.lookupOrDefault<bool>
     (
         "hitPathIntervals",
         true
     );
-        
+
     //- Read scan path file
     readPath();
-    
+
     //- Initialize path index
     if (path_.size())
     {
@@ -128,7 +128,7 @@ void Foam::movingBeam::readPath()
     std::getline(is, line);
 
     scalar time = Zero;
-    
+
     point position0 = Zero;
 
     while (std::getline(is, line))
@@ -141,11 +141,11 @@ void Foam::movingBeam::readPath()
         std::stringstream lineStream(line);
 
         scalar mode = Zero;
-        
+
         point position = Zero;
-        
+
         scalar power = Zero;
-        
+
         scalar parameter = Zero;
 
         lineStream
@@ -159,17 +159,17 @@ void Foam::movingBeam::readPath()
         point startPosition = position0;
 
         scalar dt = Zero;
-        
+
         //- Spot mode
         if (mode == 1)
         {
             startPosition = position;
-            
+
             dt = parameter;
         }
-        //- Line mode      
+        //- Line mode
         else if (mode == 0)
-        {            
+        {
             dt = mag(position - startPosition)/parameter;
         }
 
@@ -188,7 +188,7 @@ void Foam::movingBeam::readPath()
                 )
             );
         }
-            
+
         time += dt;
         position0 = position;
     }
@@ -226,9 +226,9 @@ void Foam::movingBeam::adjustDeltaT(scalar& dt) const
     {
         return;
     }
-    
+
     scalar timeToNextPath = 0;
-    
+
     label i = index_;
 
     while (i < path_.size() && timeToNextPath < eps)
@@ -241,12 +241,12 @@ void Foam::movingBeam::adjustDeltaT(scalar& dt) const
     if (timeToNextPath > eps)
     {
         const scalar nSteps = timeToNextPath/dt;
-                
+
         if (nSteps < labelMax)
         {
             // allow time step to dilate 1% to hit target path time
             const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
-            
+
             // reduce the time step to hit the next path vector end time
             dt = min(timeToNextPath/nStepsToNextPath, dt);
         }

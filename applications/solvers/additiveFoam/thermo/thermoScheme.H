@@ -16,12 +16,12 @@ if
 
 fvScalarMatrix TEqn(T, dimPower);
 dimensionedScalar rDeltaT = 1.0 / runTime.deltaT();
-   
+
 if (explicitSolve)
 {
     // Forward Euler is the only explicit method supported.
     ddtScheme = "Euler";
-    
+
     TEqn =
     (
         rho*Cp*(fv::EulerDdtScheme<scalar>(mesh).fvmDdt(T) + fvc::div(phi, T))
@@ -39,15 +39,15 @@ else
     );
 
     scalar coefft = 1.0;
-    
+
     if (ddtScheme == "backward")
     {
         const dimensionedScalar deltaT = runTime.deltaT();
         const dimensionedScalar deltaT0 = runTime.deltaT0();
-        
-        coefft = 1.0 + (deltaT/(deltaT + deltaT0)).value();    
+
+        coefft = 1.0 + (deltaT/(deltaT + deltaT0)).value();
     }
-    
+
     if (ddtScheme == "CrankNicolson")
     {
         scalar ocCoeff =
@@ -62,8 +62,8 @@ else
 
         coefft = 1.0 + ocCoeff;
     }
-    
+
     Info << "thero time coefficient (coefft): " << coefft << endl;
-    
+
     rDeltaT *= coefft;
 }

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -55,15 +55,15 @@ class projectedGaussian
     public heatSourceModel
 {
     // Private Data
-    
+
         //- Pointer to mesh information
         const fvMesh& mesh_;
-        
+
         //- weights for axial decay of 2D gaussian distribution in the form:
         //- n = Alog2(x) + B
         scalar A_;
         scalar B_;
-        
+
         scalar k_;
 
 public:

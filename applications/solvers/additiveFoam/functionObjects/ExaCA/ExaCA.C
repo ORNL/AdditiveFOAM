@@ -658,8 +658,8 @@ bool Foam::functionObjects::ExaCA::end()
         << returnReduce(data.size(), sumOp<label>()) << endl;
 
     Info<< "Successfully interpolated and wrote ExaCA data in: "
-        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
-        << endl << endl;
+        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>())
+        << " s" << endl << endl;
 
     return true;
 }

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -117,7 +117,7 @@ Foam::marangoniFvPatchVectorField::snGrad() const
     vectorField pif(this->patchInternalField());
 
     // calculate the temperature gradient on the patch
-    const volScalarField& T = 
+    const volScalarField& T =
         this->internalField().mesh().lookupObject<volScalarField>("T");
 
     const dimensionedScalar Tmax("Tmax", dimTemperature, Tmax_);

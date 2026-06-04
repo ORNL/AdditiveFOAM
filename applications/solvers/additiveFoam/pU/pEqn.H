@@ -15,7 +15,7 @@ while (pimple.correct())
       + phig
     );
     MRF.makeRelative(phiHbyA);
-    
+
     constrainPressure(p_rgh, U, phiHbyA, rAUf, MRF);
 
     while (pimple.correctNonOrthogonal())
@@ -46,13 +46,13 @@ while (pimple.correct())
     }
 
     #include "continuityErrs.H"
-    
+
     // Correct Uf if the mesh is moving
     fvc::correctUf(Uf, U, phi, MRF);
 
     // Make the fluxes relative to the mesh motion
     fvc::makeRelative(phi, U);
-    
+
     p == p_rgh + rhok*gh;
 
     if (p_rgh.needReference())

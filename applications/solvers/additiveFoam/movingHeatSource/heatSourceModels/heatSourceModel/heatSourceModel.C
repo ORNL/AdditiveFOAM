@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -108,7 +108,7 @@ Foam::heatSourceModel::heatSourceModel
     isoValue_ =
         heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
 
-    nPoints_ = 
+    nPoints_ =
         heatSourceModelCoeffs_.lookupOrDefault<labelVector>
         (
             "nPoints",
@@ -146,8 +146,8 @@ void Foam::heatSourceModel::updateDimensions()
     scalar maxDepth = staticDimensions_.z();
 
     // isocontour location evaluated linearly across faces
-    for(label facei=0; facei < mesh_.nInternalFaces(); facei++)
-    {        
+    for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
+    {
         const label own = owner[facei];
         const label nei = neighbour[facei];
 
@@ -158,7 +158,7 @@ void Foam::heatSourceModel::updateDimensions()
         {
             vector d = cc[nei] - cc[own];
             vector p = cc[own] + d*(isoValue_ - T[own])/(T[nei] - T[own]);
-            
+
             p = cmptMag(p - position_);
 
             scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
@@ -174,14 +174,17 @@ void Foam::heatSourceModel::updateDimensions()
     const volScalarField::Boundary& TBf = T.boundaryField();
 
     forAll(TBf, patchi)
-    {   
+    {
         const fvPatchScalarField& TPf = TBf[patchi];
 
         const labelUList& faceCells = TPf.patch().faceCells();
 
         if (TPf.coupled())
         {
-            const vectorField ccn(cc.boundaryField()[patchi].patchNeighbourField());
+            const vectorField ccn
+            (
+                cc.boundaryField()[patchi].patchNeighbourField()
+            );
             const scalarField Tn(TPf.patchNeighbourField());
 
             forAll(faceCells, facei)
@@ -194,7 +197,8 @@ void Foam::heatSourceModel::updateDimensions()
                 if ((minFace < isoValue_) && (maxFace >= isoValue_))
                 {
                     vector d = ccn[facei] -  cc[own];
-                    vector p = cc[own] + d*(isoValue_ - T[own])/(Tn[facei] - T[own]);
+                    vector p =
+                        cc[own] + d*(isoValue_ - T[own])/(Tn[facei] - T[own]);
 
                     p = cmptMag(p - position_);
 
@@ -217,8 +221,7 @@ void Foam::heatSourceModel::updateDimensions()
     Info << "maxDepth: " << dimensions_.z() << endl;
 }
 
-Foam::tmp<Foam::volScalarField>
-Foam::heatSourceModel::qDot()
+Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
 {
     tmp<volScalarField> tqDot
     (
@@ -246,7 +249,7 @@ Foam::heatSourceModel::qDot()
         const vector position_ = movingBeam_->position();
 
         // udpate the absorbed power and heat source normalization term
-        const scalar aspectRatio = 
+        const scalar aspectRatio =
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
         const dimensionedScalar absorbedPower
@@ -270,11 +273,11 @@ Foam::heatSourceModel::qDot()
                 IOobject::NO_WRITE
             ),
             mesh_,
-            dimensionedScalar("Zero", dimless, 0.0)          
+            dimensionedScalar("Zero", dimless, 0.0)
         );
 
         const pointField& points = mesh_.points();
-        
+
         treeBoundBox beamBb
         (
             position_ - 1.5*dimensions_,
@@ -300,7 +303,7 @@ Foam::heatSourceModel::qDot()
                 if (hex.isA(mesh_, celli))
                 {
                     vector dx_ = cmptDivide(dimensions_, vector(nPoints_));
-                  
+
                     labelVector nCellPoints =
                         max
                         (

@@ -22,7 +22,7 @@ Description
     This refinement model estimates a target scan-path refine volume from a
     target cell count per processor. The scan path is projected until the
     global union of marked refinement cells reaches that target volume.
-    
+
     The target volume is adjusted over time based on the current cell load.
 
 SourceFiles

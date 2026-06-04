@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -55,7 +55,7 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
 {
     A_ = heatSourceModelCoeffs_.lookup<scalar>("A");
     B_ = heatSourceModelCoeffs_.lookup<scalar>("B");
-    
+
     // set initial shape function
     const scalar x_ =
         max
@@ -65,7 +65,7 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
             1.0
         );
     const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
-    k_ = std::pow(2.0, n_);            
+    k_ = std::pow(2.0, n_);
 }
 
 
@@ -73,7 +73,7 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
 
 inline Foam::scalar
 Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
-{    
+{
     const scalar f_ =
         std::exp
         (
@@ -83,10 +83,10 @@ Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
               + Foam::sqr(d.y() / dimensions_.y())
             )
         );
-    
+
     const scalar s_ =
         std::exp(-3.0 * std::pow(mag(mag(d.z()) / dimensions_.z()), k_));
-           
+
     return f_ * s_;
 }
 
@@ -100,11 +100,11 @@ Foam::heatSourceModels::projectedGaussian::V0()
           / min(staticDimensions_.x(), staticDimensions_.y()),
             1.0
         );
-    
+
     const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
-        
+
     k_ = std::pow(2.0, n_);
-    
+
     const dimensionedScalar V0
     (
         "V0",
@@ -126,7 +126,7 @@ bool Foam::heatSourceModels::projectedGaussian::read()
         //- Mandatory entries
         heatSourceModelCoeffs_.lookup("A") >> A_;
         heatSourceModelCoeffs_.lookup("B") >> B_;
-        
+
         return true;
     }
     else

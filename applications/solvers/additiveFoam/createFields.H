@@ -206,10 +206,10 @@ mesh.schemes().setFluxRequired(p_rgh.name());
 #include "createMRF.H"
 
 autoPtr<surfaceVectorField> Uf;
-if(mesh.dynamic() || MRF.size())
+if (mesh.dynamic() || MRF.size())
 {
     U.correctBoundaryConditions();
-    
+
     Uf = new surfaceVectorField
     (
         IOobject

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -38,7 +38,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
 :
     mesh_(mesh),
     dict_
-    (    
+    (
         IOobject
         (
             "heatSourceDict",
@@ -65,7 +65,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     refinementModel_(nullptr)
 {
     sources_.resize(sourceNames_.size());
-        
+
     //- Create new instance of movingBeam for each beam
     forAll(sources_, i)
     {
@@ -81,7 +81,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             ).ptr()
         );
     }
-    
+
     refinementModel_ = refinementModel::New(sources_, dict_, mesh_);
 }
 
@@ -104,7 +104,7 @@ void Foam::movingHeatSourceModel::update()
 {
     //- Subcycle each moving heat source in time and combine into a single field
     qDot_ = dimensionedScalar("Zero", qDot_.dimensions(), 0.0);
-    
+
     forAll(sources_, i)
     {
         if (sources_[i].beam().activePath())
@@ -129,7 +129,7 @@ void Foam::movingHeatSourceModel::update()
                 mesh_,
                 dimensionedScalar("Zero", qDot_.dimensions(), 0.0)
             );
-            
+
             scalar sumWeights = 0.0;
 
             while ((nextTime - pathTime) > small)
@@ -139,20 +139,20 @@ void Foam::movingHeatSourceModel::update()
                 pathTime += dt;
 
                 sources_[i].beam().move(pathTime);
-                                
+
                 qDoti += dt*sources_[i].qDot();
 
                 sumWeights += dt;
             }
-            
+
             qDoti /= sumWeights;
-            
+
             qDot_ += qDoti;
         }
     }
-    
+
     qDot_.correctBoundaryConditions();
-    
+
     refinementModel_->update();
 }
 

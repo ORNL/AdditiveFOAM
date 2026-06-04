@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -28,7 +28,7 @@ Class
 
 Description
     This refinement model marks refinementField at every time step, including
-    cells which overlap the current beam positions and are above the target 
+    cells which overlap the current beam positions and are above the target
     temperature.
 
 SourceFiles
