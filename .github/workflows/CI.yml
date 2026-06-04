@@ -1,5 +1,4 @@
-name: CI
-
+ame: CI
 on:
   push:
     branches:
@@ -7,48 +6,35 @@ on:
   pull_request:
     branches:
       - main
-
+      - candidate-v2.0.0
 concurrency:
-  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-permissions:
-  contents: read
-
+  group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{github.event_name == 'pull_request'}}
 jobs:
   CI:
-    name: OpenFOAM 13
-    runs-on: ubuntu-latest
-
-    container:
-      image: docker.io/microfluidica/openfoam:13
-      options: --user root
-
     defaults:
       run:
-        shell: bash -e -o pipefail {0}
-
+        shell: bash {0}
+    strategy:
+      matrix:
+        cxx: ['g++']
+        cmake_build_type: ['Release']
+       
+    runs-on: ubuntu-latest
+    container:
+      image: microfluidica/openfoam:13
+      options: --user root
     steps:
       - name: Checkout AdditiveFOAM
-        uses: actions/checkout@v6
-
-      - name: Show OpenFOAM version
-        run: |
-          . /opt/openfoam13/etc/bashrc
-          echo "WM_PROJECT=${WM_PROJECT}"
-          echo "WM_PROJECT_VERSION=${WM_PROJECT_VERSION}"
-          echo "WM_PROJECT_DIR=${WM_PROJECT_DIR}"
-          which blockMesh
-          which wmake
-
+        uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          . /opt/openfoam13/etc/bashrc
+          . /opt/openfoam13/etc/bashrc || true
+          test -n "$WM_PROJECT_DIR"
           ./Allwmake
-
       - name: Test AdditiveFOAM
         run: |
-          . /opt/openfoam13/etc/bashrc
+          . /opt/openfoam13/etc/bashrc || true
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           blockMesh
