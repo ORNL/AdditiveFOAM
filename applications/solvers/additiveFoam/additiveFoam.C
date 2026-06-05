@@ -47,6 +47,7 @@ Description
 #include "fvmLaplacian.H"
 #include "constrainPressure.H"
 #include "constrainHbyA.H"
+#include "adjustPhi.H"
 #include "pimpleControl.H"
 #include "fvCorrectPhi.H"
 #include "Polynomial.H"

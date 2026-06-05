@@ -22,7 +22,7 @@ if (pimple.firstPimpleIter() || pimple.moveMeshOuterCorrectors())
             (
                 phi,
                 U,
-                p,
+                p_rgh,
                 autoPtr<volScalarField>(),
                 autoPtr<volScalarField>(),
                 pressureReference,

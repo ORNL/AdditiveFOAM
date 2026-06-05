@@ -4,17 +4,30 @@ while (pimple.correct())
     const surfaceScalarField rAUf("rAUf", fvc::interpolate(rAU));
     volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p_rgh));
 
-    rhok = 1.0 - beta*(T - Tliq);
-    surfaceScalarField phig("phig", -rAUf*ghf*fvc::snGrad(rhok)*mesh.magSf());
-
     surfaceScalarField phiHbyA
     (
         "phiHbyA",
         fvc::flux(HbyA)
       + fvc::interpolate(rAU)*fvc::ddtCorr(U, phi, Uf)
-      + phig
     );
     MRF.makeRelative(phiHbyA);
+
+    if (p_rgh.needReference())
+    {
+        fvc::makeRelative(phiHbyA, U);
+        adjustPhi(phiHbyA, U, p_rgh);
+        fvc::makeAbsolute(phiHbyA, U);
+    }
+
+    rhok = 1.0 - beta*(T - Tliq);
+
+    surfaceScalarField phig
+    (
+        "phig",
+        - ghf*fvc::snGrad(rhok)*rAUf*mesh.magSf()
+    );
+
+    phiHbyA += phig;
 
     constrainPressure(p_rgh, U, phiHbyA, rAUf, MRF);
 
@@ -29,7 +42,7 @@ while (pimple.correct())
         p_rghEqn.setReference
         (
             pressureReference.refCell(),
-            pressureReference.refValue()
+            getRefCellValue(p_rgh, pressureReference.refCell())
         );
 
         p_rghEqn.solve();
@@ -64,6 +77,7 @@ while (pimple.correct())
             pressureReference.refValue()
           - getRefCellValue(p, pressureReference.refCell())
         );
+
         p_rgh = p - rhok*gh;
     }
 }

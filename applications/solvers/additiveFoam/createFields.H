@@ -188,7 +188,12 @@ volScalarField p
 );
 
 // Create pressure reference
-Foam::pressureReference pressureReference(p, pimple.dict());
+Foam::pressureReference pressureReference
+(
+    p,
+    p_rgh,
+    pimple.dict()
+);
 
 if (p_rgh.needReference())
 {
@@ -199,6 +204,8 @@ if (p_rgh.needReference())
         pressureReference.refValue()
       - getRefCellValue(p, pressureReference.refCell())
     );
+
+    p_rgh = p - rhok*gh;
 }
 
 mesh.schemes().setFluxRequired(p_rgh.name());
