@@ -17,6 +17,14 @@ FoamFile
 
 solvers
 {
+    "pcorr.*"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-2;
+        relTol          0;
+    }
+    
     p_rgh
     {
         solver          GAMG;
