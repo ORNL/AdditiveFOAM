@@ -60,10 +60,6 @@ refinementModel
     targetCellLoadCoeffs
     {
         cellsPerProc                   5000;
-        targetVolumeSafetyFactor       1.0;
-        maxTargetVolumeGrowth          1.25;
-        maxTargetVolumeShrink          0.8;
-        postScanUpdateIntervalFactor   10;
     }
 }
 

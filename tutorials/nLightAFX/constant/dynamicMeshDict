@@ -36,14 +36,4 @@ topoChanger
     dumpLevel       true;
 }
 
-distributor
-{
-    type            none;//distributor;
-
-    libs            ("libfvMeshDistributors.so");
-
-    redistributionInterval  1;
-}
-
-
 // ************************************************************************* //
