@@ -5,6 +5,8 @@
     \\  /    A nd           | Copyright (C) 2023 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+-------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
 
