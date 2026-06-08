@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
@@ -34,7 +34,6 @@ License
 #include "OFstream.H"
 #include "OSspecific.H"
 #include "labelVector.H"
-#include "PstreamReduceOps.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -58,7 +57,6 @@ namespace functionObjects
 
 void Foam::functionObjects::solidificationData::correct()
 {
-    overlapCells.clear();
     setOverlapCells();
 }
 
@@ -112,6 +110,8 @@ bool Foam::functionObjects::solidificationData::read(const dictionary& dict)
 
 void Foam::functionObjects::solidificationData::setOverlapCells()
 {
+    overlapCells.clear();
+
     // create a compact cell-stencil using the overlap sub-space
     const pointField& points = mesh_.points();
 
@@ -146,7 +146,7 @@ void Foam::functionObjects::solidificationData::setOverlapCells()
 
 Foam::wordList Foam::functionObjects::solidificationData::fields() const
 {
-    return wordList(1, T_.name());
+    return wordList::null();
 }
 
 

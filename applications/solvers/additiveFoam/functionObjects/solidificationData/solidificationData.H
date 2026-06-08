@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
