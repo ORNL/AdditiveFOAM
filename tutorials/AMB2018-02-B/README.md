@@ -107,16 +107,16 @@ Controls sub-cell sampling resolution used when integrating the heat source over
 
 ## Refinement model
 
-This tutorial uses the `targetCellLoad` refinement model:
+This tutorial has the option to use the `targetCellLoad` refinement model:
 
 ```foam
 refinementModel
 {
+    refinementModel         targetCellLoad;
+    
     refine                  true;
     nLevels                 1;
     refinementTemperature   1000;
-
-    refinementModel         targetCellLoad;
 
     buffer                  (85.0e-6 85.0e-6 100e-6);
 

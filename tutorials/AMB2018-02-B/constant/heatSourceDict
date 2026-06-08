@@ -10,7 +10,7 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      heatSourceProperties;
+    object      heatSourceDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -40,11 +40,13 @@ beam
 
 refinementModel
 {
+    refinementModel         none;
+    
+    //refinementModel         targetCellLoad;
+    
     refine                  true;
     nLevels                 1;
     refinementTemperature   1000;
-
-    refinementModel         targetCellLoad;
 
     buffer                  (85.0e-6 85.0e-6 100e-6);
 
