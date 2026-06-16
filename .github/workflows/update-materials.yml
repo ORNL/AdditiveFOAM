@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout AdditiveFOAM
         uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Generate material files
         run: |
           python3 -m pip install --upgrade pip
@@ -37,6 +39,7 @@ jobs:
         if: steps.material-changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
+          base: main
           branch: automation/update-mist-materials
           commit-message: Update generated Mist material files
           title: Update generated Mist material files
