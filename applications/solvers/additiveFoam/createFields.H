@@ -43,19 +43,10 @@ volScalarField alpha1
     zeroGradientFvPatchScalarField::typeName
 );
 
-IFstream thermoFile
-(
-    runTime.rootPath()/runTime.globalCaseName()
-   /runTime.constant()/"thermoPath"
-);
+Info<< "Reading thermoPath\n" << endl;
 
-graph thermo
-(
-    "thermo",
-    "T",
-    "alpha1",
-    thermoFile
-);
+autoPtr<graph> thermoPtr(readThermoPath(mesh));
+graph& thermo = thermoPtr();
 
 dimensionedScalar Tliq
 (

@@ -1,4 +1,21 @@
-(
-1410.0000    1.0000
-1620.0000    0.0000
-)
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      thermoPath;
+}
+
+thermoPath
+{
+    values      #include "$ADDITIVEFOAM_INST_DIR/materials/IN625/thermoPath";
+}
+
+// ************************************************************************* //

@@ -34,6 +34,7 @@ License
 #include "OFstream.H"
 #include "OSspecific.H"
 #include "labelVector.H"
+#include "thermoPathIsoDefaults.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -102,7 +103,15 @@ Foam::functionObjects::solidificationData::~solidificationData()
 bool Foam::functionObjects::solidificationData::read(const dictionary& dict)
 {
     box_ = dict.lookup("box");
-    isoValue_ = dict.lookup<scalar>("isoValue");
+
+    if (dict.found("isoValue"))
+    {
+        isoValue_ = dict.lookup<scalar>("isoValue");
+    }
+    else
+    {
+        isoValue_ = thermoPathLiquidus(mesh_);
+    }
 
     return true;
 }

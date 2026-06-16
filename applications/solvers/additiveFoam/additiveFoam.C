@@ -59,6 +59,7 @@ Description
 #include "movingHeatSourceModel.H"
 #include "graph.H"
 #include "interpolateXY.H"
+#include "readThermoPath.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

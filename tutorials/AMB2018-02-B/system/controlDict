@@ -63,7 +63,6 @@ functions
             type solidificationData;
                     
             box         (-1 -1 -1) (1 1 1);
-            isoValue    1620;
         }
     #endif;
 
@@ -76,7 +75,6 @@ functions
                     
             box         (0 -0.0001 -0.0002) (0.002 0.0001 0);
             dx          2.5e-6;
-            isoValue    1620;
         }
     #endif;
 
@@ -87,7 +85,6 @@ functions
             
             type            meltPoolDimensions;
             
-            isoValues       (1620 1410);    
             scanPathAngle   0.0;
         }
     #endif;

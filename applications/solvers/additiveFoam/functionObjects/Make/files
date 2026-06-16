@@ -1,5 +1,6 @@
 ExaCA/ExaCA.C
 solidificationData/solidificationData.C
 meltPoolDimensions/meltPoolDimensions.C
+thermoPathIsoDefaults.C
 
 LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamFunctionObjects

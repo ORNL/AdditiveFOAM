@@ -38,6 +38,7 @@ License
 #include "polyTopoChangeMap.H"
 #include "polyMeshMap.H"
 #include "polyDistributionMap.H"
+#include "thermoPathIsoDefaults.H"
 
 #include <cmath>
 
@@ -400,7 +401,14 @@ bool Foam::functionObjects::ExaCA::read(const dictionary& dict)
 {
     box_ = dict.lookup("box");
 
-    isoValue_ = dict.lookup<scalar>("isoValue");
+    if (dict.found("isoValue"))
+    {
+        isoValue_ = dict.lookup<scalar>("isoValue");
+    }
+    else
+    {
+        isoValue_ = thermoPathLiquidus(mesh_);
+    }
 
     dx_ = dict.lookup<scalar>("dx");
 

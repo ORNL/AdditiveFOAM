@@ -5,6 +5,14 @@ cd ${0%/*} || exit 1    # Run from this directory
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 application=`getApplication`
 
+if [ -z "$ADDITIVEFOAM_INST_DIR" ]; then
+    if [ -d "../../materials" ]; then
+        export ADDITIVEFOAM_INST_DIR="$(cd ../.. && pwd -P)"
+    else
+        export ADDITIVEFOAM_INST_DIR="$WM_PROJECT_INST_DIR/AdditiveFOAM"
+    fi
+fi
+
 # Parse arguments
 withExaCA=false
 while [ "$#" -gt 0 ]; do
@@ -26,7 +34,7 @@ done
 #export ENABLE_SOLIDIFICATION_DATA=true
 
 # meltPoolDimensions (optional - default: false)
-#export ENABLE_MELTPOOL_DIMENSIONS=true
+export ENABLE_MELTPOOL_DIMENSIONS=true
 
 # Enable ExaCA function object for '-withExaCA' flag
 if [ "$withExaCA" = true ]; then

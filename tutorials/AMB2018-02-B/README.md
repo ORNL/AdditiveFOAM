@@ -26,6 +26,8 @@ The important files for this tutorial are:
 ```text
 constant/heatSourceDict
 constant/scanPath
+constant/transportProperties
+constant/thermoPath
 constant/dynamicMeshDict
 system/blockMeshDict
 ```
@@ -41,6 +43,15 @@ constant/scanPath
 ```
 
 Defines the laser path, laser power, and scan speed or dwell time.
+
+```text
+constant/transportProperties
+constant/thermoPath
+```
+
+Reference the shared IN625 material configuration in `materials/IN625`.
+Those files are generated from Myna Mist material data using Mist's
+AdditiveFOAM writer.
 
 ```text
 constant/dynamicMeshDict
