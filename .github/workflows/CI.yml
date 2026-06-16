@@ -25,7 +25,12 @@ jobs:
       options: --user root
     steps:
       - name: Checkout AdditiveFOAM
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Verify generated material data
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 tools/materials/generate_mist_materials.py --from-manifest --install-mist
+          git diff --exit-code -- materials
       - name: Build AdditiveFOAM
         run: |
           . /opt/openfoam13/etc/bashrc || true
