@@ -7,7 +7,7 @@ on:
     branches:
       - main
 concurrency:
-  group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{github.event_name == 'pull_request'}}
 jobs:
   CI:
@@ -34,8 +34,7 @@ jobs:
       - name: Test AdditiveFOAM
         run: |
           . /opt/openfoam13/etc/bashrc || true
-          cp -r tutorials/AMB2018-02-B userCase
-          cd userCase
+          cd tutorials/AMB2018-02-B
           blockMesh
           decomposePar
           mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel
