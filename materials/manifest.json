@@ -1,0 +1,51 @@
+{
+  "generated_by": "tools/materials/generate_mist_materials.py",
+  "sources": {
+    "myna": {
+      "url": "https://github.com/ORNL-MDF/Myna.git",
+      "ref": "main",
+      "sha": "9063f10338dd7bed5e89b9ba5b938ab38044ddff",
+      "material_data_path": "src/myna/mist_material_data"
+    },
+    "mist": {
+      "url": "https://github.com/ORNL-MDF/mist.git",
+      "ref": "main",
+      "sha": "bc712df400a1e8abe7944839c4d0df676c7e7eaa",
+      "package": "mistlib"
+    }
+  },
+  "materials": [
+    {
+      "name": "IN625",
+      "source": "src/myna/mist_material_data/IN625.json",
+      "files": [
+        "materials/IN625/transportProperties",
+        "materials/IN625/thermoPath"
+      ]
+    },
+    {
+      "name": "IN718",
+      "source": "src/myna/mist_material_data/IN718.json",
+      "files": [
+        "materials/IN718/transportProperties",
+        "materials/IN718/thermoPath"
+      ]
+    },
+    {
+      "name": "SS316H",
+      "source": "src/myna/mist_material_data/SS316H.json",
+      "files": [
+        "materials/SS316H/transportProperties",
+        "materials/SS316H/thermoPath"
+      ]
+    },
+    {
+      "name": "SS316L",
+      "source": "src/myna/mist_material_data/SS316L.json",
+      "files": [
+        "materials/SS316L/transportProperties",
+        "materials/SS316L/thermoPath"
+      ]
+    }
+  ]
+}
