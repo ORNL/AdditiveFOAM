@@ -31,6 +31,9 @@
 #
 #------------------------------------------------------------------------------
 
+# AdditiveFOAM version
+export ADDITIVEFOAM_VERSION=2.0.0-dev
+
 # OpenFOAM version
 export ADDITIVEFOAM_OPENFOAM_VERSION=13
 
@@ -49,24 +52,35 @@ fi
 
 
 # AdditiveFOAM path
-[ -n "${BASH:-}" ] && _bashrc_file=${BASH_SOURCE}
-[ -n "${ZSH_NAME:-}" ] && _bashrc_file=$0
-
-if [ -n "$_bashrc_file" ]
+if [ -z "${ADDITIVEFOAM_PROJECT_DIR:-}" ]
 then
-    export ADDITIVEFOAM_PROJECT_DIR=$(cd $(dirname $_bashrc_file)/.. && pwd -P)
-else
-    echo "Cannot determine the location of etc/bashrc." >&2
-    return 1 2>/dev/null || exit 1
-fi
+    [ -n "${BASH:-}" ] && additivefoamBashrcFile=${BASH_SOURCE}
+    [ -n "${ZSH_NAME:-}" ] && additivefoamBashrcFile=$0
 
-unset _bashrc_file
+    if [ -n "${additivefoamBashrcFile:-}" ]
+    then
+        export ADDITIVEFOAM_PROJECT_DIR=$(cd "$(dirname "$additivefoamBashrcFile")/.." && pwd -P)
+    elif [ -e etc/bashrc ] && [ -d applications ]
+    then
+        export ADDITIVEFOAM_PROJECT_DIR=$(pwd -P)
+    else
+        export ADDITIVEFOAM_PROJECT_DIR=$HOME/AdditiveFOAM
+    fi
+
+    unset additivefoamBashrcFile
+fi
 
 
 # AdditiveFOAM directories
 export ADDITIVEFOAM_TUTORIALS="$ADDITIVEFOAM_PROJECT_DIR/tutorials"
 export ADDITIVEFOAM_APPLICATIONS="$ADDITIVEFOAM_PROJECT_DIR/applications"
 export ADDITIVEFOAM_ETC="$ADDITIVEFOAM_PROJECT_DIR/etc"
-export ADDITIVEFOAM_MATERIALS="$ADDITIVEFOAM_ETC/materials"
+
+export ADDITIVEFOAM_GLOBAL="$ADDITIVEFOAM_PROJECT_DIR/src/AdditiveFOAM/global"
+
+# Baseline AdditiveFOAM build flags
+export ADDITIVEFOAM_BUILD_FLAGS="\
+-I$ADDITIVEFOAM_GLOBAL \
+-DADDITIVEFOAM_VERSION=\\\"$ADDITIVEFOAM_VERSION\\\""
 
 #------------------------------------------------------------------------------

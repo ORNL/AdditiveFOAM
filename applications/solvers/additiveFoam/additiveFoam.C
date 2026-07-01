@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     #include "postProcess.H"
     #include "setRootCase.H"
 
-    AdditiveFoamInfo::write();
+    Foam::AdditiveFoamInfo::write();
 
     #include "createTime.H"
     #include "createMesh.H"
