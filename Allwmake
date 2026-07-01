@@ -1,9 +1,6 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
 
-# Source the AdditiveFOAM environment variables
-source ./etc/bashrc || exit 1
-
 # Parse arguments for library compilation
 . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
 
