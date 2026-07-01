@@ -98,7 +98,7 @@ Foam::heatSourceModels::projectedGaussian::V0()
         (
             dimensions_.z()
           / min(staticDimensions_.x(), staticDimensions_.y()),
-            1.0
+            0.001
         );
 
     const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
