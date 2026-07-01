@@ -81,7 +81,7 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
         max
         (
             d/min(staticDimensions_.x(), staticDimensions_.y()),
-            1.0
+            0.001
         );
 
     const scalar p0 = min(max(A0_*std::log2(x) + B0_, 0.0), 9.0);

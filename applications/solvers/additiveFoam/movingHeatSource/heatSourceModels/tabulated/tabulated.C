@@ -85,7 +85,7 @@ Foam::heatSourceModels::tabulated::tabulated
         max
         (
             dimensions_.z()/min(staticDimensions_.x(), staticDimensions_.y()),
-            1.0
+            0.001
         );
 
     const scalar n = min(max(A_*std::log2(x) + B_, 0.0), 9.0);
