@@ -1,0 +1,72 @@
+#----------------------------------*-sh-*--------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     | Website:  https://openfoam.org
+#   \\  /    A nd           | Copyright (C) 2011-2025 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+#               Copyright (C) 2023-2026 Oak Ridge National Laboratory
+#-------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/bashrc
+#
+# Description
+#     Startup file for AdditiveFOAM
+#
+#------------------------------------------------------------------------------
+
+# OpenFOAM version
+export ADDITIVEFOAM_OPENFOAM_VERSION=13
+
+if [ -z "${WM_PROJECT_DIR:-}" ]
+then
+    echo "OpenFOAM-$ADDITIVEFOAM_OPENFOAM_VERSION does not appear to be sourced." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+if [ "${WM_PROJECT:-}" != "OpenFOAM" ] || \
+   [ "${WM_PROJECT_VERSION:-}" != "$ADDITIVEFOAM_OPENFOAM_VERSION" ]
+then
+    echo "AdditiveFOAM requires OpenFOAM-$ADDITIVEFOAM_OPENFOAM_VERSION." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+
+# AdditiveFOAM path
+[ -n "${BASH:-}" ] && _bashrc_file=${BASH_SOURCE}
+[ -n "${ZSH_NAME:-}" ] && _bashrc_file=$0
+
+if [ -n "$_bashrc_file" ]
+then
+    export ADDITIVEFOAM_PROJECT_DIR=$(cd $(dirname $_bashrc_file)/.. && pwd -P)
+else
+    echo "Cannot determine the location of etc/bashrc." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+unset _bashrc_file
+
+
+# AdditiveFOAM directories
+export ADDITIVEFOAM_TUTORIALS="$ADDITIVEFOAM_PROJECT_DIR/tutorials"
+export ADDITIVEFOAM_APPLICATIONS="$ADDITIVEFOAM_PROJECT_DIR/applications"
+export ADDITIVEFOAM_ETC="$ADDITIVEFOAM_PROJECT_DIR/etc"
+export ADDITIVEFOAM_MATERIALS="$ADDITIVEFOAM_ETC/materials"
+
+#------------------------------------------------------------------------------
