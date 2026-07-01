@@ -45,5 +45,3 @@ gitInfo.H
 *.tar
 *.tgz
 *.gtgz
-
-additiveFoamBuildInfo.H
