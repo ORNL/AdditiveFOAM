@@ -27,7 +27,6 @@ License
 
 #include "heatSourceModel.H"
 #include "labelVector.H"
-#include "hexMatcher.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -239,14 +238,12 @@ Foam::heatSourceModel::qDot()
     );
     volScalarField& qDot_ = tqDot.ref();
 
-    // sample gaussian distribution at desired resolution
     const scalar power_ = movingBeam_->power();
 
     if (power_ > small)
     {
         const vector position_ = movingBeam_->position();
 
-        // udpate the absorbed power and heat source normalization term
         const scalar aspectRatio = 
             dimensions_.z() / min(dimensions_.x(), dimensions_.y());
 
@@ -259,7 +256,12 @@ Foam::heatSourceModel::qDot()
 
         dimensionedScalar volume = V0();
 
-        // integrate the heat source in each overlapping cell
+
+        // This code implements a crude adaptive Riemann integration scheme.
+        // This approach works best for axis-aligned hexahedral cells, where
+        // integration is second-order accurate using midpoint rule.
+        // This is needed to integrate the total applied heat in cases where
+        // the cell resolution too coarse for provided distribution.
         volScalarField weights
         (
             IOobject
@@ -275,87 +277,98 @@ Foam::heatSourceModel::qDot()
         );
 
         const pointField& points = mesh_.points();
-        
+               
         treeBoundBox beamBb
         (
-            position_ - 1.5*dimensions_,
-            position_ + 1.5*dimensions_
+            position_ - 2.0*dimensions_,
+            position_ + 2.0*dimensions_
         );
 
-        hexMatcher hex;
+        const labelList& owner = mesh_.faceOwner();
+        const vectorField& cf = mesh_.faceCentres();
+        const vectorField& Sf = mesh_.faceAreas();
 
         forAll(mesh_.cells(), celli)
         {
             treeBoundBox cellBb(point::max, point::min);
-
             const labelList& vertices = mesh_.cellPoints()[celli];
-
             forAll(vertices, i)
             {
                 cellBb.min() = min(cellBb.min(), points[vertices[i]]);
                 cellBb.max() = max(cellBb.max(), points[vertices[i]]);
             }
-
-            if (cellBb.overlaps(beamBb))
+            
+            if (!cellBb.overlaps(beamBb))
             {
-                if (hex.isA(mesh_, celli))
+                continue;
+            }
+
+            const labelList& f = mesh_.cells()[celli];
+
+            auto integrateCell = [&](const labelVector& nPts) -> scalar
+            {
+                vector dx = cmptDivide(cellBb.span(), vector(nPts));
+                scalar I = 0.0;
+                scalar count = 0.0;
+
+                for (label k = 0; k < nPts.z(); ++k)
                 {
-                    vector dx_ = cmptDivide(dimensions_, vector(nPoints_));
-                  
-                    labelVector nCellPoints =
-                        max
-                        (
-                            cmptDivide(cellBb.span() + small*vector::one, dx_),
-                            vector::one
-                        );
-
-                    dx_ = cmptDivide(cellBb.span(), vector(nCellPoints));
-
-                    scalar dVi = dx_.x() * dx_.y() * dx_.z();
-
-                    scalar wi = 0.0;
-
-                    for (label k=0; k < nCellPoints.z(); ++k)
+                    for (label j = 0; j < nPts.y(); ++j)
                     {
-                        for (label j=0; j < nCellPoints.y(); ++j)
+                        for (label i = 0; i < nPts.x(); ++i)
                         {
-                            for (label i=0; i < nCellPoints.x(); ++i)
-                            {
-                                const point pt
+                            const point p =
+                                cellBb.min()
+                              + cmptMultiply
                                 (
-                                    cellBb.max()
-                                  - cmptMultiply
-                                    (
-                                        vector(i + 0.5, j + 0.5, k + 0.5),
-                                        dx_
-                                    )
+                                    vector(i + 0.5, j + 0.5, k + 0.5),
+                                    dx
                                 );
 
-                                treeBoundBox ptBb(pt - 0.5*dx_, pt + 0.5*dx_);
-
-                                // calculate weight for point in beam bound box
-                                if (beamBb.overlaps(ptBb))
+                            bool pointInCell = true;
+                            
+                            forAll(f, facei)
+                            {
+                                label nFace = f[facei];
+                                vector proj = p - cf[nFace];
+                                vector normal = Sf[nFace];
+                                if (owner[nFace] != celli)
                                 {
-                                    point d = cmptMag(pt - position_);
-                                    wi += weight(d) * dVi;
+                                    normal = -normal;
                                 }
+                                if ((normal & proj) > 0)
+                                {
+                                    pointInCell = false;
+                                    break;
+                                }
+                            }
+                            if (pointInCell)
+                            {
+                                point d = Foam::cmptMag(p - position_);
+                                I += weight(d);
+                                count++;
                             }
                         }
                     }
-
-                    weights[celli] = wi / mesh_.V()[celli];
                 }
-                else
-                {
-                    // cell is not hexahedral, evaluate at centre
-                    point d = cmptMag(mesh_.cellCentres()[celli] - position_);
+                return I / max(count, 1.0);
+            };
 
-                    weights[celli] = weight(d);
-                }
-            }
+            vector dx_ = cmptDivide(dimensions_, vector(nPoints_));
+            labelVector nPts =
+                max(cmptDivide(cellBb.span(), dx_), vector::one);
+            
+            // Midpoint Rule
+            weights[celli] = integrateCell(nPts);
+
+            /*
+            // Richardson Extrapolation
+            weights[celli] = 
+                (4.0 * integrateCell(2 * nPts) - integrateCell(nPts)) / 3.0;
+            */
         }
 
-        // stabilize numerical integration errors within 95% of applied power
+        // correct numerical integration errors within 95% of applied power
         dimensionedScalar sumWeights = fvc::domainIntegrate(weights);
         scalar residual = (sumWeights / volume).value();
 
