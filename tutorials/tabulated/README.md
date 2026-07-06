@@ -1,18 +1,100 @@
 # Tabulated Heat Source Tutorial
 
-This tutorial demonstrates the `tabulated` heat source model in AdditiveFOAM. The model reads a user-defined, uniformly spaced 2D beam intensity distribution from an ASCII file and applies the same projected axial distribution used by the `projectedGaussian` heat source.
+This tutorial demonstrates the `tabulated` heat source model in AdditiveFOAM
+using a measured nLight AFX Index 3 laser profile. The profile was exported from
+PRIMES LaserDiagnosticsSoftware and converted to the AdditiveFOAM tabulated
+heat-source format with `primesToAdditiveFoam`.
 
-The purpose of this tutorial is to show how arbitrary beam shapes can be tested without adding a new analytic heat source model for every profile.
+The case uses AlSi10Mg material properties. The tabulated beam profile defines
+the measured two-dimensional laser intensity distribution, while the scan path
+defines the applied laser power, scan speed, and beam motion.
+
+The purpose of this tutorial is to show how measured beam profiles can be used
+directly in AdditiveFOAM without adding a new analytic heat-source model for
+each laser shape.
 
 ## File structure
 
-The important file for this tutorial are:
+The important files for this tutorial are:
+
+```text
+Allrun
+constant/heatSourceDict
+constant/scanPath
+constant/primes-export.csv
+constant/beamProfile.txt
+constant/transportProperties
+```
+
+`Allrun`
+
+Converts the PRIMES beam-profile export to the AdditiveFOAM tabulated format,
+then runs the mesh generation, decomposition, solver, and reconstruction steps.
+
+`constant/heatSourceDict`
+
+Defines the moving heat source and selects the `tabulated` heat-source model.
+
+`constant/scanPath`
+
+Defines the laser path, laser power, and scan speed. The tabulated profile only
+defines the relative beam shape. The applied laser power still comes from the
+scan path.
+
+`constant/primes-export.csv`
+
+PRIMES LaserDiagnosticsSoftware CSV export for the measured nLight AFX Index 3
+laser profile.
+
+`constant/beamProfile.txt`
+
+AdditiveFOAM tabulated beam-profile file generated from
+`constant/primes-export.csv`.
+
+`constant/transportProperties`
+
+Defines the thermophysical properties used for the AlSi10Mg simulation.
+
+## Running the tutorial
+
+Run the tutorial with:
+
+```sh
+./Allrun
+```
+
+The `Allrun` script first converts the PRIMES beam-profile export:
+
+```sh
+primesToAdditiveFoam constant/primes-export.csv constant/beamProfile.txt
+```
+
+It then runs the standard OpenFOAM workflow:
+
+```sh
+runApplication blockMesh
+runApplication decomposePar
+runParallel $application
+runApplication reconstructPar
+```
+
+The converted file `constant/beamProfile.txt` is regenerated each time `Allrun`
+is executed. This keeps the tutorial reproducible from the original PRIMES CSV
+export.
+
+## PRIMES to AdditiveFOAM conversion
+
+The converter reads the measured PRIMES beam-profile export:
+
+```text
+constant/primes-export.csv
+```
+
+and writes the AdditiveFOAM tabulated heat-source profile:
 
 ```text
 constant/beamProfile.txt
 ```
-
-Defines the 2D planar beam intensity profile used by the `tabulated` heat source.
 
 ## Heat source model
 
@@ -27,23 +109,37 @@ The corresponding coefficient dictionary is:
 ```foam
 tabulatedCoeffs
 {
-    dimensions  (2.50e-4 2.50e-4 5.0e-5);
-    transient   true;
-    isoValue    1700;
-    nPoints     (4 4 4);
-
-    A           1.69;
-    B          -0.12;
-
     file        "beamProfile.txt";
+    dimensions  (2.50e-4 2.50e-4 5.0e-5);
+    A           0;
+    B           1;
+    nPoints     (10 10 10);
 }
 ```
 
 ### Coefficients
 
+`file`
+
+Name of the tabulated two-dimensional beam file. Relative paths are interpreted
+relative to the `constant/` directory.
+
 `dimensions`
 
-Sets the heat source dimensions used by the base moving heat source integration. For this tutorial, the lateral dimensions are set to cover the tabulated beam support, and the third component is the initial projected depth.
+Sets the heat-source dimensions used by the base moving heat-source integration.
+For this tutorial, the lateral dimensions should cover the support of the
+measured nLight AFX Index 3 beam profile. The third component is the initial
+projected heat-source depth.
+
+`transient`
+
+Enables transient heat-source depth adjustment based on the local melt-pool
+response.
+
+`isoValue`
+
+Sets the temperature isovalue used by the transient projected heat-source
+closure.
 
 `A` and `B`
 
@@ -53,15 +149,18 @@ Define the projected axial shape closure:
 n = A*log2(x) + B
 ```
 
-where `x` is the ratio between the current heat source depth and lateral heat source size. The implementation clamps this internal numerical exponent consistently with the `projectedGaussian` model.
+where `x` is the ratio between the current heat-source depth and lateral
+heat-source size.
 
-`file`
+`nPoints`
 
-Name of the tabulated 2D beam file. Relative paths are interpreted relative to the `constant/` directory.
+Controls the sub-cell sampling resolution used when integrating the heat source
+over mesh cells.
 
 ## Tabulated beam file format
 
-The tabulated beam file is a headerless ASCII file. It must not contain comment lines.
+The tabulated beam file is a headerless ASCII file. It must not contain comment
+lines.
 
 The required format is:
 
@@ -90,7 +189,8 @@ The intensity values are stored in row-major order with `i` varying fastest:
 f_[i + nx*j]
 ```
 
-The table is interpreted as nodal data. Bilinear interpolation is used between nodes.
+The table is interpreted as nodal data. Bilinear interpolation is used between
+nodes.
 
 The valid interpolation domain is:
 
@@ -103,32 +203,64 @@ Outside this domain, the heat source returns zero.
 
 ## Example table
 
-The included file:
+The included tabulated profile:
 
 ```text
 constant/beamProfile.txt
 ```
 
-contains a 5 micron-resolution tabulated profile made from four overlapping Gaussian rings. It uses:
+is generated from the PRIMES LaserDiagnosticsSoftware export:
 
 ```text
-nx ny: 101 101
-x0 y0: -250 um, -250 um
-dx dy: 5 um, 5 um
-domain: -250 um to +250 um in x and y
+constant/primes-export.csv
 ```
 
-The four rings are centered at:
+The PRIMES file contains the measured nLight AFX Index 3 laser profile used in
+this tutorial. The converted table is normalized so that the planar integral is
+approximately 1.0. This normalization makes the tabulated profile a relative
+beam-shape definition rather than an absolute-power input.
+
+The scan-path laser power still controls the total applied power:
 
 ```text
-(-45 um, -45 um)
-( 45 um, -45 um)
-(-45 um,  45 um)
-( 45 um,  45 um)
+constant/scanPath
 ```
 
-Each ring has a radius of 88 um and a Gaussian width of 21 um. The center-to-center spacing between neighboring rings is 90 um, so the rings overlap strongly and form a connected four-lobed beam profile.
+## Material
 
-The table is normalized so that the planar integral is approximately 1.0. This normalization is convenient, but the scan-path laser power still controls the total applied power.
+This tutorial uses AlSi10Mg material properties. The thermophysical properties
+are specified in:
 
-The tabulated file defines only the relative 2D beam shape. The laser power should still be set in `constant/scanPath`, exactly as with the other heat source models.
+```text
+constant/transportProperties
+```
+
+The tabulated beam profile and the material model are independent inputs. The
+beam profile defines the spatial distribution of deposited laser energy, while
+the material properties define the thermal and phase-change response of
+AlSi10Mg.
+
+## Notes for modifying the tutorial
+
+If a different PRIMES export is used, replace:
+
+```text
+constant/primes-export.csv
+```
+
+and rerun:
+
+```sh
+./Allrun
+```
+
+or manually regenerate the tabulated profile with:
+
+```sh
+primesToAdditiveFoam constant/primes-export.csv constant/beamProfile.txt
+```
+
+If the measured beam footprint is larger or smaller than the current example,
+update the lateral components of `dimensions` in `constant/heatSourceDict` so
+that the heat-source integration covers the tabulated profile support.
+

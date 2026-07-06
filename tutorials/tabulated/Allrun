@@ -35,6 +35,8 @@ fi
 
 #------------------------------------------------------------------------------
 # AdditiveFOAM
+primesToAdditiveFoam constant/primes-export.csv constant/beamProfile.txt
+
 runApplication blockMesh
 
 runApplication decomposePar
