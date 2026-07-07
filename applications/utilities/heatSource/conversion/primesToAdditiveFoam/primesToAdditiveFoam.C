@@ -1,9 +1,6 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2024 OpenFOAM Foundation
-     \\/     M bnanipulation  |
+-------------------------------------------------------------------------------
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 Application
     primesToAdditiveFoam
@@ -129,7 +126,11 @@ void readPrimesFile
         {
             if (fields.size() > 0 && lowercase(fields[0]) == "pixel")
             {
-                if (!metadata.found("# Pixel in x") || !metadata.found("# Pixel in y"))
+                if 
+                (
+                    !metadata.found("# Pixel in x")
+                 || !metadata.found("# Pixel in y")
+                )
                 {
                     FatalErrorInFunction
                         << "Grid size metadata not found before 'Pixel' marker"
@@ -184,20 +185,27 @@ scalar calculateIntegral(const List<scalarField>& table, scalar dx, scalar dy)
     {
         for (label i=0; i < table[j].size()-1; ++i)
         {
-            sum += 0.25 * (table[j][i] + table[j][i+1] +
-                           table[j+1][i] + table[j+1][i+1]);
+            sum += 0.25 * 
+            (   table[j][i]
+              + table[j][i+1]
+              + table[j+1][i]
+              + table[j+1][i+1]
+            );
         }
     }
     return sum * dx * dy;
 }
 
-} // End anonymous namespace
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
-    argList::addNote("Convert PRIMES CSV beam profiles to AdditiveFOAM format.");
+    argList::addNote
+    (
+        "Convert PRIMES CSV beam profiles to AdditiveFOAM format."
+    );
     argList::noParallel();
 
     argList::validArgs.append("input PRIMES CSV file");
@@ -264,8 +272,65 @@ int main(int argc, char *argv[])
         << "Output: " << outputFile << nl
         << "Grid: " << nx << " x " << ny << nl
         << "Spacing: " << dx << " x " << dy << " m" << nl
-        << "Integral: " << rawIntegral << nl
-        << "End" << endl;
+        << "Integral: " << rawIntegral << nl;
+
+    Info<< nl
+        << "PRIMES laser radius metadata" << nl
+        << "----------------------------" << endl;
+
+    if (metadata.found("Ellipticity"))
+    {
+        Info<< "Ellipticity: "
+            << parseScalarValue(metadata["Ellipticity"]) << endl;
+    }
+
+    if (metadata.found("Radius a") && metadata.found("Radius b"))
+    {
+        scalar radiusAum = parseScalarValue(metadata["Radius a"]);
+        scalar radiusBum = parseScalarValue(metadata["Radius b"]);
+
+        scalar radiusAm = radiusAum*1.0e-6;
+        scalar radiusBm = radiusBum*1.0e-6;
+
+        Info<< "Radius a: " << radiusAum << " um = "
+            << radiusAm << " m" << endl
+            << "Radius b: " << radiusBum << " um = "
+            << radiusBm << " m" << endl;
+
+        scalar radiusXum = radiusAum;
+        scalar radiusYum = radiusBum;
+
+        //- Calculate axis-aligned bounding box half-span
+        if (metadata.found("Azimuth angle φ"))
+        {
+            scalar phiDeg = parseScalarValue(metadata["Azimuth angle φ"]);
+            scalar phi = phiDeg*std::acos(-1.0)/180.0;
+
+            scalar c = std::cos(phi);
+            scalar s = std::sin(phi);
+
+            radiusXum =
+                std::sqrt
+                (
+                    radiusAum*radiusAum*c*c
+                  + radiusBum*radiusBum*s*s
+                );
+
+            radiusYum =
+                std::sqrt
+                (
+                    radiusAum*radiusAum*s*s
+                  + radiusBum*radiusBum*c*c
+                );
+        }
+
+        scalar radiusXm = radiusXum*1.0e-6;
+        scalar radiusYm = radiusYum*1.0e-6;
+
+        Info<< nl
+            << "Suggested beam dimensions (x y): "
+            << "(" << radiusXm << " " << radiusYm << ") m" << endl;
+    }
 
     return 0;
 }

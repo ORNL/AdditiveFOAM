@@ -33,7 +33,7 @@ beam
     tabulatedCoeffs
     {
         file        "beamProfile.txt";
-        dimensions  (2.50e-4 2.50e-4 5.0e-5);
+        dimensions  (0.000111828 0.000114028 5.0e-5);
         A           0;
         B           1;
         nPoints     (10 10 10);
