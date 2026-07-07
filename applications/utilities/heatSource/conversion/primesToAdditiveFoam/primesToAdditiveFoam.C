@@ -126,7 +126,7 @@ void readPrimesFile
         {
             if (fields.size() > 0 && lowercase(fields[0]) == "pixel")
             {
-                if 
+                if
                 (
                     !metadata.found("# Pixel in x")
                  || !metadata.found("# Pixel in y")
@@ -185,7 +185,7 @@ scalar calculateIntegral(const List<scalarField>& table, scalar dx, scalar dy)
     {
         for (label i=0; i < table[j].size()-1; ++i)
         {
-            sum += 0.25 * 
+            sum += 0.25 *
             (   table[j][i]
               + table[j][i+1]
               + table[j+1][i]
