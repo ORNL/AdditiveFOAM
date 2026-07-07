@@ -241,13 +241,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    scalar rawIntegral = calculateIntegral(table, dx, dy);
+    scalar integral = calculateIntegral(table, dx, dy);
 
-    if (rawIntegral > VSMALL)
+    if (integral > VSMALL)
     {
         forAll(table, i)
         {
-            table[i] /= rawIntegral;
+            table[i] /= integral;
         }
     }
 
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
         << "Output: " << outputFile << nl
         << "Grid: " << nx << " x " << ny << nl
         << "Spacing: " << dx << " x " << dy << " m" << nl
-        << "Integral: " << rawIntegral << nl;
+        << "Integral: " << integral << nl;
 
     Info<< nl
         << "PRIMES laser radius metadata" << nl
@@ -286,50 +286,48 @@ int main(int argc, char *argv[])
 
     if (metadata.found("Radius a") && metadata.found("Radius b"))
     {
-        scalar radiusAum = parseScalarValue(metadata["Radius a"]);
-        scalar radiusBum = parseScalarValue(metadata["Radius b"]);
+        const scalar convertToMetres = 1e-6;
 
-        scalar radiusAm = radiusAum*1.0e-6;
-        scalar radiusBm = radiusBum*1.0e-6;
+        scalar radiusA =
+            parseScalarValue(metadata["Radius a"]) * convertToMetres;
 
-        Info<< "Radius a: " << radiusAum << " um = "
-            << radiusAm << " m" << endl
-            << "Radius b: " << radiusBum << " um = "
-            << radiusBm << " m" << endl;
+        scalar radiusB =
+            parseScalarValue(metadata["Radius b"]) * convertToMetres;
 
-        scalar radiusXum = radiusAum;
-        scalar radiusYum = radiusBum;
+        Info<< "Radius a: " << radiusA << " m" << endl
+            << "Radius b: " << radiusB << " m" << endl;
+
+        scalar radiusX = radiusA;
+        scalar radiusY = radiusB;
 
         //- Calculate axis-aligned bounding box half-span
         if (metadata.found("Azimuth angle φ"))
         {
-            scalar phiDeg = parseScalarValue(metadata["Azimuth angle φ"]);
-            scalar phi = phiDeg*std::acos(-1.0)/180.0;
+            scalar phi =
+                parseScalarValue(metadata["Azimuth angle φ"])
+              * Foam::constant::mathematical::pi/180.0;
 
             scalar c = std::cos(phi);
             scalar s = std::sin(phi);
 
-            radiusXum =
+            radiusX =
                 std::sqrt
                 (
-                    radiusAum*radiusAum*c*c
-                  + radiusBum*radiusBum*s*s
+                    radiusA*radiusA*c*c
+                  + radiusB*radiusB*s*s
                 );
 
-            radiusYum =
+            radiusY =
                 std::sqrt
                 (
-                    radiusAum*radiusAum*s*s
-                  + radiusBum*radiusBum*c*c
+                    radiusA*radiusA*s*s
+                  + radiusB*radiusB*c*c
                 );
         }
 
-        scalar radiusXm = radiusXum*1.0e-6;
-        scalar radiusYm = radiusYum*1.0e-6;
-
         Info<< nl
             << "Suggested beam dimensions (x y): "
-            << "(" << radiusXm << " " << radiusYm << ") m" << endl;
+            << "(" << radiusX << " " << radiusY << ") m" << endl;
     }
 
     return 0;
