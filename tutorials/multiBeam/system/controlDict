@@ -23,13 +23,13 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.0042;
+endTime         0.004;
 
 deltaT          1e-07;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.0014;
+writeInterval   0.001;
 
 purgeWrite      0;
 
@@ -49,7 +49,7 @@ adjustTimeStep  yes;
 
 maxCo           0.5;
 
-maxDi           10;
+maxDi           1;
 
 maxAlphaCo      1;
 
@@ -74,12 +74,11 @@ functions
             
             type ExaCA;
                     
-            box         (0.0005 -0.00025 -0.0002) (0.0015 0.00025 0);
+            box         (-5e-5 -0.00025 -0.0002) (0.0025 0.00025 0);
             dx          2.5e-6;
             isoValue    1620;
         }
     #endif;
-
 
     #ifeq ${ENABLE_MELTPOOL_DIMENSIONS} true      
         meltPoolDimensions

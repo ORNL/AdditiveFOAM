@@ -2,7 +2,7 @@
 
 This tutorial demonstrates an AdditiveFOAM single-track case calibrated to the AMBenchmark 2018 AMB2018-02-B single-track data.
 
-The purpose of this tutorial is to provide a calibrated AMBench baseline case using a fixed analytic heat source and adaptive refinement.
+The purpose of this tutorial is to provide a calibrated AMBench baseline case using a Gaussian heat source model.
 
 ## Reference
 
@@ -12,7 +12,7 @@ This case is based on the AMBenchmark 2018 AMB2018-02 description:
 https://www.nist.gov/ambench/amb2018-02-description
 ```
 
-The model coefficients were calibrated in:
+The model coefficients (absorption and heat source dimensions) were calibrated in:
 ```text
     G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
     Calibrating uncertain parameters in melt pool simulations of additive 
@@ -46,7 +46,7 @@ Defines the laser path, laser power, and scan speed or dwell time.
 constant/dynamicMeshDict
 ```
 
-Defines the dynamic mesh/refinement setup.
+Defines the dynamic mesh/refinement settings.
 
 ```text
 system/blockMeshDict
@@ -137,7 +137,3 @@ refinementModel
 ```
 
 The refinement region projects along the heat source path and targets a desired cell load per processor.
-
-## Notes
-
-This tutorial is a good starting point for comparing solver behavior against calibrated AMBenchmark single-track data before enabling more advanced models such as transient projected heat sources with dynamic absorption.

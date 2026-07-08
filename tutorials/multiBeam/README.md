@@ -1,12 +1,28 @@
-# Multi-Beam Tutorial
+# AMB2018-02-B multiBeam Tutorial
 
-This tutorial demonstrates how to use multiple moving heat sources in a single AdditiveFOAM case.
+This tutorial demonstrates a simple two-beam extension of the AdditiveFOAM
+AMB2018-02-B single-track tutorial.
 
-The purpose of this tutorial is to show that separate beams can use different scan paths, absorption models, and heat source models in the same simulation.
+The baseline AMB2018-02-B tutorial is calibrated to the AMBenchmark 2018
+single-track data using a Gaussian heat source model. This tutorial keeps the
+same calibrated beam parameters, scan speed, power, absorption, and heat source dimensions, but adds a second beam running parallel to the first beam.
 
-## References
+The two beams are separated by a 100 micron center-to-center offset in the
+hatch direction.
 
-The first beam uses the calibrated fixed heat source formulation:
+This tutorial is intended to show how neighboring beams can alter the thermal
+field and solidification conditions relative to a single-beam setup.
+
+## Reference
+
+The baseline case is based on the AMBenchmark 2018 AMB2018-02 description:
+
+```text
+https://www.nist.gov/ambench/amb2018-02-description
+```
+
+The model coefficients used by the AMB2018-02-B tutorial, including absorption
+and heat source dimensions, were calibrated in:
 
 ```text
 G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
@@ -14,13 +30,21 @@ Calibrating uncertain parameters in melt pool simulations of additive
 manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
 ```
 
-The second beam uses the dynamic volumetric heat source formulation:
+## Case description
 
-```text
-J. Coleman, G.L. Knapp, B. Stump, M. Rolchigo, K. Kincaid, A. Plotkowski,
-A dynamic volumetric heat source model for laser additive manufacturing,
-Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
+The original AMB2018-02-B tutorial contains one moving heat source. This tutorial
+uses two moving heat sources:
+
+```foam
+sources (beam1 beam2);
 ```
+
+The two beams follow the same scan direction, power, speed, and heat source
+parameters of the original AMB2018-02-B scan path, but are translated `+/- 50`
+microns in the hatch direction.
+
+Because each beam uses the original AMB2018-02-B laser power, the total applied
+laser power is twice that of the single-beam baseline.
 
 ## File structure
 
@@ -28,42 +52,77 @@ The important files for this tutorial are:
 
 ```text
 constant/heatSourceDict
+constant/scanPath_0
 constant/scanPath_1
-constant/scanPath_2
+constant/dynamicMeshDict
+system/blockMeshDict
 ```
 
 ```text
 constant/heatSourceDict
 ```
 
-Defines both moving heat sources.
+Defines the two moving heat sources, their absorption models, heat source
+models, and mesh refinement model.
+
+```text
+constant/scanPath_0
+```
+
+Defines the first beam path.
 
 ```text
 constant/scanPath_1
 ```
 
-Defines the path, power, and scan speed or dwell time for the first beam.
+Defines the second beam path.
 
 ```text
-constant/scanPath_2
+constant/dynamicMeshDict
 ```
 
-Defines the path, power, and scan speed or dwell time for the second beam.
+Defines the dynamic mesh/refinement settings.
 
-## Heat source models
+```text
+system/blockMeshDict
+```
 
-The tutorial defines two sources:
+Defines the base computational mesh.
+
+## Heat source model
+
+This tutorial uses two heat sources:
 
 ```foam
 sources (beam1 beam2);
 ```
 
-### Beam 1
-
-`beam1` uses constant absorptivity and a fixed `superGaussian` heat source:
+Both beams use the same heat source parameters as the calibrated AMB2018-02-B
+single-beam case.
 
 ```foam
 beam1
+{
+    pathName            scanPath_0;
+
+    absorptionModel     constant;
+
+    constantCoeffs
+    {
+        eta             0.33;
+    }
+
+    heatSourceModel     superGaussian;
+
+    superGaussianCoeffs
+    {
+        k               2.0;
+        dimensions      (85.0e-6 85.0e-6 30e-6);
+        nPoints         (10 10 10);
+    }
+}
+
+beam2
 {
     pathName            scanPath_1;
 
@@ -78,51 +137,65 @@ beam1
 
     superGaussianCoeffs
     {
-        dimensions      (85.0e-6 85.0e-6 30e-6);
         k               2.0;
-        transient       false;
+        dimensions      (85.0e-6 85.0e-6 30e-6);
         nPoints         (10 10 10);
     }
 }
 ```
 
-This beam is a conventional Gaussian source with constant absorption.
+### Coefficients
 
-### Beam 2
+`eta`
 
-`beam2` uses the `Kelly` absorption model and a transient `modifiedSuperGaussian` heat source:
+Constant absorptivity applied to the laser power from each scan path.
+
+`k`
+
+Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a
+Gaussian-like source.
+
+`dimensions`
+
+Sets the heat source dimensions used by the moving heat source integration,
+taken as `2sigma`.
+
+`nPoints`
+
+Controls the sub-cell sampling resolution used when integrating each heat source
+over mesh cells.
+
+## Refinement model
+
+This tutorial can use the same `targetCellLoad` refinement model as the
+single-beam AMB2018-02-B tutorial. The refinement buffer is applied relative to
+each path interval for each beam.
+
+A representative refinement setup is:
 
 ```foam
-beam2
+refinementModel
 {
-    pathName            scanPath_2;
+    refinementModel         targetCellLoad;
 
-    absorptionModel     Kelly;
+    refine                  true;
+    nLevels                 1;
+    refinementTemperature   1000;
 
-    KellyCoeffs
+    buffer                  (85.0e-6 200.0e-6 100e-6);
+
+    minRefineVolumeFactor   4;
+
+    volumeSearchMaxIter        10;
+    volumeSearchTimeTolerance  1e-4;
+
+    targetCellLoadCoeffs
     {
-        geometry        cone;
-        eta0            0.28;
-        etaMin          0.35;
-    }
-
-    heatSourceModel     modifiedSuperGaussian;
-
-    modifiedSuperGaussianCoeffs
-    {
-        dimensions      (40.0e-6 40.0e-6 30e-6);
-        m               2.72;
-        k               7.95;
-        transient       true;
-        isoValue        1620;
-        nPoints         (10 10 10);
+        cellsPerProc                   5000;
+        targetVolumeSafetyFactor       1.0;
+        maxTargetVolumeGrowth          1.25;
+        maxTargetVolumeShrink          0.8;
+        postScanUpdateIntervalFactor   10;
     }
 }
 ```
-
-This beam demonstrates a dynamic volumetric heat source with depth-dependent absorption.
-
-## Notes
-
-Each beam has its own `pathName`, so each source can follow a different scan path. This tutorial is useful for testing multi-laser workflows.
-

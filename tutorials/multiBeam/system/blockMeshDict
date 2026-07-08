@@ -70,7 +70,7 @@ boundary
             (1 5 4 0)
             (3 7 6 2)
         );
-    }   
+    }  
     internalFaces
     {
         type internal;

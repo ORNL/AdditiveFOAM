@@ -14,7 +14,7 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 topoChanger
-{
+{    
     type    refiner;
 
     libs    ("libfvMeshTopoChangers.so");
