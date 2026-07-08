@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  13
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -11,40 +11,12 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      fvSchemes;
+    object      decomposeParDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
-{
-    default         Euler;
-}
+numberOfSubdomains  6;
 
-gradSchemes
-{
-    default         Gauss linear;
-}
-
-divSchemes
-{
-    default         Gauss upwind;
-}
-
-laplacianSchemes
-{
-    default             Gauss linear corrected;
-    laplacian(kappa,T)	Gauss harmonic corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
+method              scotch;
 
 // ************************************************************************* //

@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  13
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -36,6 +36,11 @@ beam
         dimensions      (85.0e-6 85.0e-6 30e-6);
         nPoints         (10 10 10);
     }
+}
+
+refinementModel
+{
+    refinementModel         none;
 }
 
 // ************************************************************************* //
