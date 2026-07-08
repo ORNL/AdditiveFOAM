@@ -71,6 +71,12 @@ then
 fi
 
 
+# AdditiveFOAM bin directory for helper scripts
+if [ -d "$ADDITIVEFOAM_PROJECT_DIR/bin" ]; then
+    export PATH=$ADDITIVEFOAM_PROJECT_DIR/bin:$PATH
+fi
+
+
 # AdditiveFOAM directories
 export ADDITIVEFOAM_TUTORIALS="$ADDITIVEFOAM_PROJECT_DIR/tutorials"
 export ADDITIVEFOAM_APPLICATIONS="$ADDITIVEFOAM_PROJECT_DIR/applications"
@@ -78,7 +84,7 @@ export ADDITIVEFOAM_ETC="$ADDITIVEFOAM_PROJECT_DIR/etc"
 
 export ADDITIVEFOAM_GLOBAL="$ADDITIVEFOAM_PROJECT_DIR/src/AdditiveFOAM/global"
 
-# Baseline AdditiveFOAM build flags
+# AdditiveFOAM build flags
 export ADDITIVEFOAM_BUILD_FLAGS="\
 -I$ADDITIVEFOAM_GLOBAL \
 -DADDITIVEFOAM_VERSION=\\\"$ADDITIVEFOAM_VERSION\\\""

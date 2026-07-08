@@ -6,6 +6,8 @@
 #   \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
+#                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+#------------------------------------------------------------------------------
 # License
 #     This file is part of OpenFOAM.
 #
@@ -88,6 +90,7 @@ done
 
 args_check $nLayers $layerThickness $nCellsPerLayer
 
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # 1. Find available scan path files
 scanPathFiles=(constant/scanPath_*)
@@ -138,19 +141,24 @@ do
 
     if [ $layer -gt 0 ]
     then   
-        nLayers0="$(foamDictionary -entry linearDirectionCoeffs/nLayers -value $previous/system/extrudeMeshDict)"
-        thickness0="$(foamDictionary -entry linearDirectionCoeffs/thickness -value $previous/system/extrudeMeshDict)"
+        nLayers0="$(foamDictionary -entry linearDirectionCoeffs/nLayers \
+            -value $previous/system/extrudeMeshDict)"
+        thickness0="$(foamDictionary -entry linearDirectionCoeffs/thickness \
+            -value $previous/system/extrudeMeshDict)"
         thickness=`awk "BEGIN {print $thickness0 + $layerThickness; exit}"`
 
-        foamDictionary -entry linearDirectionCoeffs/nLayers -set "$(($nLayers0+$nCellsPerLayer))" $case/system/extrudeMeshDict
-        foamDictionary -entry linearDirectionCoeffs/thickness -set "$thickness" $case/system/extrudeMeshDict
+        foamDictionary -entry linearDirectionCoeffs/nLayers -set \
+            "$(($nLayers0+$nCellsPerLayer))" $case/system/extrudeMeshDict
+        foamDictionary -entry linearDirectionCoeffs/thickness -set \
+            "$thickness" $case/system/extrudeMeshDict
 
-        extrudeMesh -case $case
+        runApplication extrudeMesh -case $case
     fi
 done
 
 # 4. Run all layers
-layerTime="$(cd ${caseList[0]} && foamDictionary -entry endTime -value system/controlDict)"
+layerTime="$(cd ${caseList[0]} && \
+    foamDictionary -entry endTime -value system/controlDict)"
 
 for (( layer=0; layer<$nLayers; layer++ ))
 do
@@ -176,10 +184,12 @@ do
         sed -i "2s/.*/$path/" "$case/constant/scanPath"
 
         # map previous layer fields to new layer
-        mapFields -case $case -sourceTime "$time" -mapMethod mapNearest $previous
+        runApplication mapFields -case $case -sourceTime "$time" \
+            -mapMethod mapNearest $previous
     fi
 
-    thickness="$(foamDictionary -entry linearDirectionCoeffs/thickness -value system/extrudeMeshDict)"
+    thickness="$(foamDictionary -entry linearDirectionCoeffs/thickness \
+        -value system/extrudeMeshDict)"
     
     # set powder height to the layer thickness 
     foamDictionary -entry regions -set \
@@ -194,14 +204,14 @@ do
         }
     )" system/setFieldsDict
     
-    nProcs="$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)"
-
-    transformPoints "translate=(0 0 -$thickness)"    
-    setFields
-    decomposePar
-    mpirun -np $nProcs additiveFoam -parallel
-    reconstructPar -latestTime
-    transformPoints "translate=(0 0 $thickness)"
+    application=`getApplication`
+    
+    transformPoints "translate=(0 0 -$thickness)" > log.transformPoints-down 2>&1
+    runApplication setFields
+    runApplication decomposePar
+    runParallel "$application"
+    runApplication reconstructPar -latestTime
+    transformPoints "translate=(0 0 $thickness)" > log.transformPoints-up 2>&1
 done
 
 #------------------------------------------------------------------------------
