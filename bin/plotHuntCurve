@@ -51,7 +51,7 @@ def plot_hunt_curves(cases, output):
     if len(cases) > 0:
         ax.legend(frameon=True, loc='best')
     
-    plt.savefig(output)
+    plt.savefig(output, dpi=300)
     print(f"Plot saved to: {output}")
 
 if __name__ == "__main__":
