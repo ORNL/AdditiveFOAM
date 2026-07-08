@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import os
+import argparse
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 10,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "figure.dpi": 300,
+    "savefig.bbox": 'tight',
+    "mathtext.fontset": "dejavuserif"
+})
+
+def plot_hunt_curves(cases, output):
+    fig, ax = plt.subplots(figsize=(4.0, 4.5))
+        
+    for i, case_path in enumerate(cases):
+        abs_case_path = os.path.abspath(case_path)
+        case_name = os.path.basename(abs_case_path)
+        
+        csv_file = os.path.join(
+            abs_case_path, 
+            "solidificationData", 
+            "solidification-data.csv"
+        )
+        
+        if not os.path.exists(csv_file):
+            print(f"Error: No solidification data found in {case_name}")
+            continue
+            
+        df = pd.read_csv(csv_file)
+        
+        G = np.sqrt(df['gx']**2 + df['gy']**2 + df['gz']**2)
+        V = df['v']
+        
+        ax.scatter(V, G, s=8, alpha=0.3, edgecolors='none',
+                   label=case_name)
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    
+    ax.grid(True, which="both", ls="-", alpha=0.1)
+    ax.set_xlabel(r'Solidification Velocity, $V$ (m/s)')
+    ax.set_ylabel(r'Thermal Gradient, $G$ (K/m)')
+    
+    if len(cases) > 0:
+        ax.legend(frameon=True, loc='best')
+    
+    plt.savefig(output)
+    print(f"Plot saved to: {output}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Plot Hunt Curves (G vs V) from case directories.'
+    )
+    parser.add_argument('cases', nargs='*', default=['.'],
+                        help='Case directory/directories (default: .)')
+    parser.add_argument('-o', '--output', default='hunt_curve.png', 
+                        help='Output image name (e.g. plot.pdf)')
+
+    args = parser.parse_args()
+    plot_hunt_curves(args.cases, args.output)
