@@ -118,15 +118,6 @@ Foam::label Foam::refinementModel::readMaxRefinementLevel() const
             << exit(FatalError);
     }
 
-    if (maxRefinementLevel < 1)
-    {
-        FatalErrorInFunction
-            << "maxRefinement must be greater than zero for active "
-            << "refinement models. Found " << maxRefinementLevel << "."
-            << nl
-            << exit(FatalError);
-    }
-
     return maxRefinementLevel;
 }
 

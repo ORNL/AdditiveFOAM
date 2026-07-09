@@ -269,22 +269,6 @@ public:
             markScanPathTime(refineTime);
         }
 
-        //- Backwards-compatible wrapper
-        virtual dimensionedScalar refineUsingVolume
-        (
-            const dimensionedScalar& targetRefineVolume,
-            const scalar& = 0.0
-        )
-        {
-            return markScanPathVolume
-            (
-                targetRefineVolume,
-                scalar(0),
-                30,
-                small
-            );
-        }
-
         //- Update refinementField
         virtual bool update() = 0;
 

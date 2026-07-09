@@ -164,7 +164,7 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     const scalar averageCellVolume = meshVolume/nCellsTotal;
 
     const scalar refineCellMultiplier =
-        Foam::pow(2.0, 3.0*maxRefinementLevel_) - 1.0;
+        max(Foam::pow(2.0, 3.0*maxRefinementLevel_) - 1.0, 1.0);
 
     const scalar minRefineCells =
         minRefineVolume_/averageCellVolume*refineCellMultiplier;
