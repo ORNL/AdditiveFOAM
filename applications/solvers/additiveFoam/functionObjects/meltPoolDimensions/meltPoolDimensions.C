@@ -34,6 +34,7 @@ License
 #include "OSspecific.H"
 #include "labelVector.H"
 #include "treeBoundBox.H"
+#include "thermoPath.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -111,7 +112,15 @@ Foam::functionObjects::meltPoolDimensions::~meltPoolDimensions()
 
 bool Foam::functionObjects::meltPoolDimensions::read(const dictionary& dict)
 {
-    isoValues_ = dict.lookup<scalarList>("isoValues");
+    if (!dict.readIfPresent("isoValues", isoValues_))
+    {
+        thermoPath thermo(mesh_);
+
+        isoValues_.setSize(2);
+        isoValues_[0] = thermo.liquidus();
+        isoValues_[1] = thermo.solidus();
+    }
+
     scanPathAngle_ = dict.lookupOrDefault<scalar>("scanPathAngle", 0.0);
 
     return true;

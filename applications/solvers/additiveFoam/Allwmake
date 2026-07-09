@@ -5,8 +5,8 @@ cd ${0%/*} || exit 1    # Run from this directory
 . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
 
 # Build libraries and solver
-wmake $targetType functionObjects
 wmake $targetType utilities
+wmake $targetType functionObjects
 wmake $targetType movingHeatSource
 wmake $targetType
 

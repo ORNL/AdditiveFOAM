@@ -33,6 +33,7 @@ License
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "fvcGrad.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -56,9 +57,32 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 )
 :
     transformFvPatchField<vector>(p, iF),
-    dSigmadT_(dict.lookup<scalar>("dSigmadT")),
+    dSigmadT_(0.0),
     Tmax_(dict.lookupOrDefault<scalar>("Tmax", GREAT))
 {
+    if (!dict.readIfPresent("dSigmadT", dSigmadT_))
+    {
+        const fvMesh& mesh = p.boundaryMesh().mesh();
+
+        bool found = false;
+
+        if (mesh.foundObject<IOdictionary>("transportProperties"))
+        {
+            const IOdictionary& transportProperties =
+                mesh.lookupObject<IOdictionary>("transportProperties");
+
+            found = transportProperties.readIfPresent("dSigmadT", dSigmadT_);
+        }
+
+        if (!found)
+        {
+            FatalIOErrorInFunction(dict)
+                << "Required entry dSigmadT is not specified in the boundary "
+                << "condition or in constant/transportProperties"
+                << exit(FatalIOError);
+        }
+    }
+
     evaluate();
 }
 

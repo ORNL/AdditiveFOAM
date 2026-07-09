@@ -138,8 +138,9 @@ response.
 
 `isoValue`
 
-Sets the temperature isovalue used by the transient projected heat-source
-closure.
+Optional temperature isovalue used by the transient projected heat-source
+closure. If omitted, the material liquidus from `constant/transportProperties`
+is used.
 
 `A` and `B`
 
@@ -263,4 +264,3 @@ primesToAdditiveFoam constant/primes-export.csv constant/beamProfile.txt
 If the measured beam footprint is larger or smaller than the current example,
 update the lateral components of `dimensions` in `constant/heatSourceDict` so
 that the heat-source integration covers the tabulated profile support.
-

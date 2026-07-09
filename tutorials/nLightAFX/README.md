@@ -50,7 +50,6 @@ nLightAFXCoeffs
     $Index6
 
     transient   true;
-    isoValue    1620;
     nPoints     (10 10 10);
 }
 ```

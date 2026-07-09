@@ -31,7 +31,7 @@ Description
     calculated as:
 
         \f[
-            Q = h * (T - T_inf) + e * sigma * (T^4 - T_inf^$)
+            Q = h * (T - T_inf) + e * sigma * (T^4 - T_inf^4)
         \f]
 
     where
@@ -45,7 +45,7 @@ Usage
     \table
         Property   | Description                  | Req'd? | Default
         h          | Uniform convection coeff     | yes    |
-        emissivity | Uniform surface emissivity   | no     | 0.0
+        emissivity | Uniform surface emissivity   | no     | transportProperties, or 0.0
         Tinf       | Ambient temperature          | yes    |
     \endtable
 
@@ -55,7 +55,6 @@ Usage
     {
         type       mixedTemperature;
         h          10.0;
-        emissivity 0.4;
     }
     \endverbatim
 

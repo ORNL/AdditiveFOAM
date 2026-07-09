@@ -29,6 +29,7 @@ License
 #include "labelVector.H"
 #include "hexMatcher.H"
 #include "treeBoundBox.H"
+#include "thermoPath.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -106,8 +107,20 @@ Foam::heatSourceModel::heatSourceModel
     transient_ =
         heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
 
-    isoValue_ =
-        heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
+    isoValue_ = great;
+
+    if
+    (
+        transient_
+     && !heatSourceModelCoeffs_.readIfPresent("isoValue", isoValue_)
+    )
+    {
+        isoValue_ = thermoPath(mesh_).liquidus();
+    }
+    else
+    {
+        heatSourceModelCoeffs_.readIfPresent("isoValue", isoValue_);
+    }
 
     nPoints_ =
         heatSourceModelCoeffs_.lookupOrDefault<labelVector>

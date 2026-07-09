@@ -28,7 +28,6 @@ boundaryField
     top
     {
         type            marangoni;
-        dSigmadT        -0.11e-3;
         value           uniform (0 0 0);
     }
 

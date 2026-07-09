@@ -1,4 +1,5 @@
 graph/curve.C
 graph/graph.C
+thermoPath/thermoPath.C
 
 LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamUtilities
