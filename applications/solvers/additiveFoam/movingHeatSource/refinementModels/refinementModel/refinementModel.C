@@ -72,7 +72,7 @@ Foam::IOobject Foam::refinementModel::createIOobject
 
 Foam::label Foam::refinementModel::readMaxRefinementLevel() const
 {
-    typeIOobject<IOdictionary> dynamicMeshDictHeader
+    IOdictionary dynamicMeshDict
     (
         IOobject
         (
@@ -85,40 +85,10 @@ Foam::label Foam::refinementModel::readMaxRefinementLevel() const
         )
     );
 
-    if (!dynamicMeshDictHeader.headerOk())
-    {
-        FatalErrorInFunction
-            << "Active refinement models require constant/dynamicMeshDict "
-            << "with maxRefinement." << nl
-            << exit(FatalError);
-    }
-
-    IOdictionary dynamicMeshDict(dynamicMeshDictHeader);
-
-    label maxRefinementLevel = 0;
-
-    if (dynamicMeshDict.found("maxRefinement"))
-    {
-        maxRefinementLevel = dynamicMeshDict.lookup<label>("maxRefinement");
-    }
-    else if (dynamicMeshDict.isDict("topoChanger"))
-    {
-        maxRefinementLevel =
-            dynamicMeshDict.subDict("topoChanger").lookup<label>
-            (
-                "maxRefinement"
-            );
-    }
-    else
-    {
-        FatalErrorInFunction
-            << "Cannot find maxRefinement in constant/dynamicMeshDict. "
-            << "Set it either at the top level or in the topoChanger "
-            << "sub-dictionary." << nl
-            << exit(FatalError);
-    }
-
-    return maxRefinementLevel;
+    return dynamicMeshDict.subDict("topoChanger").lookup<label>
+    (
+        "maxRefinement"
+    );
 }
 
 

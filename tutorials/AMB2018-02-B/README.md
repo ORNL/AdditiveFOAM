@@ -129,9 +129,6 @@ refinementModel
         nBufferVolumes                 4;
         maxSearchIter                  10;
         timeTolerance                  1e-4;
-        maxTargetVolumeGrowth          1.25;
-        maxTargetVolumeShrink          0.8;
-        postScanUpdateIntervalFactor   10;
     }
 }
 ```

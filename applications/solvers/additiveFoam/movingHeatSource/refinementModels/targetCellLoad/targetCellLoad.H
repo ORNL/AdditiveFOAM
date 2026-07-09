@@ -116,7 +116,7 @@ protected:
         scalar maxTargetVolumeShrink_;
 
         //- AMR check interval after scan path completion, in time-step units
-        scalar postScanUpdateIntervalFactor_;
+        scalar postScanUpdateInterval_;
 
         //- Target global refine volume
         scalar targetRefineVolume_;

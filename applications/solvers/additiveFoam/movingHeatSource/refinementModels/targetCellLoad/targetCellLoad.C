@@ -78,10 +78,10 @@ void Foam::refinementModels::targetCellLoad::readCoeffs()
     maxTargetVolumeShrink_ =
         coeffs_.lookupOrDefault<scalar>("maxTargetVolumeShrink", 0.8);
 
-    postScanUpdateIntervalFactor_ =
+    postScanUpdateInterval_ =
         coeffs_.lookupOrDefault<scalar>
         (
-            "postScanUpdateIntervalFactor",
+            "postScanUpdateInterval",
             10.0
         );
 }
@@ -134,11 +134,11 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     (
         coeffs_.lookupOrDefault<scalar>("maxTargetVolumeShrink", 0.8)
     ),
-    postScanUpdateIntervalFactor_
+    postScanUpdateInterval_
     (
         coeffs_.lookupOrDefault<scalar>
         (
-            "postScanUpdateIntervalFactor",
+            "postScanUpdateInterval",
             10.0
         )
     ),
@@ -231,10 +231,8 @@ bool Foam::refinementModels::targetCellLoad::update()
 
     if ((updateTime_.value() - mesh_.time().value()) < small)
     {
-        //- Reactive refinement based on temperature
         Foam::refinementModel::markTemperature();
 
-        //- Scan path completed
         if ((scanEndTime_ - mesh_.time().value()) < small)
         {
             Info<< typeName << ": "
@@ -244,7 +242,7 @@ bool Foam::refinementModels::targetCellLoad::update()
 
             updateTime_ =
                 mesh_.time()
-              + postScanUpdateIntervalFactor_*mesh_.time().deltaT();
+              + postScanUpdateInterval_*mesh_.time().deltaT();
 
             return true;
         }

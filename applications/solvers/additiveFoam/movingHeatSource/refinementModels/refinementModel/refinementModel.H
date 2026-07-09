@@ -36,7 +36,7 @@ Description
 
     Active refinement models project each heat-source scan path and mark
     cells for refinement using buffers keyed by source name. The refinement
-    level is read from maxRefinement in constant/dynamicMeshDict.
+    level is read from topoChanger.maxRefinement in constant/dynamicMeshDict.
 
 SourceFiles
     refinementModel.C
