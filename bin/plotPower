@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+import os
+import re
+import argparse
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 8,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "figure.dpi": 300,
+    "mathtext.fontset": "dejavuserif"
+})
+
+TIME_RE = re.compile(r"^\s*Time\s*=\s*(\S+)")
+POWER_RE = re.compile(r"^\s*absorbed power:\s*(\S+)")
+
+
+def read_power_log(log_file):
+    times = []
+    powers = []
+    current_time = None
+
+    with open(log_file, "r", encoding="utf-8", errors="replace") as log:
+        for line in log:
+            time_match = TIME_RE.match(line)
+            if time_match:
+                try:
+                    current_time = float(time_match.group(1))
+                except ValueError:
+                    current_time = None
+                continue
+
+            power_match = POWER_RE.match(line)
+            if power_match and current_time is not None:
+                try:
+                    powers.append(float(power_match.group(1)))
+                    times.append(current_time)
+                except ValueError:
+                    pass
+
+    return times, powers
+
+
+def log_path(case_or_log, log_name):
+    if os.path.isdir(case_or_log):
+        return os.path.join(case_or_log, log_name)
+
+    return case_or_log
+
+
+def case_label(case_or_log):
+    abs_path = os.path.abspath(case_or_log)
+
+    if os.path.isdir(abs_path):
+        return os.path.basename(abs_path)
+
+    parent = os.path.basename(os.path.dirname(abs_path))
+    name = os.path.basename(abs_path)
+
+    return f"{parent}/{name}" if parent else name
+
+
+def plot_power(cases, log_name, output):
+    fig, ax = plt.subplots(figsize=(4.5, 3.0), constrained_layout=True)
+
+    for case_path in cases:
+        power_log = log_path(case_path, log_name)
+        label = case_label(case_path)
+
+        if not os.path.exists(power_log):
+            print(f"Warning: No additiveFoam log found for {label}: {power_log}")
+            continue
+
+        times, powers = read_power_log(power_log)
+
+        if not times:
+            print(f"Warning: No absorbed power entries found in {power_log}")
+            continue
+
+        times_ms = [time*1e3 for time in times]
+        ax.plot(times_ms, powers, label=label)
+
+    ax.set_xlabel("Time (ms)")
+    ax.set_ylabel("Absorbed power (W)")
+    ax.grid(True, which="both", ls="-", alpha=0.1)
+    ax.set_ylim(bottom=0)
+    ax.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
+    ax.ticklabel_format(style="plain", axis="y")
+
+    if len(cases) > 1:
+        ax.legend(frameon=True, loc="best")
+
+    plt.minorticks_on()
+    plt.savefig(output, dpi=300)
+    print(f"Power plot saved to: {output}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Plot absorbed power over time from additiveFoam logs."
+    )
+    parser.add_argument(
+        "cases",
+        nargs="*",
+        default=["."],
+        help="Case directory/directories or log files (default: .)"
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        default="log.additiveFoam",
+        help="Log filename to read in each case directory"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default="power.png",
+        help="Output image name (e.g. plot.pdf)"
+    )
+
+    args = parser.parse_args()
+    plot_power(args.cases, args.log, args.output)
