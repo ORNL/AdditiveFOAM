@@ -51,12 +51,26 @@ mixedTemperatureFvPatchScalarField
     {
         const fvMesh& mesh = p.boundaryMesh().mesh();
 
+        bool found = false;
+
         if (mesh.foundObject<IOdictionary>("transportProperties"))
         {
             const IOdictionary& transportProperties =
                 mesh.lookupObject<IOdictionary>("transportProperties");
 
-            transportProperties.readIfPresent("emissivity", emissivity_);
+            found = transportProperties.readIfPresent
+            (
+                "emissivity",
+                emissivity_
+            );
+        }
+
+        if (!found)
+        {
+            FatalIOErrorInFunction(dict)
+                << "Required entry emissivity is not specified in the "
+                << "boundary condition or in constant/transportProperties"
+                << exit(FatalIOError);
         }
     }
 

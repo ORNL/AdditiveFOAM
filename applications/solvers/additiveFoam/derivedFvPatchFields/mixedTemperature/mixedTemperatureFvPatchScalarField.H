@@ -45,7 +45,7 @@ Usage
     \table
         Property   | Description                  | Req'd? | Default
         h          | Uniform convection coeff     | yes    |
-        emissivity | Uniform surface emissivity   | no     | transportProperties, or 0.0
+        emissivity | Uniform surface emissivity   | no     | transportProperties
         Tinf       | Ambient temperature          | yes    |
     \endtable
 
