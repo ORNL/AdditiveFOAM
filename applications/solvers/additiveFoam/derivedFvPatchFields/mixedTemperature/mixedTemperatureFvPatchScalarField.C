@@ -30,6 +30,7 @@ License
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
 #include "surfaceFields.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -43,9 +44,36 @@ mixedTemperatureFvPatchScalarField
 :
     mixedFvPatchScalarField(p, iF),
     h_(dict.lookup<scalar>("h")),
-    emissivity_(dict.lookupOrDefault<scalar>("emissivity", 0.0)),
+    emissivity_(0.0),
     Tinf_("Tinf", dict, p.size())
 {
+    if (!dict.readIfPresent("emissivity", emissivity_))
+    {
+        const fvMesh& mesh = p.boundaryMesh().mesh();
+
+        bool found = false;
+
+        if (mesh.foundObject<IOdictionary>("transportProperties"))
+        {
+            const IOdictionary& transportProperties =
+                mesh.lookupObject<IOdictionary>("transportProperties");
+
+            found = transportProperties.readIfPresent
+            (
+                "emissivity",
+                emissivity_
+            );
+        }
+
+        if (!found)
+        {
+            FatalIOErrorInFunction(dict)
+                << "Required entry emissivity is not specified in the "
+                << "boundary condition or in constant/transportProperties"
+                << exit(FatalIOError);
+        }
+    }
+
     refGrad() = Zero;
     valueFraction() = 0.0;
 

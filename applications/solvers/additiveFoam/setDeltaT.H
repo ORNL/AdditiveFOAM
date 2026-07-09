@@ -5,7 +5,7 @@ if (adjustTimeStep)
 
     const volScalarField::Internal alphaNum
     (
-        mag(fvc::ddt(T)) / (Tliq - Tsol)
+        mag(fvc::ddt(T)) / (liquidus - solidus)
        *runTime.deltaT()
     );
 

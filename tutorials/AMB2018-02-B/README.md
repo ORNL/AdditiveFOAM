@@ -4,6 +4,9 @@ This tutorial demonstrates an AdditiveFOAM single-track case calibrated to the A
 
 The purpose of this tutorial is to provide a calibrated AMBench baseline case using a Gaussian heat source model.
 
+This tutorial uses the IN625 material configuration from
+`$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
 ## Reference
 
 This case is based on the AMBenchmark 2018 AMB2018-02 description:

@@ -27,6 +27,9 @@ Class
     marangoniFvPatchVectorField
 
 Description
+    This boundary condition applies a Marangoni velocity condition.
+    dSigmadT can be specified on the boundary condition or read from
+    constant/transportProperties.
 
 SourceFiles
     marangoniFvPatchVectorField.C

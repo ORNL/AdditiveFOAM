@@ -59,7 +59,6 @@ PIMPLE
     pRefCell        0;
     pRefValue       0;
 
-
     nThermoCorrectors   20;
     thermoTolerance     1e-8;
     explicitSolve       true;

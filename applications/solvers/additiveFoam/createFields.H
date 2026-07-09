@@ -1,3 +1,23 @@
+Info<< "Reading transportProperties\n" << endl;
+#include "readTransportProperties.H"
+
+Info<< "Reading thermoPath\n" << endl;
+thermoPath thermo(transportProperties, runTime);
+
+dimensionedScalar liquidus
+(
+    "liquidus",
+    dimTemperature,
+    thermo.liquidus()
+);
+
+dimensionedScalar solidus
+(
+    "solidus",
+    dimTemperature,
+    thermo.solidus()
+);
+
 Info<< "Reading field T\n" << endl;
 volScalarField T
 (
@@ -43,34 +63,6 @@ volScalarField alpha1
     zeroGradientFvPatchScalarField::typeName
 );
 
-IFstream thermoFile
-(
-    runTime.rootPath()/runTime.globalCaseName()
-   /runTime.constant()/"thermoPath"
-);
-
-graph thermo
-(
-    "thermo",
-    "T",
-    "alpha1",
-    thermoFile
-);
-
-dimensionedScalar Tliq
-(
-    "Tliq",
-    dimTemperature,
-    interpolateXY(0.0, thermo.y(), thermo.x())
-);
-
-dimensionedScalar Tsol
-(
-    "Tsol",
-    dimTemperature,
-    interpolateXY(1.0, thermo.y(), thermo.x())
-);
-
 // set solid fraction field consistent with temperature
 forAll(mesh.cells(), celli)
 {
@@ -79,8 +71,6 @@ forAll(mesh.cells(), celli)
 }
 
 alpha1.correctBoundaryConditions();
-
-#include "readTransportProperties.H"
 
 volScalarField Cp
 (
@@ -152,7 +142,7 @@ volScalarField rhok
         runTime.name(),
         mesh
     ),
-    1.0 - beta*(T - Tliq)
+    1.0 - beta*(T - liquidus)
 );
 
 #include "readGravitationalAcceleration.H"

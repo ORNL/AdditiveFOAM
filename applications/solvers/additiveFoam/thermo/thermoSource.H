@@ -10,7 +10,7 @@
         const scalar& x = T[celli];
         const scalar& y = alpha1[celli];
 
-        if ((x < Tliq.value()) && (x > Tsol.value()))
+        if ((x < liquidus.value()) && (x > solidus.value()))
         {
             label lo = 0;
             for (lo=0; lo<n && xvals[lo]>x; ++lo)
@@ -48,15 +48,15 @@
 
             T0[celli] = xvals[lo] + (y - yvals[lo])/dFdT[celli];
         }
-        else if ((x >= Tliq.value()) && (y > thermoTol))
+        else if ((x >= liquidus.value()) && (y > thermoTol))
         {
             dFdT[celli] = slope;
-            T0[celli] = Tliq.value() - thermoTol;
+            T0[celli] = liquidus.value() - thermoTol;
         }
-        else if ((x <= Tsol.value()) && (y < 1 - thermoTol))
+        else if ((x <= solidus.value()) && (y < 1 - thermoTol))
         {
             dFdT[celli] = slope;
-            T0[celli] = Tsol.value() + thermoTol;
+            T0[celli] = solidus.value() + thermoTol;
         }
         else
         {

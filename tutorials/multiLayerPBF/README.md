@@ -4,6 +4,9 @@ This tutorial demonstrates a multi-layer powder bed fusion workflow using Additi
 
 The purpose of this tutorial is to show how to run repeated layer simulations with a powder layer using a transient volumetric heat source and depth-dependent absorption.
 
+This tutorial uses the IN625 material configuration from
+`$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
 ## Reference
 
 The heat source setup follows the dynamic volumetric heat source formulation cited in the tutorial dictionary:
@@ -74,7 +77,6 @@ beam
         m               2.72;
         k               7.95;
         transient       true;
-        isoValue        1620;
         nPoints         (10 10 10);
     }
 }
@@ -100,11 +102,8 @@ Shape parameters for the `modifiedSuperGaussian` heat source.
 
 `transient`
 
-When `true`, AdditiveFOAM updates the heat source depth using the existing transient isotherm-depth logic.
-
-`isoValue`
-
-Temperature used to determine the transient melt pool depth.
+When `true`, AdditiveFOAM updates the heat source depth using the material
+liquidus from `constant/transportProperties`.
 
 `nPoints`
 
@@ -113,4 +112,3 @@ Controls sub-cell sampling resolution used when integrating the heat source over
 ## Notes
 
 This tutorial is the main example for the dynamic volumetric heat source formulation in a multi-layer process setting. It is useful for studying layer-by-layer thermal history, melt pool depth evolution, and coupling to downstream solidification or microstructure workflows.
-

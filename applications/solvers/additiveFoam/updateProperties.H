@@ -11,8 +11,8 @@ forAll(mesh.cells(), cellI)
     scalar alpha3_ = alpha3[cellI];
 
     // update temperature ranges for phase properties
-    scalar T1 = min(max(T[cellI], 300.0), Tsol.value());
-    scalar T2 = min(max(T[cellI], Tliq.value()), 2.0*Tliq.value());
+    scalar T1 = min(max(T[cellI], 300.0), solidus.value());
+    scalar T2 = min(max(T[cellI], liquidus.value()), 2.0*liquidus.value());
 
     // update solid-liquid-powder mixture properties
     kappa[cellI] =

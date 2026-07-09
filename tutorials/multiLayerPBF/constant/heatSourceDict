@@ -36,7 +36,6 @@ beam
         m               2.72;
         k               7.95;
         transient       true;
-        isoValue        1620;
         nPoints         (10 10 10);
     }
 }

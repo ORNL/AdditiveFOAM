@@ -57,7 +57,7 @@ Description
 
 #include "additiveFoamInfo.H"
 #include "movingHeatSourceModel.H"
-#include "graph.H"
+#include "thermoPath.H"
 #include "interpolateXY.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
