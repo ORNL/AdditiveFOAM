@@ -33,17 +33,7 @@ cd AdditiveFOAM
 source etc/bashrc
 ```
 
-The AdditiveFOAM `etc/bashrc` checks that OpenFOAM-13 is active and sets the
-following paths:
-
-| Variable | Path | Description |
-|----------|------|-------------|
-| `ADDITIVEFOAM_PROJECT_DIR` | `/path/to/AdditiveFOAM` | AdditiveFOAM repository root |
-| `ADDITIVEFOAM_TUTORIALS` | `$ADDITIVEFOAM_PROJECT_DIR/tutorials` | Tutorial cases |
-| `ADDITIVEFOAM_APPLICATIONS` | `$ADDITIVEFOAM_PROJECT_DIR/applications` | Solvers and utilities |
-| `ADDITIVEFOAM_ETC` | `$ADDITIVEFOAM_PROJECT_DIR/etc` | AdditiveFOAM configuration files |
-| `ADDITIVEFOAM_GLOBAL` | `$ADDITIVEFOAM_PROJECT_DIR/src/AdditiveFOAM/global` | Shared build headers |
-| `PATH` | `$ADDITIVEFOAM_PROJECT_DIR/bin:$PATH` | AdditiveFOAM helper scripts |
+The AdditiveFOAM `etc/bashrc` checks that OpenFOAM-13 is active and sets the required paths.
 
 Build all AdditiveFOAM libraries, solvers, and utilities with the master build
 script from the repository root:
