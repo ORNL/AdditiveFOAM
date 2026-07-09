@@ -29,11 +29,13 @@ jobs:
       - name: Build AdditiveFOAM
         run: |
           . /opt/openfoam13/etc/bashrc || true
+          . ./etc/bashrc
           test -n "$WM_PROJECT_DIR"
           ./Allwmake
       - name: Test AdditiveFOAM
         run: |
           . /opt/openfoam13/etc/bashrc || true
+          . ./etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
           blockMesh
