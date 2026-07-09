@@ -51,7 +51,15 @@ Foam::absorptionModels::Kelly::Kelly
     absorptionModel(typeName, sourceName, dict, mesh),
     geometry_(absorptionModelCoeffs_.lookup<word>("geometry")),
     eta0_("eta0", dimless, absorptionModelCoeffs_),
-    etaMin_("etaMin", dimless, absorptionModelCoeffs_)
+    etaMin_("etaMin", dimless, absorptionModelCoeffs_),
+    aspectRatioSwitch_
+    (
+        absorptionModelCoeffs_.lookupOrDefault<scalar>
+        (
+            "aspectRatioSwitch",
+            1.0
+        )
+    )
 {
     if ((geometry_ != "cone") && (geometry_ != "cylinder"))
     {
@@ -70,7 +78,7 @@ Foam::absorptionModels::Kelly::eta
     const scalar& aspectRatio
 ) const
 {
-    if (aspectRatio > 1.0)
+    if (aspectRatio > aspectRatioSwitch_)
     {
         const scalar theta = Foam::atan(1.0 / aspectRatio);
 
@@ -108,6 +116,12 @@ bool Foam::absorptionModels::Kelly::read()
         absorptionModelCoeffs_.lookup("geometry") >> geometry_;
         absorptionModelCoeffs_.lookup("eta0") >> eta0_;
         absorptionModelCoeffs_.lookup("etaMin") >> etaMin_;
+        aspectRatioSwitch_ =
+            absorptionModelCoeffs_.lookupOrDefault<scalar>
+            (
+                "aspectRatioSwitch",
+                1.0
+            );
 
         return true;
     }

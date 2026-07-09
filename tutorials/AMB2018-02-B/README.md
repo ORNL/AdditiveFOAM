@@ -116,25 +116,19 @@ This tutorial has the option to use the `targetCellLoad` refinement model:
 refinementModel
 {
     refinementModel         targetCellLoad;
-    
-    refine                  true;
-    nLevels                 1;
     refinementTemperature   1000;
 
-    buffer                  (85.0e-6 85.0e-6 100e-6);
-
-    minRefineVolumeFactor   4;
-
-    volumeSearchMaxIter        10;
-    volumeSearchTimeTolerance  1e-4;
+    buffers
+    {
+        beam                (85.0e-6 85.0e-6 100e-6);
+    }
 
     targetCellLoadCoeffs
     {
-        cellsPerProc                   5000;
-        targetVolumeSafetyFactor       1.0;
-        maxTargetVolumeGrowth          1.25;
-        maxTargetVolumeShrink          0.8;
-        postScanUpdateIntervalFactor   10;
+        targetCellsPerProc             5000;
+        nBufferVolumes                 4;
+        maxSearchIter                  10;
+        timeTolerance                  1e-4;
     }
 }
 ```

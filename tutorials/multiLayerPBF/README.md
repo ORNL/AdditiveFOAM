@@ -92,6 +92,11 @@ Absorption geometry used by the `Kelly` absorption model.
 
 Parameters for the depth-dependent absorption model.
 
+`aspectRatioSwitch`
+
+Optional aspect-ratio cutoff for using the Kelly model. If omitted, the cutoff
+is `1.0`.
+
 `dimensions`
 
 Sets the heat source dimensions. The third component is the initial projected depth.

@@ -169,6 +169,12 @@ public:
             return movingBeam_();
         }
 
+        //- Return the heat source name
+        inline const word& sourceName() const
+        {
+            return sourceName_;
+        }
+
         //- Return boolean of heat source type
         inline Switch transient() const
         {

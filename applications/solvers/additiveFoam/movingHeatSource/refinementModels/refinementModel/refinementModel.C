@@ -70,6 +70,41 @@ Foam::IOobject Foam::refinementModel::createIOobject
     return io;
 }
 
+Foam::label Foam::refinementModel::readMaxRefinementLevel() const
+{
+    IOdictionary dynamicMeshDict
+    (
+        IOobject
+        (
+            "dynamicMeshDict",
+            mesh_.time().constant(),
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE,
+            false
+        )
+    );
+
+    return dynamicMeshDict.subDict("topoChanger").lookup<label>
+    (
+        "maxRefinement"
+    );
+}
+
+
+void Foam::refinementModel::readSourceBuffers()
+{
+    sourceBuffers_.setSize(sources_.size());
+
+    const dictionary& buffersDict = refinementDict_.subDict("buffers");
+
+    forAll(sources_, sourcei)
+    {
+        buffersDict.lookup(sources_[sourcei].sourceName())
+            >> sourceBuffers_[sourcei];
+    }
+}
+
 
 void Foam::refinementModel::calculateCellAABBs
 (
@@ -265,9 +300,9 @@ Foam::scalar Foam::refinementModel::markScanPath
 
             const vector L
             (
-                0.5*scanLength + buffer_.x(),
-                buffer_.y(),
-                buffer_.z()
+                0.5*scanLength + sourceBuffers_[sourcei].x(),
+                sourceBuffers_[sourcei].y(),
+                sourceBuffers_[sourcei].z()
             );
 
             const vector pathAABBHalfLength
@@ -336,7 +371,7 @@ Foam::scalar Foam::refinementModel::nextPoweredPathEventTime
     const scalar time
 ) const
 {
-    scalar nextEventTime = endTime_;
+    scalar nextEventTime = scanEndTime_;
 
     forAll(sources_, sourcei)
     {
@@ -371,27 +406,62 @@ Foam::scalar Foam::refinementModel::nextPoweredPathEventTime
 }
 
 
-Foam::scalar Foam::refinementModel::refineBufferVolume() const
+Foam::scalar Foam::refinementModel::sourceBufferVolume() const
 {
-    //  (2*buffer.x) * (2*buffer.y) * (2*buffer.z)
-    return 8.0*cmptProduct(buffer_);
+    scalar bufferVolume = Zero;
+
+    forAll(sourceBuffers_, sourcei)
+    {
+        bufferVolume += 8.0*cmptProduct(sourceBuffers_[sourcei]);
+    }
+
+    return bufferVolume;
 }
 
 
-Foam::scalar Foam::refinementModel::minRefineVolume() const
+Foam::scalar Foam::refinementModel::minimumScanPathRefineVolume
+(
+    const scalar nBufferVolumes
+) const
 {
-    const scalar minRefineVolumeFactor =
-        refinementDict_.lookupOrDefault<scalar>
-        (
-            "minRefineVolumeFactor",
-            1.0
-        );
-
-    return minRefineVolumeFactor*refineBufferVolume();
+    return nBufferVolumes*sourceBufferVolume();
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::refinementModel::refinementModel
+(
+    const PtrList<heatSourceModel>& sources,
+    const dictionary& dict,
+    const fvMesh& mesh
+)
+:
+    IOdictionary(createIOobject(dict, mesh)),
+
+    sources_(sources),
+    mesh_(mesh),
+    heatSourceDict_(dict),
+    refinementDict_(heatSourceDict_.optionalSubDict("refinementModel")),
+    maxRefinementLevel_(0),
+    refinementTemperature_(GREAT),
+    sourceBuffers_(sources.size(), vector::zero),
+    scanEndTime_(0.0),
+    refinementField_
+    (
+        IOobject
+        (
+            "refinementField",
+            mesh_.time().name(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar(dimless, 0.0)
+    )
+{}
+
 
 Foam::refinementModel::refinementModel
 (
@@ -407,31 +477,13 @@ Foam::refinementModel::refinementModel
     mesh_(mesh),
     heatSourceDict_(dict),
     refinementDict_(heatSourceDict_.subDict("refinementModel")),
-    refine_
-    (
-        (type != "none")
-      ? refinementDict_.lookup<bool>("refine")
-      : false
-    ),
-    nLevels_
-    (
-        (type != "none")
-      ? refinementDict_.lookup<label>("nLevels")
-      : 0
-    ),
+    maxRefinementLevel_(readMaxRefinementLevel()),
     refinementTemperature_
     (
-        (type != "none")
-      ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
-      : GREAT
+        refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
     ),
-    buffer_
-    (
-        (type != "none")
-      ? refinementDict_.lookupOrDefault<vector>("buffer", vector::zero)
-      : vector::zero
-    ),
-    endTime_(0.0),
+    sourceBuffers_(sources.size(), vector::zero),
+    scanEndTime_(0.0),
     refinementField_
     (
         IOobject
@@ -439,8 +491,8 @@ Foam::refinementModel::refinementModel
             "refinementField",
             mesh_.time().name(),
             mesh_,
-            refine_ ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
-            refine_ ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimless, 0.0)
@@ -448,15 +500,22 @@ Foam::refinementModel::refinementModel
 {
     forAll(sources_, sourcei)
     {
-        endTime_ = max(sources_[sourcei].beam().endTime(), endTime_);
+        scanEndTime_ = max(sources_[sourcei].beam().endTime(), scanEndTime_);
     }
 
-    endTime_ = min(endTime_, mesh.time().endTime().value());
+    scanEndTime_ = min(scanEndTime_, mesh.time().endTime().value());
+
+    readSourceBuffers();
 
     Info << "refinementModel: Performing refinement until "
-         << endTime_ << " s of simulation time." << endl;
+         << scanEndTime_ << " s of simulation time." << endl;
 
-    Info << "refinementModel: Refinement buffer " << buffer_ << endl;
+    forAll(sources_, sourcei)
+    {
+        Info << "refinementModel: Refinement buffer for "
+             << sources_[sourcei].sourceName() << " "
+             << sourceBuffers_[sourcei] << endl;
+    }
 }
 
 
@@ -484,7 +543,7 @@ void Foam::refinementModel::markScanPathTime
 
     const scalar projectionStartTime = mesh_.time().value();
 
-    const scalar projectedEndTime = min(endTime_, refineTime);
+    const scalar projectedEndTime = min(scanEndTime_, refineTime);
 
     if ((projectedEndTime - projectionStartTime) > small)
     {
@@ -503,22 +562,13 @@ void Foam::refinementModel::markScanPathTime
 
 Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
 (
-    const Foam::dimensionedScalar& targetRefineVolume
+    const Foam::dimensionedScalar& targetRefineVolume,
+    const scalar minScanPathRefineVolume,
+    const label maxSearchIter,
+    const scalar timeTolerance
 )
 {
     const scalar projectionStartTime = mesh_.time().value();
-
-    const label maxVolumeSearchIter =
-        refinementDict_.lookupOrDefault<label>("volumeSearchMaxIter", 30);
-
-    const scalar volumeSearchTimeTolerance =
-        refinementDict_.lookupOrDefault<scalar>
-        (
-            "volumeSearchTimeTolerance",
-            small
-        );
-
-    const scalar minScanPathRefineVolume = minRefineVolume();
 
     List<treeBoundBox> cellAABBs;
 
@@ -556,10 +606,10 @@ Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
         return dimensionedScalar(dimTime, refineEndTime);
     }
 
-    while ((endTime_ - refineEndTime) > small)
+    while ((scanEndTime_ - refineEndTime) > small)
     {
         scalar nextProjectedEndTime =
-            min(nextPoweredPathEventTime(refineEndTime), endTime_);
+            min(nextPoweredPathEventTime(refineEndTime), scanEndTime_);
 
         if ((nextProjectedEndTime - refineEndTime) <= small)
         {
@@ -598,14 +648,14 @@ Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
             for
             (
                 label iteration = 0;
-                iteration < maxVolumeSearchIter;
+                iteration < maxSearchIter;
                 ++iteration
             )
             {
                 if
                 (
                     (upperRefineTime - lowerRefineTime)
-                 <= volumeSearchTimeTolerance
+                 <= timeTolerance
                 )
                 {
                     break;
@@ -711,7 +761,25 @@ Foam::dimensionedScalar Foam::refinementModel::markScanPathVolume
 
 bool Foam::refinementModel::read()
 {
-    return regIOobject::read();
+    if (regIOobject::read())
+    {
+        refinementDict_ = optionalSubDict("refinementModel");
+
+        maxRefinementLevel_ = readMaxRefinementLevel();
+
+        refinementTemperature_ =
+            refinementDict_.lookupOrDefault<scalar>
+            (
+                "refinementTemperature",
+                GREAT
+            );
+
+        readSourceBuffers();
+
+        return true;
+    }
+
+    return false;
 }
 
 // ************************************************************************* //

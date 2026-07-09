@@ -74,6 +74,9 @@ class Kelly
         //- Minimum absorption
         dimensionedScalar etaMin_;
 
+        //- Aspect ratio above which the Kelly model is used
+        scalar aspectRatioSwitch_;
+
 public:
 
     //- Runtime type information

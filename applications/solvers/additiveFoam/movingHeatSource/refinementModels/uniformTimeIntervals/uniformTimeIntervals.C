@@ -62,7 +62,7 @@ Foam::refinementModels::uniformTimeIntervals::uniformTimeIntervals
 {
     //- Set interval length from the active scan-path duration
     intervalLength_ =
-        max(scalar(0), endTime_ - mesh.time().startTime().value())
+        max(scalar(0), scanEndTime_ - mesh.time().startTime().value())
        /nIntervals_;
 
     Info<< typeName << ": Interval duration set to "
@@ -83,7 +83,7 @@ bool Foam::refinementModels::uniformTimeIntervals::update()
         Foam::refinementModel::markTemperature();
 
         //- Scan path completed
-        if ((endTime_ - mesh_.time().value()) < small)
+        if ((scanEndTime_ - mesh_.time().value()) < small)
         {
             Info<< typeName << ": "
                 << "Scan path completed. "
@@ -114,7 +114,7 @@ bool Foam::refinementModels::uniformTimeIntervals::read()
         coeffs_.lookup("intervals") >> nIntervals_;
 
         intervalLength_ =
-            max(scalar(0), endTime_ - mesh_.time().startTime().value())
+            max(scalar(0), scanEndTime_ - mesh_.time().startTime().value())
            /nIntervals_;
 
         return true;

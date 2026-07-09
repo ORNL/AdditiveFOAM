@@ -36,17 +36,20 @@ Foam::autoPtr<Foam::refinementModel> Foam::refinementModel::New
     const fvMesh& mesh
 )
 {
-    //- Get refinement model settings subdictionary
-    const dictionary& refinementModelDict =
-        dict.subDict("refinementModel");
+    word modelType("none");
 
-    //- Get model type
-    const word modelType =
-        refinementModelDict.lookupOrDefault<word>
-        (
-            "refinementModel",
-            "none"
-        );
+    if (dict.found("refinementModel"))
+    {
+        const dictionary& refinementModelDict =
+            dict.subDict("refinementModel");
+
+        modelType =
+            refinementModelDict.lookupOrDefault<word>
+            (
+                "refinementModel",
+                "none"
+            );
+    }
 
     Info<< "Selecting refinement control model " << modelType << endl;
 
