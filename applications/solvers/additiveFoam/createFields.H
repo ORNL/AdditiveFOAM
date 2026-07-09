@@ -4,16 +4,16 @@ Info<< "Reading transportProperties\n" << endl;
 Info<< "Reading thermoPath\n" << endl;
 thermoPath thermo(transportProperties, runTime);
 
-dimensionedScalar Tliq
+dimensionedScalar liquidus
 (
-    "Tliq",
+    "liquidus",
     dimTemperature,
     thermo.liquidus()
 );
 
-dimensionedScalar Tsol
+dimensionedScalar solidus
 (
-    "Tsol",
+    "solidus",
     dimTemperature,
     thermo.solidus()
 );
@@ -142,7 +142,7 @@ volScalarField rhok
         runTime.name(),
         mesh
     ),
-    1.0 - beta*(T - Tliq)
+    1.0 - beta*(T - liquidus)
 );
 
 #include "readGravitationalAcceleration.H"

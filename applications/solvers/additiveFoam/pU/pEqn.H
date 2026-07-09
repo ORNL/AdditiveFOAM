@@ -19,7 +19,7 @@ while (pimple.correct())
         fvc::makeAbsolute(phiHbyA, U);
     }
 
-    rhok = 1.0 - beta*(T - Tliq);
+    rhok = 1.0 - beta*(T - liquidus);
 
     surfaceScalarField phig
     (
