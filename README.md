@@ -12,7 +12,6 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | Link                                                | Description                              |
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
-| [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
 | [tutorials](tutorials)                                     | Tutorial cases |
 
 ## Installation
