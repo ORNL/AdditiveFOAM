@@ -171,8 +171,8 @@ over mesh cells.
 ## Refinement model
 
 This tutorial can use the same `targetCellLoad` refinement model as the
-single-beam AMB2018-02-B tutorial. The refinement buffer is applied relative to
-each path interval for each beam.
+single-beam AMB2018-02-B tutorial. The `buffers` entries are keyed by source
+name and are applied relative to each path interval for each beam.
 
 A representative refinement setup is:
 
@@ -180,22 +180,20 @@ A representative refinement setup is:
 refinementModel
 {
     refinementModel         targetCellLoad;
-
-    refine                  true;
-    nLevels                 1;
     refinementTemperature   1000;
 
-    buffer                  (85.0e-6 200.0e-6 100e-6);
-
-    minRefineVolumeFactor   4;
-
-    volumeSearchMaxIter        10;
-    volumeSearchTimeTolerance  1e-4;
+    buffers
+    {
+        beam1               (85.0e-6 200.0e-6 100e-6);
+        beam2               (85.0e-6 200.0e-6 100e-6);
+    }
 
     targetCellLoadCoeffs
     {
-        cellsPerProc                   5000;
-        targetVolumeSafetyFactor       1.0;
+        targetCellsPerProc             5000;
+        nBufferVolumes                 4;
+        maxSearchIter                  10;
+        timeTolerance                  1e-4;
         maxTargetVolumeGrowth          1.25;
         maxTargetVolumeShrink          0.8;
         postScanUpdateIntervalFactor   10;

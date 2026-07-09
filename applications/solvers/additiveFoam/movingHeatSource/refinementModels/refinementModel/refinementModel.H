@@ -23,6 +23,24 @@ License
     You should have received a copy of the the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::refinementModel
+
+Description
+    Base class for models that populate the refinementField used by the
+    OpenFOAM dynamic mesh refiner.
+
+    If no refinementModel dictionary is present in heatSourceDict, the
+    no-refinement model is selected and no AdditiveFOAM refinement controls
+    are required.
+
+    Active refinement models project each heat-source scan path and mark
+    cells for refinement using buffers keyed by source name. The refinement
+    level is read from maxRefinement in constant/dynamicMeshDict.
+
+SourceFiles
+    refinementModel.C
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef refinementModel_H
@@ -94,6 +112,12 @@ class refinementModel
         //- Return next powered path-vector start or end time after time
         scalar nextPoweredPathEventTime(const scalar time) const;
 
+        //- Read max refinement level from dynamicMeshDict
+        label readMaxRefinementLevel() const;
+
+        //- Read source-specific scan-path buffers
+        void readSourceBuffers();
+
 
 protected:
 
@@ -111,23 +135,20 @@ protected:
         //- Sub-dictionary for refinementModel entries
         dictionary refinementDict_;
 
-        //- Switch for refinementField generation
-        const bool refine_;
-
-        //- Number of refinement levels
-        label nLevels_;
+        //- Maximum dynamic-mesh refinement level
+        label maxRefinementLevel_;
 
         //- Temperature above which refinement occurs
         scalar refinementTemperature_;
 
-        //- Refinement extent for scan-path OBB slabs
+        //- Refinement extent for each source's scan-path OBB slabs
         //  x: endpoint padding along e0, scan direction
         //  y: half-span along e1, transverse direction
         //  z: half-span along e2, depth/vertical direction
-        vector buffer_;
+        List<vector> sourceBuffers_;
 
-        //- End time of last beam
-        scalar endTime_;
+        //- End time of all scan paths
+        scalar scanEndTime_;
 
         //- Marker field for refinement operations
         volScalarField refinementField_;
@@ -135,11 +156,23 @@ protected:
 
     // Protected Member Functions
 
-        //- Return characteristic buffer-sized refine volume
-        scalar refineBufferVolume() const;
+        //- Return summed volume of source refinement buffers
+        scalar sourceBufferVolume() const;
 
         //- Return minimum future scan-path refine volume
-        scalar minRefineVolume() const;
+        scalar minimumScanPathRefineVolume
+        (
+            const scalar nBufferVolumes
+        ) const;
+
+        //- Mark refinement field by projecting scan path to target volume
+        virtual dimensionedScalar markScanPathVolume
+        (
+            const dimensionedScalar& targetRefineVolume,
+            const scalar minScanPathRefineVolume,
+            const label maxSearchIter,
+            const scalar timeTolerance
+        );
 
 
 public:
@@ -166,6 +199,14 @@ public:
 
 
     // Constructors
+
+        //- Construct inactive refinement model
+        refinementModel
+        (
+            const PtrList<heatSourceModel>& sources,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
 
         //- Construct from components
         refinementModel
@@ -216,12 +257,6 @@ public:
         //- Mark refinement field by projecting scan path to specified time
         virtual void markScanPathTime(const scalar& refineTime);
 
-        //- Mark refinement field by projecting scan path to target volume
-        virtual dimensionedScalar markScanPathVolume
-        (
-            const dimensionedScalar& targetRefineVolume
-        );
-
         //- Backwards-compatible wrapper
         virtual void refineUsingTemperature()
         {
@@ -241,7 +276,13 @@ public:
             const scalar& = 0.0
         )
         {
-            return markScanPathVolume(targetRefineVolume);
+            return markScanPathVolume
+            (
+                targetRefineVolume,
+                scalar(0),
+                30,
+                small
+            );
         }
 
         //- Update refinementField

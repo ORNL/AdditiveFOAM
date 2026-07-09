@@ -33,6 +33,27 @@ Description
 
     The target volume is adjusted over time based on the current cell load.
 
+    Example dictionary:
+
+    refinementModel
+    {
+        refinementModel         targetCellLoad;
+        refinementTemperature   1000;
+
+        buffers
+        {
+            beam                (85e-6 85e-6 100e-6);
+        }
+
+        targetCellLoadCoeffs
+        {
+            targetCellsPerProc          5000;
+            nBufferVolumes              4;
+            maxSearchIter               10;
+            timeTolerance               1e-4;
+        }
+    }
+
 SourceFiles
     targetCellLoad.C
 
@@ -63,6 +84,11 @@ class targetCellLoad
         //- Coefficients dictionary
         dictionary coeffs_;
 
+    // Private Member Functions
+
+        //- Read model coefficients
+        void readCoeffs();
+
 
 protected:
 
@@ -70,6 +96,15 @@ protected:
 
         //- Target cells per processor
         label targetCellsPerProc_;
+
+        //- Minimum projected scan-path volume in source-buffer volumes
+        scalar nBufferVolumes_;
+
+        //- Maximum number of volume-search bisection iterations
+        label maxSearchIter_;
+
+        //- Time tolerance for volume-search bisection
+        scalar timeTolerance_;
 
         //- Fraction of estimated available cell budget used for target volume
         scalar initialTargetVolumeFactor_;

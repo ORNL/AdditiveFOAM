@@ -45,6 +45,48 @@ namespace refinementModels
 }
 }
 
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::refinementModels::targetCellLoad::readCoeffs()
+{
+    targetCellsPerProc_ =
+        coeffs_.lookupOrDefault<label>("targetCellsPerProc", 5000);
+
+    nBufferVolumes_ =
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "nBufferVolumes",
+            1.0
+        );
+
+    maxSearchIter_ =
+        coeffs_.lookupOrDefault<label>("maxSearchIter", 30);
+
+    timeTolerance_ =
+        coeffs_.lookupOrDefault<scalar>("timeTolerance", small);
+
+    initialTargetVolumeFactor_ =
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "initialTargetVolumeFactor",
+            0.5
+        );
+
+    maxTargetVolumeGrowth_ =
+        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeGrowth", 1.2);
+
+    maxTargetVolumeShrink_ =
+        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeShrink", 0.8);
+
+    postScanUpdateIntervalFactor_ =
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "postScanUpdateIntervalFactor",
+            10.0
+        );
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::refinementModels::targetCellLoad::targetCellLoad
@@ -56,10 +98,33 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
 :
     Foam::refinementModel(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    targetCellsPerProc_(coeffs_.lookupOrDefault<label>("cellsPerProc", 5000)),
+    targetCellsPerProc_
+    (
+        coeffs_.lookupOrDefault<label>("targetCellsPerProc", 5000)
+    ),
+    nBufferVolumes_
+    (
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "nBufferVolumes",
+            1.0
+        )
+    ),
+    maxSearchIter_
+    (
+        coeffs_.lookupOrDefault<label>("maxSearchIter", 30)
+    ),
+    timeTolerance_
+    (
+        coeffs_.lookupOrDefault<scalar>("timeTolerance", small)
+    ),
     initialTargetVolumeFactor_
     (
-        coeffs_.lookupOrDefault<scalar>("initialTargetVolumeFactor", 0.5)
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "initialTargetVolumeFactor",
+            0.5
+        )
     ),
     maxTargetVolumeGrowth_
     (
@@ -71,7 +136,11 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     ),
     postScanUpdateIntervalFactor_
     (
-        coeffs_.lookupOrDefault<scalar>("postScanUpdateIntervalFactor", 10.0)
+        coeffs_.lookupOrDefault<scalar>
+        (
+            "postScanUpdateIntervalFactor",
+            10.0
+        )
     ),
     targetRefineVolume_(Zero),
     minRefineVolume_(Zero),
@@ -79,7 +148,10 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     targetToCurrentCellRatio_(1.0)
 {
     minRefineVolume_ =
-        Foam::refinementModel::minRefineVolume();
+        Foam::refinementModel::minimumScanPathRefineVolume
+        (
+            nBufferVolumes_
+        );
 
     Info<< typeName << ": Minimum scan-path refine volume: "
         << minRefineVolume_ << endl;
@@ -92,7 +164,7 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     const scalar averageCellVolume = meshVolume/nCellsTotal;
 
     const scalar refineCellMultiplier =
-        Foam::pow(2.0, 3.0*nLevels_) - 1.0;
+        Foam::pow(2.0, 3.0*maxRefinementLevel_) - 1.0;
 
     const scalar minRefineCells =
         minRefineVolume_/averageCellVolume*refineCellMultiplier;
@@ -133,7 +205,10 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
                 "targetRefineVolume",
                 dimVolume,
                 targetRefineVolume_
-            )
+            ),
+            minRefineVolume_,
+            maxSearchIter_,
+            timeTolerance_
         );
 
     Info<< typeName << ": Initial AMR update time: "
@@ -160,7 +235,7 @@ bool Foam::refinementModels::targetCellLoad::update()
         Foam::refinementModel::markTemperature();
 
         //- Scan path completed
-        if ((endTime_ - mesh_.time().value()) < small)
+        if ((scanEndTime_ - mesh_.time().value()) < small)
         {
             Info<< typeName << ": "
                 << "Scan path completed. "
@@ -196,7 +271,10 @@ bool Foam::refinementModels::targetCellLoad::update()
                     "targetRefineVolume",
                     dimVolume,
                     targetRefineVolume_
-                )
+                ),
+                minRefineVolume_,
+                maxSearchIter_,
+                timeTolerance_
             );
 
         Info<< typeName << ":" << endl
@@ -216,7 +294,22 @@ bool Foam::refinementModels::targetCellLoad::update()
 
 bool Foam::refinementModels::targetCellLoad::read()
 {
-    return Foam::refinementModel::read();
+    if (Foam::refinementModel::read())
+    {
+        coeffs_ = refinementDict_.optionalSubDict(typeName + "Coeffs");
+
+        readCoeffs();
+
+        minRefineVolume_ =
+            Foam::refinementModel::minimumScanPathRefineVolume
+            (
+                nBufferVolumes_
+            );
+
+        return true;
+    }
+
+    return false;
 }
 
 

@@ -48,7 +48,7 @@ Foam::refinementModels::noRefinementModel::noRefinementModel
     const fvMesh& mesh
 )
 :
-    refinementModel(typeName, sources, dict, mesh)
+    refinementModel(sources, dict, mesh)
 {}
 
 // ************************************************************************* //
