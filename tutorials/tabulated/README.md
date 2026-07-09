@@ -5,13 +5,16 @@ using a measured nLight AFX Index 3 laser profile. The profile was exported from
 PRIMES LaserDiagnosticsSoftware and converted to the AdditiveFOAM tabulated
 heat-source format with `primesToAdditiveFoam`.
 
-The case uses AlSi10Mg material properties. The tabulated beam profile defines
-the measured two-dimensional laser intensity distribution, while the scan path
-defines the applied laser power, scan speed, and beam motion.
-
 The purpose of this tutorial is to show how measured beam profiles can be used
 directly in AdditiveFOAM without adding a new analytic heat-source model for
 each laser shape.
+
+This tutorial uses the AlSi10Mg material configuration from
+`$ADDITIVEFOAM_ETC/materials/AlSi10Mg.cfg`.
+
+The tabulated beam profile defines the measured two-dimensional laser intensity
+distribution, while the scan path defines the applied laser power, scan speed,
+and beam motion.
 
 ## File structure
 
@@ -226,20 +229,6 @@ The scan-path laser power still controls the total applied power:
 ```text
 constant/scanPath
 ```
-
-## Material
-
-This tutorial uses AlSi10Mg material properties. The thermophysical properties
-are specified in:
-
-```text
-constant/transportProperties
-```
-
-The tabulated beam profile and the material model are independent inputs. The
-beam profile defines the spatial distribution of deposited laser energy, while
-the material properties define the thermal and phase-change response of
-AlSi10Mg.
 
 ## Notes for modifying the tutorial
 

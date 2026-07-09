@@ -4,6 +4,9 @@ This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM. Th
 
 The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs without hard-coding mode values in the heat source model.
 
+This tutorial uses the IN625 material configuration from
+`$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
 ## File structure
 
 The important files for this tutorial are:

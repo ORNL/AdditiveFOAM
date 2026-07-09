@@ -4,6 +4,9 @@ This tutorial demonstrates a multi-layer powder bed fusion workflow using Additi
 
 The purpose of this tutorial is to show how to run repeated layer simulations with a powder layer using a transient volumetric heat source and depth-dependent absorption.
 
+This tutorial uses the IN625 material configuration from
+`$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
 ## Reference
 
 The heat source setup follows the dynamic volumetric heat source formulation cited in the tutorial dictionary:

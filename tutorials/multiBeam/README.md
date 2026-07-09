@@ -13,6 +13,9 @@ hatch direction.
 This tutorial is intended to show how neighboring beams can alter the thermal
 field and solidification conditions relative to a single-beam setup.
 
+This tutorial uses the IN625 material configuration from
+`$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
 ## Reference
 
 The baseline case is based on the AMBenchmark 2018 AMB2018-02 description:
