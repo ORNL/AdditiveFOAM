@@ -15,6 +15,6 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "$ADDITIVEFOAM_ETC/materials/IN625.cfg"
+#include "$ADDITIVEFOAM_ETC/materials/SS316L.cfg"
 
 // ************************************************************************* //
