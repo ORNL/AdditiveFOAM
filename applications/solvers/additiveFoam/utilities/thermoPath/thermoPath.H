@@ -95,7 +95,7 @@ class thermoPath
         );
 
         //- Return temperature at the requested solid fraction
-        scalar temperatureAtAlpha(const scalar alpha) const;
+        scalar temperatureAtSolidFraction(const scalar alpha) const;
 
 
 public:

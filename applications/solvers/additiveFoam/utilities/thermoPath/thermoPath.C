@@ -117,12 +117,15 @@ void Foam::thermoPath::set
         alpha_[i] = path[i].second();
     }
 
-    solidus_ = temperatureAtAlpha(1.0);
-    liquidus_ = temperatureAtAlpha(0.0);
+    solidus_ = temperatureAtSolidFraction(1.0);
+    liquidus_ = temperatureAtSolidFraction(0.0);
 }
 
 
-Foam::scalar Foam::thermoPath::temperatureAtAlpha(const scalar alpha) const
+Foam::scalar Foam::thermoPath::temperatureAtSolidFraction
+(
+    const scalar alpha
+) const
 {
     forAll(alpha_, i)
     {
@@ -132,27 +135,10 @@ Foam::scalar Foam::thermoPath::temperatureAtAlpha(const scalar alpha) const
         }
     }
 
-    for (label i=1; i<alpha_.size(); ++i)
-    {
-        const scalar alpha0 = alpha_[i - 1];
-        const scalar alpha1 = alpha_[i];
-
-        if
-        (
-            ((alpha - alpha0)*(alpha - alpha1) <= 0)
-         && (mag(alpha1 - alpha0) > small)
-        )
-        {
-            return
-                T_[i - 1]
-              + (alpha - alpha0)/(alpha1 - alpha0)*(T_[i] - T_[i - 1]);
-        }
-    }
-
     FatalErrorInFunction
         << "Thermodynamic path " << sourceName_
-        << " does not bracket alpha.solid = " << alpha
-        << ". Add a path point at or across this solid fraction."
+        << " must contain a point with alpha.solid = " << alpha
+        << " so solidus and liquidus can be inferred."
         << exit(FatalError);
 
     return 0;
