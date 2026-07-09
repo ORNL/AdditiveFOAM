@@ -15,19 +15,51 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | [utilities](applications/utilities)                       | Utilities for post-processing and code wrappers |
 | [tutorials](tutorials)                                     | Tutorial cases |
 
-## Installation and Dependencies
+## Installation
 [![OpenFOAM-13](https://img.shields.io/badge/OpenFOAM-13-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-13)
 
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM).
+AdditiveFOAM requires OpenFOAM-13 from the OpenFOAM Foundation. Install or
+build OpenFOAM-13 first, then source the OpenFOAM environment:
 
-[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
-
-The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedocs.io/en/latest/):  
-```
-spack install additivefoam
+```sh
+source /path/to/OpenFOAM-13/etc/bashrc
 ```
 
-See the [installation instructions](https://ornl.github.io/AdditiveFOAM/docs/installation/#installation) in the [documentation](https://ornl.github.io/AdditiveFOAM/) for other options for building `AdditiveFOAM`.
+Clone AdditiveFOAM, enter the repository, and source the AdditiveFOAM
+environment:
+
+```sh
+git clone https://github.com/ORNL/AdditiveFOAM.git
+cd AdditiveFOAM
+source etc/bashrc
+```
+
+The AdditiveFOAM `etc/bashrc` checks that OpenFOAM-13 is active and sets the
+following paths:
+
+| Variable | Path | Description |
+|----------|------|-------------|
+| `ADDITIVEFOAM_PROJECT_DIR` | `/path/to/AdditiveFOAM` | AdditiveFOAM repository root |
+| `ADDITIVEFOAM_TUTORIALS` | `$ADDITIVEFOAM_PROJECT_DIR/tutorials` | Tutorial cases |
+| `ADDITIVEFOAM_APPLICATIONS` | `$ADDITIVEFOAM_PROJECT_DIR/applications` | Solvers and utilities |
+| `ADDITIVEFOAM_ETC` | `$ADDITIVEFOAM_PROJECT_DIR/etc` | AdditiveFOAM configuration files |
+| `ADDITIVEFOAM_GLOBAL` | `$ADDITIVEFOAM_PROJECT_DIR/src/AdditiveFOAM/global` | Shared build headers |
+| `PATH` | `$ADDITIVEFOAM_PROJECT_DIR/bin:$PATH` | AdditiveFOAM helper scripts |
+
+Build all AdditiveFOAM libraries, solvers, and utilities with the master build
+script from the repository root:
+
+```sh
+./Allwmake
+```
+
+For regular use, source both environments in each new shell or add them to your
+shell startup file:
+
+```sh
+source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+```
 
 ## Citing
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770)
