@@ -1,0 +1,123 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     | Website:  https://openfoam.org
+#   \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+#                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+#------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     reconstructExaCAData
+#
+# Description
+#     Reconstruct ExaCA function object processor files into time-temperature.csv.
+#     If layer directories are present, data are reconstructed in each layer.
+#------------------------------------------------------------------------------
+
+usage()
+{
+    cat<<USAGE
+Usage: ${0##*/} [OPTION] [case]
+options:
+  -case <case>      case directory
+  -help            print the usage
+USAGE
+}
+
+caseDir=${PWD}
+
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+    -h | -help)
+        usage
+        exit 0
+        ;;
+    -case)
+        caseDir="$2"
+        shift 2
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        echo "Error: invalid option '$1'" >&2
+        usage >&2
+        exit 1
+        ;;
+    *)
+        caseDir="$1"
+        shift
+        ;;
+    esac
+done
+
+if [ ! -d "$caseDir" ]; then
+    echo "Error: case directory does not exist: $caseDir" >&2
+    exit 1
+fi
+
+caseDir="$(cd "$caseDir" && pwd -P)" || exit 1
+
+shopt -s nullglob
+
+reconstructData()
+{
+    local dataDir=$1
+    local output=$2
+    local files=( "$dataDir"/data_* )
+
+    if [ ${#files[@]} -eq 0 ]; then
+        return 1
+    fi
+
+    sed '1q' "${files[0]}" > "$output"
+    tail -q -n+2 "${files[@]}" >> "$output"
+    rm -f "${files[@]}"
+
+    echo "Wrote $output"
+}
+
+processed=0
+layerDirs=( "$caseDir"/layer*/ )
+
+if [ ${#layerDirs[@]} -gt 0 ]; then
+    for layerDir in "${layerDirs[@]}"
+    do
+        layerDir=${layerDir%/}
+        if [ -d "$layerDir" ] \
+            && reconstructData "$layerDir/ExaCA" "$layerDir/ExaCA/time-temperature.csv"
+        then
+            processed=$((processed + 1))
+        fi
+    done
+else
+    if reconstructData "$caseDir/ExaCA" "$caseDir/ExaCA/time-temperature.csv"; then
+        processed=$((processed + 1))
+    fi
+fi
+
+if [ $processed -eq 0 ]; then
+    exit 0
+fi
+
+#------------------------------------------------------------------------------

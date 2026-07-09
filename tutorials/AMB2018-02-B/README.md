@@ -1,5 +1,7 @@
 # AMB2018-02-B Tutorial
 
+## Case description
+
 This tutorial demonstrates an AdditiveFOAM single-track case calibrated to the AMBenchmark 2018 AMB2018-02-B single-track data.
 
 The purpose of this tutorial is to provide a calibrated AMBench baseline case using a Gaussian heat source model.
@@ -25,13 +27,6 @@ The model coefficients (absorption and heat source dimensions) were calibrated i
 ## File structure
 
 The important files for this tutorial are:
-
-```text
-constant/heatSourceDict
-constant/scanPath
-constant/dynamicMeshDict
-system/blockMeshDict
-```
 
 ```text
 constant/heatSourceDict
@@ -115,7 +110,10 @@ This tutorial has the option to use the `targetCellLoad` refinement model:
 ```foam
 refinementModel
 {
-    refinementModel         targetCellLoad;
+    refinementModel         none;
+
+    //refinementModel         targetCellLoad;
+
     refinementTemperature   1000;
 
     buffers
@@ -125,12 +123,99 @@ refinementModel
 
     targetCellLoadCoeffs
     {
-        targetCellsPerProc             5000;
-        nBufferVolumes                 4;
-        maxSearchIter                  10;
-        timeTolerance                  1e-4;
+        targetCellsPerProc  5000;
+        nBufferVolumes      4;
+        maxSearchIter       10;
+        timeTolerance       1e-4;
     }
 }
 ```
 
 The refinement region projects along the heat source path and targets a desired cell load per processor.
+
+### Coefficients
+
+`refinementModel`
+
+Selects the refinement model. `targetCellLoad` projects refinement ahead along
+the scan path and adjusts the projected volume to target a cell count per
+processor.
+
+`refinementTemperature`
+
+Temperature threshold used to mark hot cells for refinement during AMR updates.
+
+`buffers`
+
+Source-specific scan-path projection buffers. Entries are keyed by heat source
+name. The vector components define the buffer size in the scan direction,
+transverse direction, and build direction.
+
+`targetCellsPerProc`
+
+Target cell count per MPI processor. The `targetCellLoad` model adjusts the
+projected refinement volume to keep the total mesh size near this load.
+
+`nBufferVolumes`
+
+Minimum projected scan-path volume expressed as a multiple of the source-buffer
+volume. This keeps the projected refinement region from shrinking below the
+local scan-path coverage.
+
+`maxSearchIter`
+
+Maximum number of bisection iterations used when searching for the scan-path
+time interval that gives the target refinement volume.
+
+`timeTolerance`
+
+Stopping tolerance, in seconds, for the scan-path time-interval search.
+
+## Post-processing
+
+Optional AdditiveFOAM function objects are listed in `system/controlDict` and
+are controlled by their `enabled` entries. To write additional data, set the
+selected function object entry to:
+
+```foam
+enabled true;
+```
+
+To disable a function object, set:
+
+```foam
+enabled false;
+```
+
+`meltPoolDimensions` writes melt-pool length, width, and depth data.
+`solidificationData` writes solidification events for CET analysis. `ExaCA`
+writes temperature history data for the ExaCA workflow.
+
+The `Allrun` script calls the reconstruction helpers after the solver finishes.
+If the case is run manually, reconstruct function object data from the case
+directory with:
+
+```sh
+reconstructExaCAData
+reconstructSolidificationData
+```
+
+These commands exit quietly when no matching function object data were written.
+
+Plot absorbed power from the solver log with:
+
+```sh
+plotPower
+```
+
+Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+
+```sh
+plotDimensions
+```
+
+Plot CET data when `solidificationData` is enabled and reconstructed:
+
+```sh
+plotCET
+```

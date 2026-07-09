@@ -55,39 +55,36 @@ maxAlphaCo      1;
 
 functions
 {
-    #ifeq ${ENABLE_SOLIDIFICATION_DATA} true
-        solidificationData
-        {
-            libs ("libadditiveFoamFunctionObjects.so");
-            
-            type solidificationData;
-                    
-            box         (-1 -1 -1) (1 1 1);
-        }
-    #endif;
+    solidificationData
+    {
+        libs ("libadditiveFoamFunctionObjects.so");
 
-    #ifeq ${ENABLE_EXACA_DATA} true
-        ExaCA
-        {
-            libs ("libadditiveFoamFunctionObjects.so");
-            
-            type ExaCA;
-                    
-            box         (-5e-5 -0.00025 -0.0002) (0.0025 0.00025 0);
-            dx          2.5e-6;
-        }
-    #endif;
+        type    solidificationData;
+        enabled false;
 
-    #ifeq ${ENABLE_MELTPOOL_DIMENSIONS} true      
-        meltPoolDimensions
-        {
-            libs ("libadditiveFoamFunctionObjects.so");
-            
-            type            meltPoolDimensions;
-            
-            scanPathAngle   0.0;
-        }
-    #endif;
+        box     (-1 -1 -1) (1 1 1);
+    }
+
+    ExaCA
+    {
+        libs ("libadditiveFoamFunctionObjects.so");
+
+        type    ExaCA;
+        enabled false;
+
+        box     (-5e-5 -0.00025 -0.0002) (0.0025 0.00025 0);
+        dx      2.5e-6;
+    }
+
+    meltPoolDimensions
+    {
+        libs ("libadditiveFoamFunctionObjects.so");
+
+        type            meltPoolDimensions;
+        enabled         false;
+
+        scanPathAngle   0.0;
+    }
 }
 
 // ************************************************************************* //

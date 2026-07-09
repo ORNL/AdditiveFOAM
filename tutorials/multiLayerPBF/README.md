@@ -1,5 +1,7 @@
 # Multi-Layer PBF Tutorial
 
+## Case description
+
 This tutorial demonstrates a multi-layer powder bed fusion workflow using AdditiveFOAM.
 
 The purpose of this tutorial is to show how to run repeated layer simulations with a powder layer using a transient volumetric heat source and depth-dependent absorption.
@@ -20,12 +22,6 @@ Additive Manufacturing (2024), https://doi.org/10.1016/j.addma.2024.104531.
 ## File structure
 
 The important files for this tutorial are:
-
-```text
-constant/heatSourceDict
-constant/scanPath
-system/extrudeMeshDict
-```
 
 ```text
 constant/heatSourceDict
@@ -88,14 +84,19 @@ beam
 
 Absorption geometry used by the `Kelly` absorption model.
 
-`eta0` and `etaMin`
+`eta0`
 
-Parameters for the depth-dependent absorption model.
+Fresnel absorption of the liquid metal.
+
+`etaMin`
+
+Effective absorption in the conduction regime, used when the melt-pool aspect
+ratio is less than `aspectRatioSwitch`.
 
 `aspectRatioSwitch`
 
-Optional aspect-ratio cutoff for using the Kelly model. If omitted, the cutoff
-is `1.0`.
+Optional aspect-ratio cutoff for switching between `etaMin` and the Kelly
+multiple-reflection model. If omitted, the cutoff is `1.0`.
 
 `dimensions`
 
@@ -114,6 +115,52 @@ liquidus from `constant/transportProperties`.
 
 Controls sub-cell sampling resolution used when integrating the heat source over mesh cells.
 
-## Notes
+## Post-processing
 
-This tutorial is the main example for the dynamic volumetric heat source formulation in a multi-layer process setting. It is useful for studying layer-by-layer thermal history, melt pool depth evolution, and coupling to downstream solidification or microstructure workflows.
+Optional AdditiveFOAM function objects are listed in `system/controlDict` and
+are controlled by their `enabled` entries. To write additional data, set the
+selected function object entry to:
+
+```foam
+enabled true;
+```
+
+To disable a function object, set:
+
+```foam
+enabled false;
+```
+
+`meltPoolDimensions` writes melt-pool length, width, and depth data.
+`solidificationData` writes solidification events for CET analysis. `ExaCA`
+writes temperature history data for the ExaCA workflow.
+
+The `Allrun` script calls the reconstruction helpers after all layers finish.
+If the layers are run manually, reconstruct function object data from the base
+case directory with:
+
+```sh
+reconstructExaCAData
+reconstructSolidificationData
+```
+
+These commands detect `layer*/` directories and exit quietly when no matching
+function object data were written.
+
+Plot absorbed power from the layer solver logs with:
+
+```sh
+plotPower layer0 layer1
+```
+
+Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+
+```sh
+plotDimensions layer0 layer1
+```
+
+Plot CET data when `solidificationData` is enabled and reconstructed:
+
+```sh
+plotCET layer0 layer1
+```

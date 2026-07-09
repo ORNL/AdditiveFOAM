@@ -1,20 +1,29 @@
 # AMB2018-02-B multiBeam Tutorial
 
+## Case description
+
 This tutorial demonstrates a simple two-beam extension of the AdditiveFOAM
 AMB2018-02-B single-track tutorial.
-
-The baseline AMB2018-02-B tutorial is calibrated to the AMBenchmark 2018
-single-track data using a Gaussian heat source model. This tutorial keeps the
-same calibrated beam parameters, scan speed, power, absorption, and heat source dimensions, but adds a second beam running parallel to the first beam.
-
-The two beams are separated by a 100 micron center-to-center offset in the
-hatch direction.
 
 This tutorial is intended to show how neighboring beams can alter the thermal
 field and solidification conditions relative to a single-beam setup.
 
 This tutorial uses the IN625 material configuration from
 `$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
+
+The original AMB2018-02-B tutorial contains one moving heat source. This tutorial
+uses two moving heat sources:
+
+```foam
+sources (beam1 beam2);
+```
+
+The two beams follow the same scan direction, power, speed, and heat source
+parameters of the original AMB2018-02-B scan path, but are translated `+/- 50`
+microns in the hatch direction.
+
+Because each beam uses the original AMB2018-02-B laser power, the total applied
+laser power is twice that of the single-beam baseline.
 
 ## Reference
 
@@ -33,33 +42,9 @@ Calibrating uncertain parameters in melt pool simulations of additive
 manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
 ```
 
-## Case description
-
-The original AMB2018-02-B tutorial contains one moving heat source. This tutorial
-uses two moving heat sources:
-
-```foam
-sources (beam1 beam2);
-```
-
-The two beams follow the same scan direction, power, speed, and heat source
-parameters of the original AMB2018-02-B scan path, but are translated `+/- 50`
-microns in the hatch direction.
-
-Because each beam uses the original AMB2018-02-B laser power, the total applied
-laser power is twice that of the single-beam baseline.
-
 ## File structure
 
 The important files for this tutorial are:
-
-```text
-constant/heatSourceDict
-constant/scanPath_0
-constant/scanPath_1
-constant/dynamicMeshDict
-system/blockMeshDict
-```
 
 ```text
 constant/heatSourceDict
@@ -69,13 +54,13 @@ Defines the two moving heat sources, their absorption models, heat source
 models, and mesh refinement model.
 
 ```text
-constant/scanPath_0
+constant/scanPath_1
 ```
 
 Defines the first beam path.
 
 ```text
-constant/scanPath_1
+constant/scanPath_2
 ```
 
 Defines the second beam path.
@@ -106,7 +91,7 @@ single-beam case.
 ```foam
 beam1
 {
-    pathName            scanPath_0;
+    pathName            scanPath_1;
 
     absorptionModel     constant;
 
@@ -127,7 +112,7 @@ beam1
 
 beam2
 {
-    pathName            scanPath_1;
+    pathName            scanPath_2;
 
     absorptionModel     constant;
 
@@ -179,21 +164,112 @@ A representative refinement setup is:
 ```foam
 refinementModel
 {
-    refinementModel         targetCellLoad;
+    refinementModel         none;
+
+    //refinementModel         targetCellLoad;
+
     refinementTemperature   1000;
 
     buffers
     {
-        beam1               (85.0e-6 200.0e-6 100e-6);
-        beam2               (85.0e-6 200.0e-6 100e-6);
+        beam1               (85.0e-6 85.0e-6 100e-6);
+        beam2               (85.0e-6 85.0e-6 100e-6);
     }
 
     targetCellLoadCoeffs
     {
-        targetCellsPerProc             5000;
-        nBufferVolumes                 4;
-        maxSearchIter                  10;
-        timeTolerance                  1e-4;
+        targetCellsPerProc  5000;
+        nBufferVolumes      4;
+        maxSearchIter       10;
+        timeTolerance       1e-4;
     }
 }
+```
+
+### Coefficients
+
+`refinementModel`
+
+Selects the refinement model. `targetCellLoad` projects refinement ahead along
+the scan paths and adjusts the projected volume to target a cell count per
+processor.
+
+`refinementTemperature`
+
+Temperature threshold used to mark hot cells for refinement during AMR updates.
+
+`buffers`
+
+Source-specific scan-path projection buffers. Entries are keyed by heat source
+name and are applied to the corresponding beam path. The vector components
+define the buffer size in the scan direction, transverse direction, and build
+direction.
+
+`targetCellsPerProc`
+
+Target cell count per MPI processor. The `targetCellLoad` model adjusts the
+projected refinement volume to keep the total mesh size near this load.
+
+`nBufferVolumes`
+
+Minimum projected scan-path volume expressed as a multiple of the combined
+source-buffer volume. This keeps the projected refinement region from shrinking
+below the local scan-path coverage.
+
+`maxSearchIter`
+
+Maximum number of bisection iterations used when searching for the scan-path
+time interval that gives the target refinement volume.
+
+`timeTolerance`
+
+Stopping tolerance, in seconds, for the scan-path time-interval search.
+
+## Post-processing
+
+Optional AdditiveFOAM function objects are listed in `system/controlDict` and
+are controlled by their `enabled` entries. To write additional data, set the
+selected function object entry to:
+
+```foam
+enabled true;
+```
+
+To disable a function object, set:
+
+```foam
+enabled false;
+```
+
+`meltPoolDimensions` writes melt-pool length, width, and depth data.
+`solidificationData` writes solidification events for CET analysis. `ExaCA`
+writes temperature history data for the ExaCA workflow.
+
+The `Allrun` script calls the reconstruction helpers after the solver finishes.
+If the case is run manually, reconstruct function object data from the case
+directory with:
+
+```sh
+reconstructExaCAData
+reconstructSolidificationData
+```
+
+These commands exit quietly when no matching function object data were written.
+
+Plot absorbed power from the solver log with:
+
+```sh
+plotPower
+```
+
+Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+
+```sh
+plotDimensions
+```
+
+Plot CET data when `solidificationData` is enabled and reconstructed:
+
+```sh
+plotCET
 ```

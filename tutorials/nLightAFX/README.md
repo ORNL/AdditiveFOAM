@@ -1,8 +1,10 @@
 # nLight AFX Heat Source Tutorial
 
+## Case description
+
 This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM. The model represents an nLight AFX beam as a linear combination of inner and outer Gaussian-ring components with the same projected axial distribution used by the `projectedGaussian` heat source.
 
-The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs without hard-coding mode values in the heat source model.
+The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs.
 
 This tutorial uses the SS316L material configuration from
 `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.
@@ -10,12 +12,6 @@ This tutorial uses the SS316L material configuration from
 ## File structure
 
 The important files for this tutorial are:
-
-```text
-constant/nLightAFX.cfg
-constant/heatSourceDict
-constant/scanPath
-```
 
 ```text
 constant/nLightAFX.cfg
@@ -50,7 +46,7 @@ The corresponding coefficient dictionary is:
 
 nLightAFXCoeffs
 {
-    $Index6
+    $Index6;
 
     transient   true;
     nPoints     (10 10 10);
@@ -60,19 +56,19 @@ nLightAFXCoeffs
 The selected mode can be changed by replacing:
 
 ```foam
-$Index3
+$Index6;
 ```
 
 with one of:
 
 ```foam
-$Index0
-$Index1
-$Index2
-$Index3
-$Index4
-$Index5
-$Index6
+$Index0;
+$Index1;
+$Index2;
+$Index3;
+$Index4;
+$Index5;
+$Index6;
 ```
 
 ## Characterized AFX modes
@@ -153,14 +149,51 @@ Index3
 
 This mode has approximately half of the power in the outer ring. Lower modes are more center-weighted, while higher modes place more power in the outer ring.
 
-## Power normalization
+## Post-processing
 
-The nLight AFX mode parameters define only the relative beam shape. The laser power should still be set in `constant/scanPath`, exactly as with the other heat source models.
+Optional AdditiveFOAM function objects are listed in `system/controlDict` and
+are controlled by their `enabled` entries. To write additional data, set the
+selected function object entry to:
 
-The heat source model normalizes the inner and outer ring components so that the total volumetric source integrates to the absorbed scan-path power.
+```foam
+enabled true;
+```
 
-## Notes
+To disable a function object, set:
 
-The model uses one shared transient heat source depth from the existing AdditiveFOAM heat source logic. This keeps the implementation consistent with the other projected heat source models while allowing the radial AFX beam shape to vary by mode.
+```foam
+enabled false;
+```
 
-The characterized mode values are provided in `nLightAFX.cfg` for convenience. Users can copy a mode block and modify `alpha`, `radius`, `sigma`, `A`, or `B` to represent their own measured beam profiles.
+`meltPoolDimensions` writes melt-pool length, width, and depth data.
+`solidificationData` writes solidification events for CET analysis. `ExaCA`
+writes temperature history data for the ExaCA workflow.
+
+The `Allrun` script calls the reconstruction helpers after the solver finishes.
+If the case is run manually, reconstruct function object data from the case
+directory with:
+
+```sh
+reconstructExaCAData
+reconstructSolidificationData
+```
+
+These commands exit quietly when no matching function object data were written.
+
+Plot absorbed power from the solver log with:
+
+```sh
+plotPower
+```
+
+Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+
+```sh
+plotDimensions
+```
+
+Plot CET data when `solidificationData` is enabled and reconstructed:
+
+```sh
+plotCET
+```

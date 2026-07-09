@@ -69,7 +69,8 @@ refinementModel
 
     buffers
     {
-        beam                (85.0e-6 85.0e-6 100e-6);
+        beam1               (85.0e-6 85.0e-6 100e-6);
+        beam2               (85.0e-6 85.0e-6 100e-6);
     }
 
     targetCellLoadCoeffs

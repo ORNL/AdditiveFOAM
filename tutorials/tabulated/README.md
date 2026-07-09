@@ -1,5 +1,7 @@
 # Tabulated Heat Source Tutorial
 
+## Case description
+
 This tutorial demonstrates the `tabulated` heat source model in AdditiveFOAM
 using a measured nLight AFX Index 3 laser profile. The profile was exported from
 PRIMES LaserDiagnosticsSoftware and converted to the AdditiveFOAM tabulated
@@ -19,15 +21,6 @@ and beam motion.
 ## File structure
 
 The important files for this tutorial are:
-
-```text
-Allrun
-constant/heatSourceDict
-constant/scanPath
-constant/primes-export.csv
-constant/beamProfile.txt
-constant/transportProperties
-```
 
 `Allrun`
 
@@ -230,26 +223,51 @@ The scan-path laser power still controls the total applied power:
 constant/scanPath
 ```
 
-## Notes for modifying the tutorial
+## Post-processing
 
-If a different PRIMES export is used, replace:
+Optional AdditiveFOAM function objects are listed in `system/controlDict` and
+are controlled by their `enabled` entries. To write additional data, set the
+selected function object entry to:
 
-```text
-constant/primes-export.csv
+```foam
+enabled true;
 ```
 
-and rerun:
+To disable a function object, set:
+
+```foam
+enabled false;
+```
+
+`meltPoolDimensions` writes melt-pool length, width, and depth data.
+`solidificationData` writes solidification events for CET analysis. `ExaCA`
+writes temperature history data for the ExaCA workflow.
+
+The `Allrun` script calls the reconstruction helpers after the solver finishes.
+If the case is run manually, reconstruct function object data from the case
+directory with:
 
 ```sh
-./Allrun
+reconstructExaCAData
+reconstructSolidificationData
 ```
 
-or manually regenerate the tabulated profile with:
+These commands exit quietly when no matching function object data were written.
+
+Plot absorbed power from the solver log with:
 
 ```sh
-primesToAdditiveFoam constant/primes-export.csv constant/beamProfile.txt
+plotPower
 ```
 
-If the measured beam footprint is larger or smaller than the current example,
-update the lateral components of `dimensions` in `constant/heatSourceDict` so
-that the heat-source integration covers the tabulated profile support.
+Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+
+```sh
+plotDimensions
+```
+
+Plot CET data when `solidificationData` is enabled and reconstructed:
+
+```sh
+plotCET
+```

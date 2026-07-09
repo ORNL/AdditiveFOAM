@@ -68,13 +68,13 @@ class Kelly
         //- Conical or cylindrical
         word geometry_;
 
-        //- Constant absorption scalar
+        //- Fresnel absorption of the liquid metal
         dimensionedScalar eta0_;
 
-        //- Minimum absorption
+        //- Effective absorption in the conduction regime
         dimensionedScalar etaMin_;
 
-        //- Aspect ratio above which the Kelly model is used
+        //- Aspect ratio above which the Kelly multiple-reflection model is used
         scalar aspectRatioSwitch_;
 
 public:
