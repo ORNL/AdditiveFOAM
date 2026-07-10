@@ -28,7 +28,12 @@
       "PrintBinary": false,
       "PrintExaConstitSize": 0,
       "Interlayer": {
-          "Fields": ["GrainID", "LayerID", "GrainMisorientation", "UndercoolingCurrent", "SolidificationEventCounter"],
+          "Fields": [
+            "GrainID",
+            "LayerID",
+            "GrainMisorientation",
+            "UndercoolingCurrent",
+            "SolidificationEventCounter"],
           "Layers": [0, 1]
       }
    }
