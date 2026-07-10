@@ -240,19 +240,25 @@ enabled false;
 ```
 
 `meltPoolDimensions` writes melt-pool length, width, and depth data.
-`solidificationData` writes solidification events for CET analysis. `ExaCA`
-writes temperature history data for the ExaCA workflow.
+`solidificationData` writes solidification events for CET analysis.
+`ExaCA` writes temperature history data for ExaCA input files.
 
-The `Allrun` script calls the reconstruction helpers after the solver finishes.
-If the case is run manually, reconstruct function object data from the case
-directory with:
+The `Allrun` script calls the reconstruction helpers after the solver finishes:
 
 ```sh
 reconstructExaCAData
+
 reconstructSolidificationData
 ```
 
 These commands exit quietly when no matching function object data were written.
+
+After reconstructing the temperature data, run ExaCA from the case directory so
+that the relative paths in `ExaCA/input.json` resolve correctly:
+
+```sh
+mpirun -np <nProcs> <path-to-ExaCA> ExaCA/input.json
+```
 
 Plot absorbed power from the solver log with:
 
@@ -260,13 +266,13 @@ Plot absorbed power from the solver log with:
 plotPower
 ```
 
-Plot melt-pool dimensions when `meltPoolDimensions` is enabled:
+Plot melt-pool dimensions:
 
 ```sh
 plotDimensions
 ```
 
-Plot CET data when `solidificationData` is enabled and reconstructed:
+Plot CET data:
 
 ```sh
 plotCET
