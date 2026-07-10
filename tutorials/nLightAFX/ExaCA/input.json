@@ -1,6 +1,6 @@
 {
    "SimulationType": "FromFile",
-   "MaterialFileName": "Inconel625.json",
+   "MaterialFileName": "SS316L_AusteniteFerrite.json",
    "GrainOrientationFile": "GrainOrientationVectors.csv",
    "RandomSeed": 0,
    "Domain": {
