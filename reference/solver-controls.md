@@ -58,7 +58,7 @@ Select the temperature time scheme under `ddtSchemes` in `system/fvSchemes`. Use
 AdditiveFOAM solves velocity and pressure with OpenFOAM's PIMPLE algorithm when `nOuterCorrectors` is positive. Each outer correction solves the momentum equation for `U`, applies the configured pressure corrections to `p_rgh`, and updates the velocity–pressure coupling.
 
 {: .custom }
-Set `nOuterCorrectors 0` for a thermal-only simulation. Set `nOuterCorrectors` to `1` or greater to enable fluid flow through the PIMPLE momentum–pressure loop. Before any cell contains liquid, AdditiveFOAM skips that loop because the velocity is constrained to zero in fully solid material.
+Set `nOuterCorrectors 0` for a thermal-only simulation. Set `nOuterCorrectors` to `1` or greater to enable fluid flow through the PIMPLE momentum–pressure loop. If there is no liquid in the domain, AdditiveFOAM skips that loop because the velocity is constrained to zero in fully solid material.
 
 A thermal-only configuration is
 

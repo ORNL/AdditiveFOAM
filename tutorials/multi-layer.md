@@ -10,6 +10,14 @@ permalink: /tutorials/multi-layer/
 
 This tutorial demonstrates repeated powder deposition and scanning with IN625. It uses the Kelly depth-dependent absorption model and a transient `modifiedSuperGaussian` source.
 
+<figure class="documentation-figure">
+  <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/multi-layer-temperature.png' | relative_url }}" aria-label="Animated plan view of the complete two-layer IN625 temperature history and phase boundaries">
+    <source src="{{ '/assets/images/visualizations/multi-layer-temperature.mp4' | relative_url }}" type="video/mp4">
+    <img src="{{ '/assets/images/visualizations/multi-layer-temperature.png' | relative_url }}" alt="Plan view of the second-layer IN625 temperature field with solidus and liquidus contours.">
+  </video>
+  <figcaption>IN625 top-surface temperature throughout the complete two-layer powder-bed-fusion simulation. The black and white contours denote the 1410 K solidus and 1620 K liquidus, respectively.</figcaption>
+</figure>
+
 ## Physical setup
 
 - IN625 properties from `$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
@@ -70,6 +78,11 @@ The formulation follows Coleman et al., [“A dynamic volumetric heat source mod
 ## Outputs
 
 Open the reconstructed layer directories in ParaView to visualize the temperature, solid fraction, powder fraction, and heat-source fields across the deposited layers.
+
+<figure class="documentation-figure">
+  <img src="{{ '/assets/images/visualizations/multi-layer-fields.png' | relative_url }}" alt="Stacked top views of the second powder-bed-fusion layer: temperature above and powder fraction below, with the scan direction aligned horizontally.">
+  <figcaption>Top-surface temperature and powder fraction during the second layer at 22.5 ms. Powder fraction varies from black at 0 to light gray at 1; the black track identifies material consolidated by the moving heat source.</figcaption>
+</figure>
 
 ### Plot solidification data
 

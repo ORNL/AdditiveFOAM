@@ -52,7 +52,7 @@ Here $$\mathbf I$$ is the identity tensor and $$\mathbf P$$ removes the componen
 
 The optional temperature cap is applied before differentiating,
 
-$$T^*=\min(T,T_{\max}),$$
+$$T^*=\operatorname{clip}_{(-\infty,\,T_{\max}]}\!\left[T\right],$$
 
 and the surface gradient is the tangential part of the full temperature gradient:
 

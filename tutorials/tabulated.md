@@ -8,7 +8,15 @@ permalink: /tutorials/tabulated/
 
 # Tabulated Beam Profile
 
-This AlSi10Mg tutorial uses a measured nLight AFX Index 3 profile exported by PRIMES LaserDiagnosticsSoftware. It demonstrates conversion, normalization, bilinear interpolation, and use of measured planar data without implementing a new C++ model.
+This AlSi10Mg tutorial uses a measured nLight AFX Index 6 profile exported by PRIMES LaserDiagnosticsSoftware. It demonstrates conversion, normalization, bilinear interpolation, and use of measured planar data without implementing a new C++ model.
+
+<figure class="documentation-figure">
+  <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/tabulated-temperature.png' | relative_url }}" aria-label="Animated plan view of the tabulated-profile AlSi10Mg temperature field and phase boundaries">
+    <source src="{{ '/assets/images/visualizations/tabulated-temperature.mp4' | relative_url }}" type="video/mp4">
+    <img src="{{ '/assets/images/visualizations/tabulated-temperature.png' | relative_url }}" alt="Plan view of the tabulated-profile AlSi10Mg temperature field with solidus and liquidus contours.">
+  </video>
+  <figcaption>AlSi10Mg top-surface temperature for the measured tabulated beam profile. The black and white contours denote the 850 K solidus and 870 K liquidus, respectively.</figcaption>
+</figure>
 
 ## Physical setup
 

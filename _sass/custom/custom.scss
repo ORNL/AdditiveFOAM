@@ -25,3 +25,34 @@
 .parameter-table code {
   white-space: nowrap;
 }
+
+.documentation-figure {
+  margin: 1.5rem 0;
+}
+
+.documentation-figure img,
+.documentation-figure video {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.documentation-figure figcaption {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin-top: 0.5rem;
+  opacity: 0.82;
+}
+
+.documentation-figure--plot {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 900px;
+}
+
+.documentation-figure--narrow {
+  max-width: 560px;
+}

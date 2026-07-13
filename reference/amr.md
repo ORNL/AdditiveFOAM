@@ -31,6 +31,14 @@ To enable AMR:
 3. Add the `loadBalancer` and a redistribution method in `system/decomposeParDict` when the refined mesh should be redistributed in parallel.
 4. During the run, inspect the reported cell count and load imbalance. With `dumpLevel true`, reconstruct and visualize `cellLevel` and `refinementField` in ParaView to confirm where refinement is requested and applied.
 
+<figure class="documentation-figure">
+  <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/amr-refinement.png' | relative_url }}" aria-label="Animation of adaptive mesh refinement following the moving heat source in the AMB2018-02-B case.">
+    <source src="{{ '/assets/images/visualizations/amr-refinement.mp4' | relative_url }}" type="video/mp4">
+    <img src="{{ '/assets/images/visualizations/amr-refinement.png' | relative_url }}" alt="Top view of the AMB2018-02-B mesh with the requested refinement region shown in green and the refined cells visible around it.">
+  </video>
+  <figcaption>Dynamic AMR in the AMB2018-02-B case. Green identifies cells selected by <code>refinementField</code>; the mesh color and edges show the resulting <code>cellLevel</code>. The OpenFOAM refiner is evaluated every time step with <code>refineInterval 1</code>.</figcaption>
+</figure>
+
 Active models require:
 
 ```foam
@@ -153,8 +161,8 @@ $$r^{(m)}=\frac{N_{\mathrm{pp}}^{\star}}{N^{(m)}/N_p}.$$
 The target volume update is
 
 $$V_R^{(m+1)}=\max\left[
-V_R^{(m)}\operatorname{clip}
-\left(r^{(m)},f_{\mathrm{shrink}},f_{\mathrm{grow}}\right),
+V_R^{(m)}\operatorname{clip}_{[f_{\mathrm{shrink}},\,f_{\mathrm{grow}}]}
+\!\left[r^{(m)}\right],
 V_{\min}\right].$$
 
 Here $$N^{(m)}$$ is the observed global cell count, $$r^{(m)}$$ is the target-to-observed cell-count ratio, and $$V_R^{(m)}$$ is the target marked volume at refinement update $$m$$. The quantities $$f_{\mathrm{shrink}}$$ and $$f_{\mathrm{grow}}$$ are `maxTargetVolumeShrink` and `maxTargetVolumeGrowth`, respectively.

@@ -11,6 +11,14 @@ usemathjax: true
 
 This case extends AMB2018-02-B to two simultaneous beams. Both have the calibrated single-track power, speed, absorption, and source dimensions, and their paths are translated by ±50 µm in the hatch direction.
 
+<figure class="documentation-figure">
+  <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/multi-beam-temperature.png' | relative_url }}" aria-label="Animated plan view of the two-beam IN625 temperature field and phase boundaries">
+    <source src="{{ '/assets/images/visualizations/multi-beam-temperature.mp4' | relative_url }}" type="video/mp4">
+    <img src="{{ '/assets/images/visualizations/multi-beam-temperature.png' | relative_url }}" alt="Plan view of the two-beam IN625 temperature field with solidus and liquidus contours.">
+  </video>
+  <figcaption>IN625 top-surface temperature during simultaneous scanning by two heat sources. The black and white contours denote the 1410 K solidus and 1620 K liquidus, respectively.</figcaption>
+</figure>
+
 ## Physical setup
 
 - IN625 properties from `$ADDITIVEFOAM_ETC/materials/IN625.cfg`.

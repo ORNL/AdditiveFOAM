@@ -255,6 +255,11 @@ $$
 
 In these equations, $$\eta_0$$ is the base optical absorptivity, $$\eta_{\min}$$ is the value used below the switch, $$\theta$$ is the depression half-angle, and $$F$$ and $$G$$ are the selected cone or cylinder geometry factors.
 
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/kelly-absorption.png' | relative_url }}" alt="Kelly effective absorptivity as a function of source aspect ratio for cone and cylinder geometries.">
+  <figcaption>Kelly absorptivity for the parameters in the example dictionary. The model uses the fixed value $\eta_{\min}$ through the aspect-ratio switch $a_s$, after which the cone or cylinder multiple-reflection relation determines $\eta(a)$.</figcaption>
+</figure>
+
 ## Heat-source models
 
 The heat-source model determines the three-dimensional distribution of absorbed power. Select the model according to the available beam description:
@@ -266,6 +271,11 @@ The heat-source model determines the three-dimensional distribution of absorbed 
 | `projectedGaussian` | Analytic elliptical Gaussian intensity projected through depth |
 | `nLightAFX` | Two characterized Gaussian-ring components projected through depth |
 | `tabulated` | Measured or computed lateral intensity table projected through depth |
+
+<figure class="documentation-figure">
+  <img src="{{ '/assets/images/visualizations/heat-source-models.png' | relative_url }}" alt="Aligned top-surface and centre-plane distributions for the five AdditiveFOAM heat-source models.">
+  <figcaption>Representative heat-source shapes. Every panel uses the same horizontal span; source coordinates are scaled by the configured dimensions, and each row is normalized by its maximum. The <code>nLightAFX</code> and <code>tabulated</code> panels use the Index 6 profiles supplied with the tutorials.</figcaption>
+</figure>
 
 All models use `dimensions` and accept `nPoints`. For models that accept `transient true`, AdditiveFOAM updates only the depth dimension from the position of `isoValue`; if `isoValue` is omitted, the material liquidus is used. This allows the volumetric distribution and aspect-ratio-dependent absorption or projection to follow the evolving penetration depth.
 
@@ -337,14 +347,14 @@ modifiedSuperGaussianCoeffs
 The `projectedGaussian`, `tabulated`, and `nLightAFX` models construct a volumetric distribution from a lateral intensity and a depth projection. Let $$(x,y,z)$$ be coordinates relative to the source centre, with $$z\geq0$$ directed into the active material. For lateral intensity $$I(x,y)$$ and projection $$p(z)$$, define the normalized distribution
 
 $$Q(x,y,z)=
-\frac{I(x,y)p(z)}{A_I A_p},$$
+\frac{I(x,y)p(z)}{\mathcal{A}_I\mathcal{A}_p},$$
 
 where
 
-$$A_I=\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}
+$$\mathcal{A}_I=\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}
 I(x,y)\,\mathrm{d}x\,\mathrm{d}y,
 \qquad
-A_p=\int_0^\infty p(z)\,\mathrm{d}z.$$
+\mathcal{A}_p=\int_0^\infty p(z)\,\mathrm{d}z.$$
 
 Thus $$Q$$ has units of inverse volume and satisfies
 
@@ -359,15 +369,20 @@ where $$P(t)$$ is the scan-path power and $$\eta$$ is the absorptivity. All thre
 
 $$p(z;k,d_z)=\exp\left[-3\left(\frac{z}{d_z}\right)^k\right],
 \qquad
-A_p(k,d_z)=\frac{d_z\Gamma(1/k)}{k\,3^{1/k}},$$
+\mathcal{A}_p(k,d_z)=\frac{d_z\Gamma(1/k)}{k\,3^{1/k}},$$
 
-where $$d_z$$ is the source depth and $$k$$ is its projection exponent. The exponent is calculated from
+where $$d_z$$ is the source depth and $$k$$ is its projection exponent. Define the clipped logarithmic parameter
 
 $$a=\max\left[\frac{d_z}{\min(d_x^0,d_y^0)},10^{-3}\right],
 \qquad
-k=2^{\operatorname{clip}[A\log_2(a)+B,0,9]},$$
+n=\operatorname{clip}_{[0,9]}\!\left[A\log_2(a)+B\right].$$
 
-where $$a$$ is the depth-to-width aspect ratio, $$d_x^0$$ and $$d_y^0$$ are the configured lateral dimensions, and $$A$$ and $$B$$ are the model coefficients. A transient depth changes $$d_z$$ and therefore updates $$a$$, $$k$$, and $$A_p$$.
+Here $$a$$ is the depth-to-width aspect ratio, $$d_x^0$$ and $$d_y^0$$ are the configured lateral dimensions, $$A$$ and $$B$$ are the model coefficients, and $$n$$ is the clipped base-two logarithm of the projection exponent. The exponent used in $$p(z;k,d_z)$$ is $$k=2^n$$. A transient depth changes $$d_z$$ and therefore updates $$a$$, $$n$$, $$k$$, and $$\mathcal{A}_p$$.
+
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/heat-source-projection.png' | relative_url }}" alt="Normalized common depth-projection function for exponents 1, 2, 4, and 8.">
+  <figcaption>The common projected-source depth function for representative exponents. Increasing the exponent produces a more uniform distribution through most of the configured depth followed by a sharper decay near the specified source depth.</figcaption>
+</figure>
 
 ### `projectedGaussian`
 
@@ -376,9 +391,9 @@ The `projectedGaussian` model uses an elliptical Gaussian lateral intensity with
 $$I_G(x,y)=\exp\left[-2\left(
 \frac{x^2}{d_x^2}+\frac{y^2}{d_y^2}\right)\right],
 \qquad
-A_{I,G}=\frac{\pi d_xd_y}{2},$$
+\mathcal{A}_{I,G}=\frac{\pi d_xd_y}{2},$$
 
-where $$d_x$$ and $$d_y$$ are the lateral source dimensions. Its normalized distribution is $$Q_G=I_Gp/(A_{I,G}A_p)$$.
+where $$d_x$$ and $$d_y$$ are the lateral source dimensions. Its normalized distribution is $$Q_G=I_Gp/(\mathcal{A}_{I,G}\mathcal{A}_p)$$.
 
 ```foam
 projectedGaussianCoeffs
@@ -395,31 +410,33 @@ projectedGaussianCoeffs
 
 The `nLightAFX` model represents a measured beam as the weighted sum of two normalized concentric Gaussian-ring components. Each component uses the common projection-function form, but its coefficients can produce a different depth exponent.
 
-For component $$i\in\{0,1\}$$, let $$r_i$$ be its ring radius, $$\sigma_i$$ its radial standard deviation, and $$A_i$$ and $$B_i$$ its projection coefficients. Its projection exponent is
+For component $$i\in\{0,1\}$$, let $$r_i$$ be its ring radius, $$\sigma_i$$ its radial standard deviation, and $$A_i$$ and $$B_i$$ its projection coefficients. Its clipped logarithmic parameter is
 
-$$n_i=2^{\operatorname{clip}[A_i\log_2(a)+B_i,0,9]}.$$
+$$n_i=\operatorname{clip}_{[0,9]}\!\left[A_i\log_2(a)+B_i\right].$$
+
+The corresponding projection exponent is $$k_i=2^{n_i}$$.
 
 With radial coordinate $$r=\sqrt{x^2+y^2}$$, define the lateral intensity and depth projection
 
 $$I_i(r)=\exp\left[-\frac12\left(\frac{r-r_i}{\sigma_i}\right)^2\right]
 +\exp\left[-\frac12\left(\frac{r+r_i}{\sigma_i}\right)^2\right],$$
 
-$$p_i(z)=p(z;n_i,d_z).$$
+$$p_i(z)=p(z;k_i,d_z).$$
 
 The volume integral of component $$i$$ is
 
-$$\mathcal A_i=
+$$\mathcal{A}_i=
 \left(\int_{\mathbb R^2}I_i\,\mathrm{d}x\,\mathrm{d}y\right)
 \left(\int_0^\infty p_i\,\mathrm{d}z\right)
-=\frac{2\pi\sigma_i d_z\Gamma(1/n_i)}{n_i3^{1/n_i}}
+=\frac{2\pi\sigma_i d_z\Gamma(1/k_i)}{k_i3^{1/k_i}}
 \left[2\sigma_i e^{-r_i^2/(2\sigma_i^2)}
 +\sqrt{2\pi}r_i\operatorname{erf}\left(\frac{r_i}{\sqrt2\sigma_i}\right)\right].$$
 
 For outer-component fraction `alpha` $$=\alpha$$, the normalized distribution is
 
 $$Q_{\mathrm{AFX}}(r,z)
-=(1-\alpha)\frac{I_0(r)p_0(z)}{\mathcal A_0}
-+\alpha\frac{I_1(r)p_1(z)}{\mathcal A_1},$$
+=(1-\alpha)\frac{I_0(r)p_0(z)}{\mathcal{A}_0}
++\alpha\frac{I_1(r)p_1(z)}{\mathcal{A}_1},$$
 
 where $$0\leq\alpha\leq1$$ and indices $$0$$ and $$1$$ denote the inner and outer components, respectively.
 
@@ -428,10 +445,10 @@ Each component requires `radius`, `sigma`, `A`, and `B`; `dimensions` is shared.
 ```foam
 nLightAFXCoeffs
 {
-    dimensions (109.29e-6 109.29e-6 50e-6);
-    alpha      0.483;
-    inner { radius 14.39e-6; sigma 20.78e-6; A 0; B 1; }
-    outer { radius 100.98e-6; sigma 16.92e-6; A 0; B 1; }
+    dimensions (142.905e-6 142.905e-6 50e-6);
+    alpha      0.902;
+    inner { radius 33.50e-6; sigma 18.510e-6; A 0; B 1; }
+    outer { radius 101.41e-6; sigma 16.3475e-6; A 0; B 1; }
     transient true;
     nPoints   (10 10 10);
 }
@@ -452,11 +469,11 @@ $$f(x,y)=(1-\xi)(1-\upsilon)f_{ij}
 
 It is zero outside the nodal domain. For $$n_x$$ nodes in $$x$$ and $$n_y$$ nodes in $$y$$, its lateral normalization is
 
-$$A_{I,T}=\frac{\Delta x\Delta y}{4}
+$$\mathcal{A}_{I,T}=\frac{\Delta x\Delta y}{4}
 \sum_{j=0}^{n_y-2}\sum_{i=0}^{n_x-2}
 \left(f_{ij}+f_{i+1,j}+f_{i,j+1}+f_{i+1,j+1}\right).$$
 
-The normalized volumetric distribution is $$Q_T=f(x,y)p(z)/(A_{I,T}A_p)$$. Here $$i$$ and $$j$$ are the grid indices, while $$n_x$$ and $$n_y$$ are the node counts read from the first line of the table.
+The normalized volumetric distribution is $$Q_T=f(x,y)p(z)/(\mathcal{A}_{I,T}\mathcal{A}_p)$$. Here $$i$$ and $$j$$ are the grid indices, while $$n_x$$ and $$n_y$$ are the node counts read from the first line of the table.
 
 ```foam
 tabulatedCoeffs

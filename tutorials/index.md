@@ -22,8 +22,6 @@ Copy tutorials from `$ADDITIVEFOAM_TUTORIALS` into `$FOAM_RUN`; their `Allrun` s
 
 Single-layer tutorials run `blockMesh`, `decomposePar`, `additiveFoam`, `reconstructPar`, and the optional Function Object reconstruction helpers. The multi-layer tutorial uses `createScanPath`, `runLayers`, and `reconstructLayers` instead.
 
-All cases default to SI units. Review `numberOfSubdomains`, mesh size, end time, and enabled function objects before submitting to a batch system.
-
 ## Post-processing workflows
 
 The AMB2018-02-B tutorial provides complete workflows for generating and processing the standard quantitative and microstructure outputs:

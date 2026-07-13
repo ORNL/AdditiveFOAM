@@ -14,7 +14,7 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 {: .fs-6 .fw-300 }
 
 [Install AdditiveFOAM]({{ '/docs/installation/' | relative_url }}){: .btn .btn-primary .fs-5 }
-[Run your first case]({{ '/docs/quick-start/' | relative_url }}){: .btn .fs-5 }
+[Quick start]({{ '/docs/quick-start/' | relative_url }}){: .btn .fs-5 }
 [Source code](https://github.com/ORNL/AdditiveFOAM){: .btn .fs-5 }
 
 ## Capabilities

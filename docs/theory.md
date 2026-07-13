@@ -38,7 +38,7 @@ $$\rho c_p\frac{\partial T}{\partial t}
 +\rho c_p\nabla\cdot(\mathbf{u}T)
 =\nabla\cdot(k\nabla T)+\rho L_f\frac{\partial f_s}{\partial t}+\dot{q}.$$
 
-Here $$c_p$$ is specific heat capacity, $$k$$ is thermal conductivity, $$L_f$$ is latent heat of fusion, and $$\dot q$$ is volumetric heat input. The `thermoPath` table defines the solid-fraction function $$f_s=F(T)$$ and can represent Gulliver–Scheil, lever-rule, or linear behavior. AdditiveFOAM interpolates piecewise linearly between the supplied points and applies $$\operatorname{clip}_{[0,1]}(x)=\min[\max(x,0),1]$$.
+Here $$c_p$$ is specific heat capacity, $$k$$ is thermal conductivity, $$L_f$$ is latent heat of fusion, and $$\dot q$$ is volumetric heat input. The `thermoPath` table defines the solid-fraction function $$f_s=F(T)$$ and can represent Gulliver–Scheil, lever-rule, or linear behavior. AdditiveFOAM interpolates piecewise linearly between the supplied points and applies $$\operatorname{clip}_{[0,1]}\!\left[x\right]=\min[\max(x,0),1]$$.
 
 ### Semi-implicit correction from the tabulated path
 
@@ -54,7 +54,7 @@ $$T_0^{(m)}=T_l+\frac{f_s^{(m)}-F_l}{g^{(m)}}.$$
 Thus the current phase state lies exactly on the local linear model. The next solid-fraction estimate is
 
 $$f_s^{(m+1)}=
-\operatorname{clip}_{[0,1]}
+\operatorname{clip}_{[0,1]}\!
 \left[f_s^{(m)}+g^{(m)}\left(T^{(m+1)}-T_0^{(m)}\right)\right].$$
 
 For a linear multistep time derivative, only the new-time value changes during the nonlinear correction. If $$a_0$$ is the new-time derivative coefficient and $$\Delta t$$ is the current time-step duration, then
@@ -140,9 +140,9 @@ $$\psi_{\mathrm{eff}}
 
 where $$\psi_s$$, $$\psi_l$$, and $$\psi_p$$ are the configured solid, liquid, and powder property polynomials. Their evaluation temperatures are limited to
 
-$$T_s=\operatorname{clip}(T,300\ \mathrm{K},T_{\mathrm{solidus}}),$$
+$$T_s=\operatorname{clip}_{[300\ \mathrm{K},\,T_{\mathrm{solidus}}]}\!\left[T\right],$$
 
-$$T_l=\operatorname{clip}(T,T_{\mathrm{liquidus}},2T_{\mathrm{liquidus}}).$$
+$$T_l=\operatorname{clip}_{[T_{\mathrm{liquidus}},\,2T_{\mathrm{liquidus}}]}\!\left[T\right].$$
 
 Here $$f_p$$, $$f_s$$, and $$f_l$$ are the powder, solid, and liquid fractions; $$T_s$$ and $$T_l$$ are the temperatures used to evaluate the solid/powder and liquid polynomials, respectively. The subscript on $$\psi_i$$ identifies phase $$i\in\{s,l,p\}$$.
 

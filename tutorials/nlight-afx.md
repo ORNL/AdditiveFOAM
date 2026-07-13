@@ -10,6 +10,14 @@ permalink: /tutorials/nlight-afx/
 
 This SS316L case represents an nLight AFX beam as a weighted combination of inner and outer Gaussian rings with projected axial distributions.
 
+<figure class="documentation-figure">
+  <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/nlight-afx-temperature.png' | relative_url }}" aria-label="Animated plan view of the nLight AFX SS316L temperature field and phase boundaries">
+    <source src="{{ '/assets/images/visualizations/nlight-afx-temperature.mp4' | relative_url }}" type="video/mp4">
+    <img src="{{ '/assets/images/visualizations/nlight-afx-temperature.png' | relative_url }}" alt="Plan view of the nLight AFX SS316L temperature field with solidus and liquidus contours.">
+  </video>
+  <figcaption>SS316L top-surface temperature for the nLight AFX profile. The black and white contours denote the 1471 K solidus and 1709 K liquidus, respectively.</figcaption>
+</figure>
+
 ## Physical setup
 
 - SS316L properties from `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.

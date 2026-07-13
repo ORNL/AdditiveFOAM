@@ -111,7 +111,7 @@ $$\psi_i(T)=c_{i,0}+c_{i,1}T+c_{i,2}T^2,
 
 Here $$i=s,l,p$$ denotes the solid, liquid, or powder phase; $$\psi_i$$ is either thermal conductivity $$k_i$$ or heat capacity $$c_{p,i}$$; $$T$$ is temperature; and $$(c_{i,0},c_{i,1},c_{i,2})$$ denotes the applicable `kappa` or `Cp` coefficient list.
 
-The solid and powder polynomials are evaluated at $$T_s=\operatorname{clip}(T,300\ \mathrm{K},T_{\mathrm{solidus}})$$, and the liquid polynomial at $$T_l=\operatorname{clip}(T,T_{\mathrm{liquidus}},2T_{\mathrm{liquidus}})$$. The [phase-properties section]({{ '/docs/theory/#phase-properties-and-powder-transition' | relative_url }}) defines their mixture weights and the irreversible powder transition.
+The solid and powder polynomials are evaluated at $$T_s=\operatorname{clip}_{[300\ \mathrm{K},\,T_{\mathrm{solidus}}]}\!\left[T\right]$$, and the liquid polynomial at $$T_l=\operatorname{clip}_{[T_{\mathrm{liquidus}},\,2T_{\mathrm{liquidus}}]}\!\left[T\right]$$. The [phase-properties section]({{ '/docs/theory/#phase-properties-and-powder-transition' | relative_url }}) defines their mixture weights and the irreversible powder transition.
 
 The phase conductivities and heat capacities vary with temperature through the polynomials above. The remaining transport properties are constants within a simulation:
 
@@ -141,8 +141,8 @@ thermoPath
 
 For compatibility, if that entry is absent, AdditiveFOAM reads the same list from the legacy `constant/thermoPath` file. At least two points are required, and the path must contain exact entries with solid fraction `1` and `0` so the solidus and liquidus can be inferred. For adjacent table points $$(T_i,f_i)$$ and $$(T_{i+1},f_{i+1})$$,
 
-$$f_s(T)=\operatorname{clip}\left[
-f_i+\frac{f_{i+1}-f_i}{T_{i+1}-T_i}(T-T_i),0,1
+$$f_s(T)=\operatorname{clip}_{[0,1]}\!\left[
+f_i+\frac{f_{i+1}-f_i}{T_{i+1}-T_i}(T-T_i)
 \right].$$
 
 Here $$i$$ is the table-interval index, $$T_i$$ and $$T_{i+1}$$ are consecutive temperatures, and $$f_i$$ and $$f_{i+1}$$ are their tabulated solid fractions.

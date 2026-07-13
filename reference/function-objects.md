@@ -113,7 +113,7 @@ ExaCA
 
 `box` and sampling spacing `dx` define a Cartesian sampling lattice, and `isoValue` $$T_I$$ defaults to the liquidus. Temperatures at a sampling point are interpolated from its containing finite-volume cell. For a stored interval $$[t_0,t_1]$$ with endpoint temperatures $$T_0,T_1$$ that bracket $$T_I$$, the crossing fraction and time are
 
-$$m=\operatorname{clip}\left(\frac{T_I-T_0}{T_1-T_0},0,1\right),
+$$m=\operatorname{clip}_{[0,1]}\!\left[\frac{T_I-T_0}{T_1-T_0}\right],
 \qquad t_I=t_0+m(t_1-t_0).$$
 
 Here $$T_0$$ and $$T_1$$ are the interpolated point temperatures at times $$t_0$$ and $$t_1$$, $$m$$ is the fractional crossing position within that interval, and $$t_I$$ is the interpolated isovalue-crossing time.
