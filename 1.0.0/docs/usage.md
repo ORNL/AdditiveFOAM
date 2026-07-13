@@ -1,6 +1,9 @@
 ---
-title: Usage
-nav_order: 5
+layout: versioned
+title: 1.0.0 Usage
+nav_exclude: true
+doc_version: "1.0.0"
+permalink: /1.0.0/docs/usage/
 usemathjax: true
 ---
 

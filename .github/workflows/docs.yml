@@ -1,0 +1,29 @@
+name: Documentation
+
+on:
+  pull_request:
+    branches: [gh-pages]
+  push:
+    branches: [gh-pages]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.1"
+          bundler-cache: true
+
+      - name: Build Jekyll site
+        env:
+          JEKYLL_ENV: production
+        run: bundle exec jekyll build --strict_front_matter
+
+      - name: Check internal links
+        run: bundle exec ruby scripts/check_internal_links.rb _site /AdditiveFOAM

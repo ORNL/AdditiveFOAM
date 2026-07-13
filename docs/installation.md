@@ -1,52 +1,72 @@
 ---
+layout: versioned
 title: Installation
-nav_order: 4
+parent: User Guide
+nav_order: 1
+permalink: /docs/installation/
 ---
 
 # Installation
-[![OpenFOAM-10](https://img.shields.io/badge/OpenFOAM-10-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-10)
 
-AdditiveFOAM is built on source code released by the OpenFOAM Foundation [openfoam.org](https://openfoam.org/), which is available in public [OpenFOAM repositories](https://github.com/OpenFOAM). The current supported version is **OpenFOAM-10**.
+AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 13**.
 
----
+## Prerequisites
 
-## Spack install
-[![Spack-Dev](https://img.shields.io/badge/Spack-Dev-blue.svg)](https://github.com/spack/spack)
+- OpenFOAM 13 built or installed according to the [Foundation instructions](https://openfoam.org/download/13-source/).
+- Python 3 with Matplotlib, Pandas, and NumPy.
+- ParaView for visualizing OpenFOAM fields.
+- Optional: Zoltan support in OpenFOAM for [dynamic load-balanced AMR]({{ '/docs/amr/#mesh-refinement-and-load-balancing' | relative_url }}).
 
-The easiest way to install AdditiveFOAM is using [spack](https://spack.readthedocs.io/en/latest/):  
-```
-spack install additivefoam
-```
-spack `develop` is currently required.
+## Install from main
 
-## Docker install
-Alternatively, a Docker container with pre-built OpenFOAM-10 can be used:
-```
-docker pull openfoam/openfoam10-paraview510
-docker run -it openfoam/openfoam10-paraview510
+Source OpenFOAM first:
+
+```bash
+source /path/to/OpenFOAM-13/etc/bashrc
+echo "$WM_PROJECT $WM_PROJECT_VERSION"
 ```
 
-## Manual install
-OpenFOAM-10 can be compiled from source code following the steps provided in the [OpenFOAM Foundation Documentation](https://openfoam.org/download/source/).
+The output must identify OpenFOAM version 13. Then clone AdditiveFOAM and load its environment:
 
-Once *OpenFOAM-10* is available on your system, perform the following steps:
+```bash
+git clone https://github.com/ORNL/AdditiveFOAM.git
+cd AdditiveFOAM
+source etc/bashrc
+```
 
-1. Clone the AdditiveFOAM repository into the OpenFOAM project installation directory `WM_PROJECT_USER_DIR`:
-   ```bash
-   cd $WM_PROJECT_USER_DIR
-   git clone https://github.com/ORNL/AdditiveFOAM.git
-   ```
+`etc/bashrc` verifies the OpenFOAM version and sets:
 
-   If `git` is not available on your system (in the case of the OpenFOAM docker container) you can instead use:
-   ```bash
-   wget https://github.com/ORNL/AdditiveFOAM/archive/refs/heads/main.tar.gz
-   mkdir AdditiveFOAM
-   tar xzvf main.tar.gz -C AdditiveFOAM --strip-components=1
-   ```
-2. Build the `movingHeatSource` library and the `additiveFoam` executable:
-   ```bash
-   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam/movingHeatSource
-   wmake libso
-   cd $WM_PROJECT_USER_DIR/AdditiveFOAM/applications/solvers/additiveFoam
-   wmake
-   ```
+- `ADDITIVEFOAM_PROJECT_DIR`
+- `ADDITIVEFOAM_APPLICATIONS`
+- `ADDITIVEFOAM_TUTORIALS`
+- `ADDITIVEFOAM_ETC`
+- `$ADDITIVEFOAM_BIN` on `PATH`
+
+Build all libraries, the solver, and utilities from the repository root:
+
+```bash
+./Allwmake
+```
+
+## Verify the installation
+
+```bash
+command -v additiveFoam
+command -v createScanPath
+command -v primesToAdditiveFoam
+echo "$ADDITIVEFOAM_VERSION"
+```
+
+Run `additiveFoam -help`. Solver startup also prints the AdditiveFOAM version, Git description, and commit SHA recorded at build time.
+
+## Shell startup
+
+Source both environments in this order in every new shell:
+
+```bash
+source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+```
+
+{: .custom }
+Add those commands to the appropriate shell startup file only after confirming they work interactively.

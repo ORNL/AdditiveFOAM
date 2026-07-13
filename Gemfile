@@ -4,5 +4,5 @@ gem 'github-pages', group: :jekyll_plugins
 # Add just-the-docs theme
 gem 'just-the-docs'
 
-# Add spaceship to have mathjax
-gem "jekyll-spaceship"
+# Required by Jekyll's local preview server on Ruby 3+
+gem 'webrick'

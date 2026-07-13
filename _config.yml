@@ -1,18 +1,27 @@
 # Site settings
 title: AdditiveFOAM
-description: AdditiveFOAM documentation
+description: AdditiveFOAM 2.0 documentation
 baseurl: "/AdditiveFOAM"
 url: "https://ORNL.github.io"
 repository: ORNL/AdditiveFOAM
 
 permalink: pretty
 
-remote_theme: just-the-docs/just-the-docs
+remote_theme: just-the-docs/just-the-docs@v0.8.2
 
 plugins:
   - jekyll-remote-theme
+  - jekyll-redirect-from
   - jekyll-seo-tag
   - jekyll-feed
+
+exclude:
+  - audit/
+  - scripts/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+  - README.md
 
 compress_html:
   blanklines: true
@@ -27,13 +36,13 @@ nav_external_links:
 
 # Aux links for the upper right navigation
 aux_links:
-  "AdditiveFOAM on GitHub":
+  "GitHub":
     - "https://github.com/ORNL/AdditiveFOAM"
 
 # Makes Aux links open in a new tab. Default is false
 aux_links_new_tab: false
 
-# Enable callouts in markdown    
+# Enable callouts in markdown
 callouts_level: quiet # or loud
 callouts:
   highlight:
@@ -53,3 +62,5 @@ callouts:
   custom:
     title: Note
     color: ornl_green
+
+docs_version: "2.0.0"

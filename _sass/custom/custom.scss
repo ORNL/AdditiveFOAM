@@ -1,0 +1,27 @@
+.additivefoam-wordmark {
+  margin: 0 0 1rem;
+}
+
+.additivefoam-wordmark img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
+.citation-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.citation-badges img {
+  display: block;
+  height: 20px;
+  width: auto;
+}
+
+.parameter-table code {
+  white-space: nowrap;
+}
