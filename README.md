@@ -52,7 +52,7 @@ source /path/to/AdditiveFOAM/etc/bashrc
 
 ## Citing
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8034097.svg)](https://doi.org/10.5281/zenodo.8034097)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.8034097-blue.svg)](https://doi.org/10.5281/zenodo.8034097)
 
 If you use AdditiveFOAM in your work, please cite the JOSS article and
 consider citing the Zenodo DOI for the version used.
