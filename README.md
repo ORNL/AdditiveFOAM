@@ -50,6 +50,9 @@ source /path/to/OpenFOAM-14/etc/bashrc
 source /path/to/AdditiveFOAM/etc/bashrc
 ```
 
+An alternative installation mechanism is using Nix. See
+[Nix.md](./envs/nix/NIX.md) for more details.
+
 ## Citing
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07770/status.svg)](https://doi.org/10.21105/joss.07770)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.8034097-blue.svg)](https://doi.org/10.5281/zenodo.8034097)
