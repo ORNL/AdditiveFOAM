@@ -1,17 +1,3 @@
-# Unreleased
-
-## Compatibility
-
-- Ported AdditiveFOAM to OpenFOAM-14, including custom boundary conditions,
-  moving-mesh/MRF integration, utilities, case headers, tutorials, and CI.
-
-## Bug Fixes
-
-- Corrected the legacy Marangoni `thermoPath` test data to use the pair syntax
-  required by the `thermoPath` reader.
-- Updated the multi-layer powder initialisation to the OpenFOAM-14 `setFields`
-  zone syntax.
-
 # Release 1.1
 
 ## Features
