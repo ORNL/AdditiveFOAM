@@ -28,7 +28,7 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 
 ## Requirements
 
-AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 13**. Start with the [installation guide]({{ '/docs/installation/' | relative_url }}) and then copy a validated [tutorial]({{ '/tutorials/' | relative_url }}) instead of constructing a case from an empty directory.
+AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 14**. Start with the [installation guide]({{ '/docs/installation/' | relative_url }}) and then copy a validated [tutorial]({{ '/tutorials/' | relative_url }}) instead of constructing a case from an empty directory.
 
 ## Contributors
 

@@ -24,7 +24,7 @@ This User Guide explains how to install, run, configure, and extend AdditiveFOAM
 
 1. **[Installation]({{ '/docs/installation/' | relative_url }})**
 
-   Install AdditiveFOAM with OpenFOAM 13 and configure its environment variables.
+   Install AdditiveFOAM with OpenFOAM 14 and configure its environment variables.
 
 2. **[Quick Start]({{ '/docs/quick-start/' | relative_url }})**
 

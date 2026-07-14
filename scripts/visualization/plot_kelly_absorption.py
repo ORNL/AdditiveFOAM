@@ -7,6 +7,8 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
+from plot_style import PUBLICATION_STYLE
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -41,35 +43,23 @@ def main():
     switch = 1.0
     aspect_ratio = np.linspace(0.0, 6.0, 1201)
 
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Sans",
-            "font.size": 11,
-            "axes.labelsize": 12,
-            "xtick.labelsize": 10,
-            "ytick.labelsize": 10,
-        }
-    )
-    figure, axis = plt.subplots(
-        figsize=(8.5, 3.6), constrained_layout=True, facecolor="white"
-    )
+    plt.rcParams.update(PUBLICATION_STYLE)
+    figure, axis = plt.subplots(figsize=(4.5, 3.0), constrained_layout=True)
     axis.axvspan(0.0, switch, color="0.92", zorder=0)
     axis.plot(
         aspect_ratio,
         kelly_absorptivity(aspect_ratio, "cone", eta0, eta_min, switch),
         color="#0072B2",
-        linewidth=2.5,
         label="cone",
     )
     axis.plot(
         aspect_ratio,
         kelly_absorptivity(aspect_ratio, "cylinder", eta0, eta_min, switch),
         color="#D55E00",
-        linewidth=2.5,
         linestyle="--",
         label="cylinder",
     )
-    axis.axvline(switch, color="0.25", linewidth=1.4, linestyle=":")
+    axis.axvline(switch, color="0.25", linestyle=":")
     axis.text(
         0.5 * switch,
         eta_min + 0.025,
@@ -93,13 +83,15 @@ def main():
     )
     axis.set_xticks(np.arange(0.0, 6.1, 1.0))
     axis.set_yticks(np.arange(0.3, 1.01, 0.1))
-    axis.grid(alpha=0.22)
+    axis.grid(True, which="both", linestyle="-", alpha=0.1)
+    axis.minorticks_on()
     axis.legend(
         title="$\\eta_0=0.28,\\;\\eta_{\\min}=0.35,\\;a_s=1$",
-        frameon=False,
+        frameon=True,
         loc="lower right",
     )
-    figure.savefig(args.output, dpi=300, facecolor="white")
+    figure.savefig(args.output)
+    plt.close(figure)
 
 
 if __name__ == "__main__":

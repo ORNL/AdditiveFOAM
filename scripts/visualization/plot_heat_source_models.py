@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 
+from plot_style import PUBLICATION_STYLE
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -261,31 +263,31 @@ def main():
     colorbar.set_label("Normalized source magnitude", labelpad=2)
     figure.savefig(args.output, dpi=300, facecolor="white")
 
-    projection_figure, projection_axis = plt.subplots(
-        figsize=(8.5, 3.0), constrained_layout=True, facecolor="white"
-    )
-    colors = ("#0072B2", "#E69F00", "#009E73", "#CC3311")
-    styles = ("-", "--", "-.", ":")
-    for exponent, color, style in zip((1, 2, 4, 8), colors, styles):
-        projection_axis.plot(
-            depth,
-            np.exp(-3.0 * depth**exponent),
-            color=color,
-            linestyle=style,
-            linewidth=2.5,
-            label=f"$k={exponent}$",
+    with plt.rc_context(PUBLICATION_STYLE):
+        projection_figure, projection_axis = plt.subplots(
+            figsize=(4.5, 3.0), constrained_layout=True
         )
-    projection_axis.set(
-        xlabel="Normalized depth,  $z/d_z$",
-        ylabel="$p(z)$",
-        xlim=(0.0, 1.5),
-        ylim=(0.0, 1.03),
-    )
-    projection_axis.grid(alpha=0.25)
-    projection_axis.legend(ncol=4, frameon=False, loc="upper right")
-    projection_figure.savefig(
-        args.projection_output, dpi=300, facecolor="white"
-    )
+        colors = ("#0072B2", "#E69F00", "#009E73", "#CC3311")
+        styles = ("-", "--", "-.", ":")
+        for exponent, color, style in zip((1, 2, 4, 8), colors, styles):
+            projection_axis.plot(
+                depth,
+                np.exp(-3.0 * depth**exponent),
+                color=color,
+                linestyle=style,
+                label=f"$k={exponent}$",
+            )
+        projection_axis.set(
+            xlabel="Normalized depth,  $z/d_z$",
+            ylabel="$p(z)$",
+            xlim=(0.0, 1.5),
+            ylim=(0.0, 1.03),
+        )
+        projection_axis.grid(True, which="both", linestyle="-", alpha=0.1)
+        projection_axis.minorticks_on()
+        projection_axis.legend(ncol=4, frameon=True, loc="upper right")
+        projection_figure.savefig(args.projection_output)
+        plt.close(projection_figure)
 
 
 if __name__ == "__main__":

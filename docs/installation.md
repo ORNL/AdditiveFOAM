@@ -8,11 +8,11 @@ permalink: /docs/installation/
 
 # Installation
 
-AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 13**.
+AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 14**.
 
 ## Prerequisites
 
-- OpenFOAM 13 built or installed according to the [Foundation instructions](https://openfoam.org/download/13-source/).
+- OpenFOAM 14 built or installed according to the [Foundation instructions](https://openfoam.org/download/14-source/).
 - Python 3 with Matplotlib, Pandas, and NumPy.
 - ParaView for visualizing OpenFOAM fields.
 - Optional: Zoltan support in OpenFOAM for [dynamic load-balanced AMR]({{ '/docs/amr/#mesh-refinement-and-load-balancing' | relative_url }}).
@@ -22,11 +22,11 @@ AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 13**.
 Source OpenFOAM first:
 
 ```bash
-source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/OpenFOAM-14/etc/bashrc
 echo "$WM_PROJECT $WM_PROJECT_VERSION"
 ```
 
-The output must identify OpenFOAM version 13. Then clone AdditiveFOAM and load its environment:
+The output must identify OpenFOAM version 14. Then clone AdditiveFOAM and load its environment:
 
 ```bash
 git clone https://github.com/ORNL/AdditiveFOAM.git
@@ -64,7 +64,7 @@ Run `additiveFoam -help`. Solver startup also prints the AdditiveFOAM version, G
 Source both environments in this order in every new shell:
 
 ```bash
-source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/OpenFOAM-14/etc/bashrc
 source /path/to/AdditiveFOAM/etc/bashrc
 ```
 

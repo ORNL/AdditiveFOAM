@@ -63,7 +63,7 @@ Select `alpha.solid` to distinguish solid, mushy, and liquid regions; `alpha.pow
 
 <figure class="documentation-figure">
   <img src="{{ '/assets/images/visualizations/quick-start-temperature.png' | relative_url }}" alt="Plan-view temperature map on the top surface of the AMB2018-02-B case at 2 milliseconds, with the 1410 kelvin solidus contour in black and 1620 kelvin liquidus contour in white.">
-  <figcaption>Plan-view temperature 10 µm below the surface at 2 ms. Coolwarm represents 300–2700 K; the black line is the 1410 K solidus contour and the white line is the 1620 K liquidus contour.</figcaption>
+  <figcaption>IN625 top-surface temperature at 2 ms. The black and white contours denote the 1410 K solidus and 1620 K liquidus, respectively.</figcaption>
 </figure>
 
 Use `plotPower` separately from ParaView to plot the volume-integrated heat-source power recorded in `log.additiveFoam`:

@@ -273,8 +273,8 @@ The heat-source model determines the three-dimensional distribution of absorbed 
 | `tabulated` | Measured or computed lateral intensity table projected through depth |
 
 <figure class="documentation-figure">
-  <img src="{{ '/assets/images/visualizations/heat-source-models.png' | relative_url }}" alt="Aligned top-surface and centre-plane distributions for the five AdditiveFOAM heat-source models.">
-  <figcaption>Representative heat-source shapes. Every panel uses the same horizontal span; source coordinates are scaled by the configured dimensions, and each row is normalized by its maximum. The <code>nLightAFX</code> and <code>tabulated</code> panels use the Index 6 profiles supplied with the tutorials.</figcaption>
+  <img src="{{ '/assets/images/visualizations/heat-source-models.png' | relative_url }}" alt="Top-surface and centre-plane distributions for the five AdditiveFOAM heat-source models.">
+  <figcaption>Heat-source distributions for the five AdditiveFOAM models. The <code>nLightAFX</code> and <code>tabulated</code> distributions use the Index 6 profiles supplied with the tutorials.</figcaption>
 </figure>
 
 All models use `dimensions` and accept `nPoints`. For models that accept `transient true`, AdditiveFOAM updates only the depth dimension from the position of `isoValue`; if `isoValue` is omitted, the material liquidus is used. This allows the volumetric distribution and aspect-ratio-dependent absorption or projection to follow the evolving penetration depth.
