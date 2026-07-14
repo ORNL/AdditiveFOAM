@@ -9,6 +9,19 @@ The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam p
 This tutorial uses the SS316L material configuration from
 `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.
 
+## Running the tutorial
+
+Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
+
+```sh
+source /path/to/OpenFOAM-14/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+cd "$ADDITIVEFOAM_TUTORIALS/nLightAFX"
+./Allrun
+```
+
+Use `./Allclean` to remove generated mesh, decomposition, and result files.
+
 ## File structure
 
 The important files for this tutorial are:

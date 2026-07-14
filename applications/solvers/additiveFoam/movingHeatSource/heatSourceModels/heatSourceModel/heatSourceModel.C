@@ -56,7 +56,7 @@ Foam::IOobject Foam::heatSourceModel::createIOobject
     (
         dict.name(),
         mesh.time().constant(),
-        mesh.thisDb(),
+        mesh,
         IOobject::MUST_READ,
         IOobject::NO_WRITE
     );

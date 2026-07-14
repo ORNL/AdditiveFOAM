@@ -19,6 +19,7 @@ Description
 #include "scalarField.H"
 #include "stringList.H"
 #include "HashTable.H"
+#include "mathematicalConstants.H"
 
 using namespace Foam;
 

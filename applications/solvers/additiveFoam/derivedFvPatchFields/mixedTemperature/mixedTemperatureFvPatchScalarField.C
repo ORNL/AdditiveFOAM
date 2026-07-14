@@ -27,7 +27,7 @@ License
 
 #include "mixedTemperatureFvPatchScalarField.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fvPatchFieldMapper.H"
+#include "fieldMapper.H"
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "IOdictionary.H"
@@ -38,7 +38,7 @@ Foam::mixedTemperatureFvPatchScalarField::
 mixedTemperatureFvPatchScalarField
 (
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
+    const DimensionedField<scalar, fvMesh>& iF,
     const dictionary& dict
 )
 :
@@ -87,8 +87,8 @@ mixedTemperatureFvPatchScalarField
 (
     const mixedTemperatureFvPatchScalarField& ptf,
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
-    const fvPatchFieldMapper& mapper
+    const DimensionedField<scalar, fvMesh>& iF,
+    const fieldMapper& mapper
 )
 :
     mixedFvPatchScalarField(ptf, p, iF, mapper),
@@ -102,7 +102,7 @@ Foam::mixedTemperatureFvPatchScalarField::
 mixedTemperatureFvPatchScalarField
 (
     const mixedTemperatureFvPatchScalarField& ptf,
-    const DimensionedField<scalar, volMesh>& iF
+    const DimensionedField<scalar, fvMesh>& iF
 )
 :
     mixedFvPatchScalarField(ptf, iF),
@@ -117,7 +117,7 @@ mixedTemperatureFvPatchScalarField
 void Foam::mixedTemperatureFvPatchScalarField::map
 (
     const fvPatchScalarField& ptf,
-    const fvPatchFieldMapper& mapper
+    const fieldMapper& mapper
 )
 {
     mixedFvPatchScalarField::map(ptf, mapper);

@@ -53,7 +53,7 @@ Foam::IOobject Foam::absorptionModel::createIOobject
     (
         dict.name(),
         mesh.time().name(),
-        mesh.thisDb(),
+        mesh,
         IOobject::MUST_READ,
         IOobject::NO_WRITE
     );

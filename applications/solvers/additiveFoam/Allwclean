@@ -4,7 +4,7 @@ cd ${0%/*} || exit 1    # Run from this directory
 rm -rf Make/gitInfo.H
 
 wclean libso functionObjects
-wmake  libso utilities
+wclean libso utilities
 wclean libso movingHeatSource
 wclean
 

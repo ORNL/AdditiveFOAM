@@ -7,34 +7,36 @@ on:
     branches:
       - main
 concurrency:
-  group: ${ {github.event_name }}-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{github.event_name == 'pull_request'}}
+  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   CI:
     defaults:
       run:
         shell: bash -ileo pipefail {0}
-    strategy:
-      matrix:
-        cxx: ['g++']
-        cmake_build_type: ['Release']
-       
-    runs-on: ubuntu-latest
-    container:
-      image: microfluidica/openfoam:13
-      options: --user root
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout AdditiveFOAM
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Install OpenFOAM-14
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common wget
+          wget -qO- https://dl.openfoam.org/gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/openfoam.asc > /dev/null
+          sudo add-apt-repository --yes \
+            "http://dl.openfoam.org/ubuntu main dev"
+          sudo apt-get update
+          sudo apt-get install -y openfoam14
       - name: Build AdditiveFOAM
         run: |
-          . /opt/openfoam13/etc/bashrc || true
+          . /opt/openfoam14/etc/bashrc
           . ./etc/bashrc
           test -n "$WM_PROJECT_DIR"
           ./Allwmake
       - name: Test AdditiveFOAM
         run: |
-          . /opt/openfoam13/etc/bashrc || true
+          . /opt/openfoam14/etc/bashrc
           . ./etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase

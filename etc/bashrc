@@ -2,7 +2,7 @@
 # =========                 |
 # \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
 #  \\    /   O peration     | Website:  https://openfoam.org
-#   \\  /    A nd           | Copyright (C) 2011-2025 OpenFOAM Foundation
+#   \\  /    A nd           | Copyright (C) 2011-2026 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
 #               Copyright (C) 2023-2026 Oak Ridge National Laboratory
@@ -35,7 +35,7 @@
 export ADDITIVEFOAM_VERSION=2.0.0-dev
 
 # OpenFOAM version
-export ADDITIVEFOAM_OPENFOAM_VERSION=13
+export ADDITIVEFOAM_OPENFOAM_VERSION=14
 
 if [ -z "${WM_PROJECT_DIR:-}" ]
 then

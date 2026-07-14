@@ -53,11 +53,16 @@ Defines the thermophysical properties used for the AlSi10Mg simulation.
 
 ## Running the tutorial
 
-Run the tutorial with:
+Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
 
 ```sh
+source /path/to/OpenFOAM-14/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+cd "$ADDITIVEFOAM_TUTORIALS/tabulated"
 ./Allrun
 ```
+
+Use `./Allclean` to remove generated mesh, decomposition, and result files.
 
 The `Allrun` script first converts the PRIMES beam-profile export:
 

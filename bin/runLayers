@@ -192,17 +192,19 @@ do
         -value system/extrudeMeshDict)"
     
     # set powder height to the layer thickness 
-    foamDictionary -entry regions -set \
-    "(
-        boxToCell
+    foamDictionary -entry zones -set \
+    "{
+        powder
         {
+            type box;
             box (-1 -1 -$layerThickness) (1 1 1);
-            fieldValues
-            (
-                volScalarFieldValue alpha.powder 1
-            );
+
+            values
+            {
+                alpha.powder 1;
+            }
         }
-    )" system/setFieldsDict
+    }" system/setFieldsDict
     
     application=`getApplication`
     

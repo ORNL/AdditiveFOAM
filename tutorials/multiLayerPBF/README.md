@@ -9,6 +9,19 @@ The purpose of this tutorial is to show how to run repeated layer simulations wi
 This tutorial uses the IN625 material configuration from
 `$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
 
+## Running the tutorial
+
+Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
+
+```sh
+source /path/to/OpenFOAM-14/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+cd "$ADDITIVEFOAM_TUTORIALS/multiLayerPBF"
+./Allrun
+```
+
+Use `./Allclean` to remove generated layer and result files.
+
 ## Reference
 
 The heat source setup follows the dynamic volumetric heat source formulation cited in the tutorial dictionary:

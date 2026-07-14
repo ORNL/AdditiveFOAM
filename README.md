@@ -15,13 +15,13 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | [tutorials](tutorials)                                     | Tutorial cases |
 
 ## Installation
-[![OpenFOAM-13](https://img.shields.io/badge/OpenFOAM-13-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-13)
+[![OpenFOAM-14](https://img.shields.io/badge/OpenFOAM-14-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-14)
 
-AdditiveFOAM requires OpenFOAM-13 from the OpenFOAM Foundation. Install or
-build OpenFOAM-13 first, then source the OpenFOAM environment:
+AdditiveFOAM requires OpenFOAM-14 from the OpenFOAM Foundation. Install or
+build OpenFOAM-14 first, then source the OpenFOAM environment:
 
 ```sh
-source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/OpenFOAM-14/etc/bashrc
 ```
 
 Clone AdditiveFOAM, enter the repository, and source the AdditiveFOAM
@@ -33,7 +33,7 @@ cd AdditiveFOAM
 source etc/bashrc
 ```
 
-The AdditiveFOAM `etc/bashrc` checks that OpenFOAM-13 is active and sets the required paths.
+The AdditiveFOAM `etc/bashrc` checks that OpenFOAM-14 is active and sets the required paths.
 
 Build all AdditiveFOAM libraries, solvers, and utilities with the master build
 script from the repository root:
@@ -46,7 +46,7 @@ For regular use, source both environments in each new shell or add them to your
 shell startup file:
 
 ```sh
-source /path/to/OpenFOAM-13/etc/bashrc
+source /path/to/OpenFOAM-14/etc/bashrc
 source /path/to/AdditiveFOAM/etc/bashrc
 ```
 

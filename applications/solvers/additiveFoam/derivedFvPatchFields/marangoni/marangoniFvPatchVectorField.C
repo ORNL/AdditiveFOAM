@@ -29,7 +29,7 @@ License
 #include "symmTransformField.H"
 
 #include "addToRunTimeSelectionTable.H"
-#include "fvPatchFieldMapper.H"
+#include "fieldMapper.H"
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "fvcGrad.H"
@@ -40,7 +40,7 @@ License
 Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 (
     const fvPatch& p,
-    const DimensionedField<vector, volMesh>& iF
+    const DimensionedField<vector, fvMesh>& iF
 )
 :
     transformFvPatchField<vector>(p, iF),
@@ -52,7 +52,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 (
     const fvPatch& p,
-    const DimensionedField<vector, volMesh>& iF,
+    const DimensionedField<vector, fvMesh>& iF,
     const dictionary& dict
 )
 :
@@ -91,8 +91,8 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 (
     const marangoniFvPatchVectorField& ptf,
     const fvPatch& p,
-    const DimensionedField<vector, volMesh>& iF,
-    const fvPatchFieldMapper& mapper
+    const DimensionedField<vector, fvMesh>& iF,
+    const fieldMapper& mapper
 )
 :
     transformFvPatchVectorField(ptf, p, iF, mapper),
@@ -104,7 +104,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 (
     const marangoniFvPatchVectorField& ptf,
-    const DimensionedField<vector, volMesh>& iF
+    const DimensionedField<vector, fvMesh>& iF
 )
 :
     transformFvPatchVectorField(ptf, iF),
@@ -118,7 +118,7 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 void Foam::marangoniFvPatchVectorField::map
 (
     const fvPatchVectorField& pvf,
-    const fvPatchFieldMapper& mapper
+    const fieldMapper& mapper
 )
 {
     transformFvPatchVectorField::map(pvf, mapper);

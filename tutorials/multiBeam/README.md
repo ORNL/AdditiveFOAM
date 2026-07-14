@@ -25,6 +25,19 @@ microns in the hatch direction.
 Because each beam uses the original AMB2018-02-B laser power, the total applied
 laser power is twice that of the single-beam baseline.
 
+## Running the tutorial
+
+Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
+
+```sh
+source /path/to/OpenFOAM-14/etc/bashrc
+source /path/to/AdditiveFOAM/etc/bashrc
+cd "$ADDITIVEFOAM_TUTORIALS/multiBeam"
+./Allrun
+```
+
+Use `./Allclean` to remove generated mesh, decomposition, and result files.
+
 ## Reference
 
 The baseline case is based on the AMBenchmark 2018 AMB2018-02 description:
