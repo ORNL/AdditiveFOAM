@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
+import math
 import argparse
 import matplotlib.pyplot as plt
 
@@ -8,11 +9,35 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.size": 8,
     "axes.labelsize": 8,
+    "axes.titlesize": 8,
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
+    "legend.fontsize": 8,
     "figure.dpi": 300,
-    "mathtext.fontset": "dejavuserif"
+    "savefig.dpi": 300,
+    "savefig.bbox": None,
+    "lines.linewidth": 1.2,
+    "mathtext.fontset": "dejavuserif",
 })
+
+
+def linear_limits(values, include_zero=False, padding=0.05):
+    finite = [float(value) for value in values if math.isfinite(float(value))]
+    if not finite:
+        return None
+
+    data_min = min(finite)
+    data_max = max(finite)
+    lower = min(data_min, 0.0) if include_zero else data_min
+    upper = max(data_max, 0.0) if include_zero else data_max
+    span = upper - lower
+    if span == 0:
+        span = abs(upper) if upper != 0 else 1.0
+
+    pad = padding*span
+    lower_limit = 0.0 if include_zero and data_min >= 0 else lower - pad
+    upper_limit = 0.0 if include_zero and data_max <= 0 else upper + pad
+    return lower_limit, upper_limit
 
 TIME_RE = re.compile(r"^\s*Time\s*=\s*(\S+)")
 POWER_RE = re.compile(r"^\s*absorbed power:\s*(\S+)")
@@ -64,7 +89,13 @@ def case_label(case_or_log):
 
 
 def plot_power(cases, log_name, output):
-    fig, ax = plt.subplots(figsize=(4.5, 3.0), constrained_layout=True)
+    fig, ax = plt.subplots(
+        figsize=(4.5, 3.0),
+        constrained_layout=True,
+    )
+    all_times = []
+    all_powers = []
+    plotted_cases = 0
 
     for case_path in cases:
         power_log = log_path(case_path, log_name)
@@ -82,19 +113,30 @@ def plot_power(cases, log_name, output):
 
         times_ms = [time*1e3 for time in times]
         ax.plot(times_ms, powers, label=label)
+        all_times.extend(times_ms)
+        all_powers.extend(powers)
+        plotted_cases += 1
 
     ax.set_xlabel("Time (ms)")
     ax.set_ylabel("Absorbed power (W)")
-    ax.grid(True, which="both", ls="-", alpha=0.1)
-    ax.set_ylim(bottom=0)
+    ax.grid(True, which="both", linestyle="-", alpha=0.1)
+    ax.minorticks_on()
+
+    x_limits = linear_limits(all_times)
+    y_limits = linear_limits(all_powers, include_zero=True)
+    if x_limits:
+        ax.set_xlim(x_limits)
+    if y_limits:
+        ax.set_ylim(y_limits)
+
     ax.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
     ax.ticklabel_format(style="plain", axis="y")
 
-    if len(cases) > 1:
+    if plotted_cases:
         ax.legend(frameon=True, loc="best")
 
-    plt.minorticks_on()
-    plt.savefig(output, dpi=300)
+    fig.savefig(output)
+    plt.close(fig)
     print(f"Power plot saved to: {output}")
 
 

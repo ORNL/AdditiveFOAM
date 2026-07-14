@@ -1,23 +1,54 @@
 #!/usr/bin/env python3
 import os
 import argparse
+import math
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 plt.rcParams.update({
     "font.family": "serif",
-    "font.size": 10,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 9,
-    "ytick.labelsize": 9,
+    "font.size": 8,
+    "axes.labelsize": 8,
+    "axes.titlesize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
     "figure.dpi": 300,
-    "savefig.bbox": 'tight',
-    "mathtext.fontset": "dejavuserif"
+    "savefig.dpi": 300,
+    "savefig.bbox": None,
+    "lines.linewidth": 1.2,
+    "mathtext.fontset": "dejavuserif",
 })
 
+
+def log_limits(values, padding=0.05):
+    finite = [
+        float(value)
+        for value in values
+        if math.isfinite(float(value)) and float(value) > 0
+    ]
+    if not finite:
+        return None
+
+    lower = min(finite)
+    upper = max(finite)
+    if lower == upper:
+        return lower/1.1, upper*1.1
+
+    log_lower = math.log10(lower)
+    log_upper = math.log10(upper)
+    pad = padding*(log_upper - log_lower)
+    return 10**(log_lower - pad), 10**(log_upper + pad)
+
 def plot_cet_curves(cases, output):
-    fig, ax = plt.subplots(figsize=(4.0, 4.5))
+    fig, ax = plt.subplots(
+        figsize=(4.5, 3.0),
+        constrained_layout=True,
+    )
+    all_velocities = []
+    all_gradients = []
+    plotted_cases = 0
         
     for i, case_path in enumerate(cases):
         abs_case_path = os.path.abspath(case_path)
@@ -37,21 +68,39 @@ def plot_cet_curves(cases, output):
         
         G = np.sqrt(df['gx']**2 + df['gy']**2 + df['gz']**2)
         V = df['v']
-        
+
+        valid = np.isfinite(V) & np.isfinite(G) & (V > 0) & (G > 0)
+        if not valid.any():
+            print(f"Warning: No positive finite CET data found in {csv_file}")
+            continue
+
+        V = V[valid]
+        G = G[valid]
         ax.scatter(V, G, s=8, alpha=0.3, edgecolors='none',
                    label=case_name)
+        all_velocities.extend(V.to_numpy())
+        all_gradients.extend(G.to_numpy())
+        plotted_cases += 1
 
     ax.set_xscale('log')
     ax.set_yscale('log')
-    
-    ax.grid(True, which="both", ls="-", alpha=0.1)
+    ax.grid(True, which="both", linestyle="-", alpha=0.1)
+    ax.minorticks_on()
     ax.set_xlabel(r'Solidification Velocity, $V$ (m/s)')
     ax.set_ylabel(r'Thermal Gradient, $G$ (K/m)')
-    
-    if len(cases) > 0:
+
+    x_limits = log_limits(all_velocities)
+    y_limits = log_limits(all_gradients)
+    if x_limits:
+        ax.set_xlim(x_limits)
+    if y_limits:
+        ax.set_ylim(y_limits)
+
+    if plotted_cases:
         ax.legend(frameon=True, loc='best')
-    
-    plt.savefig(output, dpi=300)
+
+    fig.savefig(output)
+    plt.close(fig)
     print(f"Plot saved to: {output}")
 
 if __name__ == "__main__":

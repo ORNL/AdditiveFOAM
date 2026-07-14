@@ -2,6 +2,7 @@
 import os
 import argparse
 import glob
+import math
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -9,21 +10,49 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.size": 8,
     "axes.labelsize": 8,
+    "axes.titlesize": 8,
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
+    "legend.fontsize": 8,
     "figure.dpi": 300,
-    "mathtext.fontset": "dejavuserif"
+    "savefig.dpi": 300,
+    "savefig.bbox": None,
+    "lines.linewidth": 1.2,
+    "mathtext.fontset": "dejavuserif",
 })
+
+
+def linear_limits(values, include_zero=False, padding=0.05):
+    finite = [float(value) for value in values if math.isfinite(float(value))]
+    if not finite:
+        return None
+
+    data_min = min(finite)
+    data_max = max(finite)
+    lower = min(data_min, 0.0) if include_zero else data_min
+    upper = max(data_max, 0.0) if include_zero else data_max
+    span = upper - lower
+    if span == 0:
+        span = abs(upper) if upper != 0 else 1.0
+
+    pad = padding*span
+    lower_limit = 0.0 if include_zero and data_min >= 0 else lower - pad
+    upper_limit = 0.0 if include_zero and data_max <= 0 else upper + pad
+    return lower_limit, upper_limit
 
 def plot_meltpool(cases, output):
     fig, axes = plt.subplots(
-        1, 3, figsize=(6.5, 2), constrained_layout=True, sharex=True
+        3, 1,
+        figsize=(4.5, 7.0),
+        constrained_layout=True,
+        sharex=True,
     )
     
     cols = ['length(m)', 'width(m)', 'depth(m)']
     y_labs = ['Length ($\mu$m)', 'Width ($\mu$m)', 'Depth ($\mu$m)']
     
-    t_min, t_max = float('inf'), float('-inf')
+    all_times = []
+    all_dimensions = [[], [], []]
 
     for case_path in cases:
         abs_path = os.path.abspath(case_path)
@@ -49,34 +78,37 @@ def plot_meltpool(cases, output):
             if df.empty:
                 continue
 
-            df['time(s)'] = df['time(s)'] * 1e3         
-            t_min = min(t_min, df['time(s)'].min())
-            t_max = max(t_max, df['time(s)'].max())
+            times_ms = df['time(s)'] * 1e3
+            all_times.extend(times_ms.to_numpy())
           
             for j in range(3):
                 y_data = df[cols[j]] * 1e6
-                axes[j].plot(df['time(s)'], y_data, label=label)
+                axes[j].plot(times_ms, y_data, label=label)
+                all_dimensions[j].extend(y_data.to_numpy())
 
     for j in range(3):
-        axes[j].set_xlabel('Time (ms)')
         axes[j].set_ylabel(y_labs[j])
-        axes[j].grid(True, which="both", ls="-", alpha=0.1)
-        
-        axes[j].set_xlim(t_min, t_max)
-        axes[j].set_ylim(bottom=0)
+        axes[j].grid(True, which="both", linestyle="-", alpha=0.1)
+        axes[j].minorticks_on()
+
+        y_limits = linear_limits(all_dimensions[j], include_zero=True)
+        if y_limits:
+            axes[j].set_ylim(y_limits)
         
         axes[j].ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         axes[j].ticklabel_format(style='plain', axis='y')
 
+    x_limits = linear_limits(all_times)
+    if x_limits:
+        axes[-1].set_xlim(x_limits)
+    axes[-1].set_xlabel('Time (ms)')
+
     handles, labels = axes[0].get_legend_handles_labels()
     if handles:
-        fig.legend(
-            handles, labels, loc='upper center', 
-            bbox_to_anchor=(0.5, 1.12), ncol=2, frameon=True
-        )
+        axes[0].legend(handles, labels, loc='best', frameon=True)
 
-    plt.minorticks_on()
-    plt.savefig(output, dpi=300)
+    fig.savefig(output)
+    plt.close(fig)
     print(f"Melt pool plot (microns) saved to: {output}")
 
 if __name__ == "__main__":
