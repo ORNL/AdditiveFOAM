@@ -27,7 +27,7 @@ Use `./Allclean` to remove generated mesh, decomposition, and result files.
 The important files for this tutorial are:
 
 ```text
-constant/nLightAFX.cfg
+$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg
 ```
 
 Defines the ORNL-characterized AFX mode parameters.
@@ -55,7 +55,13 @@ heatSourceModel nLightAFX;
 The corresponding coefficient dictionary is:
 
 ```foam
-#include "nLightAFX.cfg"
+depth   5.0e-5;
+innerA  0.0;
+innerB  1.0;
+outerA  0.0;
+outerB  1.0;
+
+#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
 nLightAFXCoeffs
 {
@@ -86,7 +92,8 @@ $Index6;
 
 ## Characterized AFX modes
 
-The included `nLightAFX.cfg` file contains the ORNL-characterized AFX beam parameters for modes 0 through 6. Each mode defines:
+The shared `nLightAFX-1000.cfg` file contains the ORNL-characterized AFX beam
+parameters for modes 0 through 6. Each mode defines:
 
 ```foam
 dimensions
@@ -133,7 +140,7 @@ where `x` is the ratio between the current heat source depth and lateral heat so
 
 ## Example mode
 
-A typical mode block from `nLightAFX.cfg` looks like:
+A typical mode block from `nLightAFX-1000.cfg` looks like:
 
 ```foam
 Index3

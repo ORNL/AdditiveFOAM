@@ -1,0 +1,2640 @@
+#!/usr/bin/env python3
+"""
+Calibrate the projected depth distribution used by AdditiveFOAM heat sources.
+
+For each experimental condition, the routine builds a response curve from CFD
+results obtained with A = 0 and trial values of B. It infers a local n from the
+measured melt-pool depths, then fits the production relation
+
+    n = clip(A * log2(depth / heat_source_radius) + B, 0, 9)
+
+Local posterior uncertainty is used in both the global fit and its uncertainty
+band. Simulation results and calibration state are cached by process condition.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import hashlib
+import math
+import os
+import re
+import shutil
+import subprocess
+import textwrap
+from dataclasses import dataclass
+from datetime import datetime
+from io import BytesIO
+from pathlib import Path
+from typing import Any
+
+import arviz as az
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pymc as pm
+import pytensor.tensor as pt
+import seaborn as sns
+import yaml
+
+from scipy.interpolate import PchipInterpolator
+from scipy.optimize import least_squares
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    Image,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+
+# Input data, configuration, and persistent simulation cache
+def _create_data_fingerprint(data_list: list) -> str:
+    sorted_data_str = str(sorted(data_list))
+    return hashlib.sha256(sorted_data_str.encode()).hexdigest()
+
+
+def heat_source_radius_microns(params: dict) -> float:
+    try:
+        spot_size_d4sigma_microns = float(params["Spot_Size_microns"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "Each experiment requires a numeric Spot_Size_microns value"
+        ) from error
+
+    if not math.isfinite(spot_size_d4sigma_microns):
+        raise ValueError("Spot_Size_microns must be finite")
+    if spot_size_d4sigma_microns <= 0.0:
+        raise ValueError("Spot_Size_microns must be greater than zero")
+
+    return 0.5 * spot_size_d4sigma_microns
+
+
+def load_yaml_file(filepath: str):
+    if not os.path.exists(filepath):
+        return []
+    with open(filepath, "r") as f:
+        return yaml.safe_load(f) or []
+
+
+def save_yaml_file(data, filepath: str | Path):
+    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+    with open(filepath, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, indent=2)
+
+
+def _resolve_config_path(value: str, config_dir: Path, key: str) -> str:
+    expanded = os.path.expanduser(os.path.expandvars(str(value)))
+    if "$" in expanded:
+        raise ValueError(f"Unresolved environment variable in {key}: {value}")
+    path = Path(expanded)
+    if not path.is_absolute():
+        path = config_dir / path
+    return str(path.resolve())
+
+
+def load_config(filepath: str) -> dict:
+    with open(filepath, "r") as f:
+        raw = yaml.safe_load(f) or {}
+
+    required_sections = ("paths", "case", "calibration", "bayesian", "report")
+    missing_sections = [
+        key for key in required_sections if not isinstance(raw.get(key), dict)
+    ]
+    if missing_sections:
+        raise ValueError(
+            "Configuration requires mapping sections: "
+            + ", ".join(missing_sections)
+        )
+
+    config_dir = Path(filepath).resolve().parent
+    paths = raw["paths"]
+    for key in ("experiments", "template", "campaign"):
+        if key not in paths:
+            raise ValueError(
+                f"Missing required configuration entry: paths.{key}"
+            )
+
+    experiments_file = _resolve_config_path(
+        paths["experiments"], config_dir, "paths.experiments"
+    )
+    template_case = _resolve_config_path(
+        paths["template"], config_dir, "paths.template"
+    )
+    campaign_dir = Path(
+        _resolve_config_path(paths["campaign"], config_dir, "paths.campaign")
+    )
+
+    case = raw["case"]
+    calibration = raw["calibration"]
+    bounds = calibration.get("bounds", [0.0, 9.0])
+    if not isinstance(bounds, list) or len(bounds) != 2:
+        raise ValueError("calibration.bounds must contain [minimum, maximum]")
+    if float(bounds[0]) >= float(bounds[1]):
+        raise ValueError("calibration.bounds minimum must be less than maximum")
+
+    initial_values = [
+        float(value)
+        for value in calibration.get("initial_values", [0.0, 4.5, 9.0])
+    ]
+    if not initial_values:
+        raise ValueError("calibration.initial_values must not be empty")
+    if len(set(initial_values)) != len(initial_values):
+        raise ValueError(
+            "calibration.initial_values must not contain duplicates"
+        )
+    if any(
+        value < float(bounds[0]) or value > float(bounds[1])
+        for value in initial_values
+    ):
+        raise ValueError(
+            "calibration.initial_values must lie within calibration.bounds"
+        )
+
+    max_simulations = int(calibration.get("max_simulations_per_experiment", 7))
+    if max_simulations < len(initial_values):
+        raise ValueError(
+            "calibration.max_simulations_per_experiment cannot be smaller than "
+            "the number of initial_values"
+        )
+
+    token = str(calibration.get("token", "B"))
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", token):
+        raise ValueError("calibration.token must be an alphanumeric identifier")
+
+    adaptive_learning = {
+        "enabled": True,
+        "initial_B_values": initial_values,
+        "B_min": float(bounds[0]),
+        "B_max": float(bounds[1]),
+        "max_simulations_per_experiment": max_simulations,
+        "depth_tolerance_microns": float(
+            calibration.get("depth_tolerance_microns", 10.0)
+        ),
+        "posterior_std_tolerance": float(
+            calibration.get("posterior_std_tolerance", 0.25)
+        ),
+        "pchip_grid_points": int(calibration.get("pchip_grid_points", 1000)),
+    }
+
+    report = dict(raw["report"])
+    report["output_pdf"] = str(
+        campaign_dir / "reports" / "calibration_report.pdf"
+    )
+
+    return {
+        "experiments_file": experiments_file,
+        "template_case": template_case,
+        "campaign_dir": str(campaign_dir),
+        "simulations_file": str(campaign_dir / "simulations.yml"),
+        "calibration_state_file": str(campaign_dir / "calibration_state.yml"),
+        "run_command": str(case.get("command", "./Allrun")),
+        "keep_successful_cases": bool(case.get("keep_successful", False)),
+        "melt_pool_dimensions_isovalue": case.get(
+            "melt_pool_isovalue", "liquidus"
+        ),
+        "calibration_token": token,
+        "adaptive_learning": adaptive_learning,
+        "bayesian": dict(raw["bayesian"]),
+        "final_fit": dict(raw.get("final_fit", {})),
+        "report": report,
+    }
+
+
+def parse_experiments(raw_experiments: list) -> pd.DataFrame:
+    if not raw_experiments:
+        return pd.DataFrame(
+            columns=[
+                "parameters",
+                "depths_list",
+                "normalized_depths_list",
+                "fingerprint",
+            ]
+        )
+
+    records = []
+    for exp in raw_experiments:
+        params = exp["parameters"]
+        heat_source_radius = heat_source_radius_microns(params)
+        depths = exp["Measured_Depth_microns"]
+        normalized_depths = [float(d) / heat_source_radius for d in depths]
+
+        records.append(
+            {
+                "parameters": params,
+                "depths_list": depths,
+                "normalized_depths_list": normalized_depths,
+                "fingerprint": _create_data_fingerprint(depths),
+            }
+        )
+    return pd.DataFrame(records)
+
+
+def parse_simulations(raw_simulations: list) -> pd.DataFrame:
+    if not raw_simulations:
+        return pd.DataFrame()
+
+    records = []
+    for sim_run in raw_simulations:
+        params = sim_run["parameters"]
+        n_values = sim_run["n"]
+        depths = sim_run["Simulated_Depth_microns"]
+        heat_source_radius = heat_source_radius_microns(params)
+
+        for n, depth in zip(n_values, depths):
+            records.append(
+                {
+                    **params,
+                    "n": float(n),
+                    "Simulated_Depth_microns": float(depth),
+                    "Normalized_Simulated_Depth": float(depth)
+                    / heat_source_radius,
+                }
+            )
+    return pd.DataFrame(records)
+
+
+def params_equal(a: dict, b: dict) -> bool:
+    return str(sorted(a.items())) == str(sorted(b.items()))
+
+
+def append_simulation_result(
+    raw_simulations: list,
+    params: dict,
+    B: float,
+    depth_microns: float,
+    simulations_path: str,
+):
+    target = None
+    for sim_run in raw_simulations:
+        if params_equal(sim_run["parameters"], params):
+            target = sim_run
+            break
+
+    if target is None:
+        target = {
+            "parameters": dict(params),
+            "n": [],
+            "Simulated_Depth_microns": [],
+        }
+        raw_simulations.append(target)
+
+    existing = [float(v) for v in target["n"]]
+    match_index = None
+    for i, value in enumerate(existing):
+        if abs(value - B) < 1e-8:
+            match_index = i
+            break
+
+    if match_index is None:
+        target["n"].append(float(B))
+        target["Simulated_Depth_microns"].append(float(depth_microns))
+    else:
+        target["Simulated_Depth_microns"][match_index] = float(depth_microns)
+
+    pairs = sorted(
+        zip(target["n"], target["Simulated_Depth_microns"]),
+        key=lambda x: float(x[0]),
+    )
+    target["n"] = [float(x[0]) for x in pairs]
+    target["Simulated_Depth_microns"] = [float(x[1]) for x in pairs]
+    save_yaml_file(raw_simulations, simulations_path)
+
+
+# AdditiveFOAM template rendering and case execution
+def format_value(value) -> str:
+    if isinstance(value, float):
+        return f"{value:.10g}"
+    return str(value)
+
+
+def render_text(text: str, values: dict) -> str:
+    for key, value in values.items():
+        text = text.replace(f"<<{key}>>", format_value(value))
+    return text
+
+
+def render_case(case_dir: Path, values: dict):
+    for path in case_dir.rglob("*"):
+        if path.is_file():
+            try:
+                text = path.read_text()
+            except UnicodeDecodeError:
+                continue
+            path.write_text(render_text(text, values))
+
+
+def find_template_placeholders(case_dir: Path) -> set[str]:
+    placeholders = set()
+    for path in case_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        placeholders.update(re.findall(r"<<([A-Za-z][A-Za-z0-9_]*)>>", text))
+    return placeholders
+
+
+def validate_template_case(template_case: Path, calibration_token: str):
+    if not template_case.is_dir():
+        raise FileNotFoundError(
+            f"Template case does not exist: {template_case}"
+        )
+
+    required_paths = [
+        template_case / "0",
+        template_case / "constant" / "heatSourceDict",
+        template_case / "constant" / "scanPath",
+        template_case / "constant" / "transportProperties",
+        template_case / "system" / "controlDict",
+        template_case / "Allrun",
+    ]
+    missing = [
+        str(path.relative_to(template_case))
+        for path in required_paths
+        if not path.exists()
+    ]
+    if missing:
+        raise ValueError("Template case is missing: " + ", ".join(missing))
+
+    placeholder_locations = {
+        "constant/heatSourceDict": [
+            calibration_token,
+            "heatSourceRadius",
+        ],
+        "constant/scanPath": ["power", "velocity"],
+        "system/controlDict": ["endTime", "writeInterval"],
+    }
+    for relative_path, required_tokens in placeholder_locations.items():
+        text = (template_case / relative_path).read_text()
+        for token in required_tokens:
+            count = text.count(f"<<{token}>>")
+            if count != 1:
+                raise ValueError(
+                    f"Template {relative_path} must contain <<{token}>> "
+                    "exactly once; "
+                    f"found {count}"
+                )
+
+
+def validate_additivefoam_environment():
+    if os.environ.get("WM_PROJECT_VERSION") != "14":
+        raise RuntimeError(
+            "OpenFOAM-14 is required. Source OpenFOAM-14/etc/bashrc "
+            "before running."
+        )
+    for variable in ("ADDITIVEFOAM_PROJECT_DIR", "ADDITIVEFOAM_ETC"):
+        if not os.environ.get(variable):
+            raise RuntimeError(
+                f"{variable} is not set. Source AdditiveFOAM/etc/bashrc "
+                "before running."
+            )
+    if shutil.which("additiveFoam") is None:
+        raise RuntimeError("additiveFoam is not available on PATH")
+
+
+def resolve_material_isovalue(
+    case_dir: Path, selector: str | float | int
+) -> float:
+    if isinstance(selector, (float, int)):
+        return float(selector)
+
+    selector_text = str(selector).strip().lower()
+    try:
+        return float(selector_text)
+    except ValueError:
+        pass
+
+    if selector_text not in {"solidus", "liquidus"}:
+        raise ValueError(
+            "case.melt_pool_isovalue must be 'solidus', 'liquidus', or "
+            "a temperature"
+        )
+
+    foam_dictionary = shutil.which("foamDictionary")
+    if foam_dictionary is None:
+        raise RuntimeError(
+            "foamDictionary is required to resolve material isovalues"
+        )
+
+    transport_properties = case_dir / "constant" / "transportProperties"
+    # Expanding the dictionary resolves material files included through
+    # $ADDITIVEFOAM_ETC before thermoPath is inspected.
+    completed = subprocess.run(
+        [
+            foam_dictionary,
+            "-expand",
+            "-entry",
+            "thermoPath",
+            "-value",
+            str(transport_properties),
+        ],
+        cwd=case_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "Could not read thermoPath from transportProperties:\n"
+            + completed.stdout
+        )
+
+    number = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+    points = [
+        (float(temperature), float(fraction))
+        for temperature, fraction in re.findall(
+            rf"\(\s*({number})\s+({number})\s*\)", completed.stdout
+        )
+    ]
+    target_fraction = 0.0 if selector_text == "liquidus" else 1.0
+    for temperature, fraction in points:
+        if abs(fraction - target_fraction) <= 1.0e-12:
+            return temperature
+
+    raise RuntimeError(
+        f"thermoPath does not contain an exact {selector_text} point "
+        f"with alpha.solid={target_fraction:g}"
+    )
+
+
+def compute_end_time_from_scan_path(scan_path_file: Path) -> float:
+    rows = []
+    for line in scan_path_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("//") or line.lower().startswith("mode"):
+            continue
+        fields = line.split()
+        if len(fields) < 6:
+            continue
+        rows.append([float(v) for v in fields[:6]])
+
+    end_time = 0.0
+    for i in range(1, len(rows)):
+        mode = int(rows[i][0])
+        if mode != 0:
+            continue
+        x0, y0, z0 = rows[i - 1][1:4]
+        x1, y1, z1 = rows[i][1:4]
+        velocity = rows[i][5]
+        distance = math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2 + (z1 - z0) ** 2)
+        end_time += distance / velocity
+    return end_time
+
+
+def find_melt_pool_dimensions_file(case_dir: Path, isovalue: float) -> Path:
+    output_dir = case_dir / "postProcessing" / "meltPoolDimensions"
+    candidates = []
+    for path in output_dir.glob("*.csv"):
+        try:
+            candidates.append((float(path.stem), path))
+        except ValueError:
+            continue
+
+    tolerance = max(1.0e-9, abs(isovalue) * 1.0e-9)
+    matches = [
+        path for value, path in candidates if abs(value - isovalue) <= tolerance
+    ]
+    if len(matches) == 1:
+        return matches[0]
+
+    available = ", ".join(path.name for _, path in candidates) or "none"
+    raise FileNotFoundError(
+        f"Expected meltPoolDimensions output for {isovalue:g} K; "
+        f"available: {available}"
+    )
+
+
+def parse_melt_pool_dimensions(
+    case_dir: Path, selector: str | float | int
+) -> dict:
+    isovalue = resolve_material_isovalue(case_dir, selector)
+    csv_path = find_melt_pool_dimensions_file(case_dir, isovalue)
+    df = pd.read_csv(csv_path)
+    if df.empty:
+        raise ValueError(f"Melt-pool dimensions output is empty: {csv_path}")
+    # Calibration uses the maximum penetration recorded during the scan.
+    row = df.loc[df["depth(m)"].idxmax()]
+    return {
+        "isovalue_K": isovalue,
+        "melt_pool_dimensions_file_name": csv_path.name,
+        "time_s": float(row["time(s)"]),
+        "length_microns": float(row["length(m)"]) * 1e6,
+        "width_microns": float(row["width(m)"]) * 1e6,
+        "depth_microns": float(row["depth(m)"]) * 1e6,
+    }
+
+
+def _looks_like_time_dir(path: Path) -> bool:
+    if not path.is_dir() or path.name == "0":
+        return False
+    try:
+        float(path.name)
+        return True
+    except ValueError:
+        return False
+
+
+def finalize_run(case_dir: Path, metrics: dict, keep_case: bool):
+    save_yaml_file(metrics, case_dir / "metrics.yml")
+
+    if keep_case:
+        return
+
+    for path in case_dir.iterdir():
+        if path.is_dir() and (
+            path.name.startswith("processor") or _looks_like_time_dir(path)
+        ):
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def format_case_value(value, decimals: int | None = None) -> str:
+    value = float(value)
+    if decimals is not None:
+        text = f"{value:.{decimals}f}"
+    else:
+        text = f"{value:.10g}"
+    text = text.rstrip("0").rstrip(".") if "." in text else text
+    text = text.replace("-", "m").replace(".", "p")
+    return text
+
+
+def make_condition_key(params: dict) -> str:
+    power = format_case_value(params["Power_W"])
+    speed = format_case_value(params["Speed_mm_s"])
+    spot = format_case_value(params["Spot_Size_microns"])
+    return f"P{power}_V{speed}_D{spot}"
+
+
+def make_run_key(B: float) -> str:
+    B_key = format_case_value(B)
+    return f"B{B_key}"
+
+
+def run_additivefoam_case(case_dir: Path, run_command: str) -> int:
+    completed = subprocess.run(
+        run_command,
+        cwd=case_dir,
+        shell=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    (case_dir / "log.run").write_text(completed.stdout)
+    return completed.returncode
+
+
+def run_one_additivefoam_simulation(
+    params: dict, B: float, config: dict
+) -> float:
+    validate_additivefoam_environment()
+    campaign_dir = Path(config["campaign_dir"])
+    template_case = Path(config["template_case"])
+    condition_key = make_condition_key(params)
+    run_key = make_run_key(B)
+
+    case_dir = campaign_dir / "cases" / condition_key / run_key
+    if case_dir.exists():
+        shutil.rmtree(case_dir)
+    shutil.copytree(template_case, case_dir)
+
+    velocity_m_s = float(params["Speed_mm_s"]) * 1e-3
+    heat_source_radius_m = heat_source_radius_microns(params) * 1.0e-6
+    values = {
+        config["calibration_token"]: float(B),
+        "power": float(params["Power_W"]),
+        "velocity": velocity_m_s,
+        "heatSourceRadius": heat_source_radius_m,
+    }
+
+    # Render the scan first because its geometry and velocity determine endTime.
+    render_case(case_dir, values)
+    end_time = compute_end_time_from_scan_path(
+        case_dir / "constant" / "scanPath"
+    )
+    values["endTime"] = end_time
+    values["writeInterval"] = end_time
+    render_case(case_dir, values)
+    unresolved = sorted(find_template_placeholders(case_dir))
+    if unresolved:
+        raise RuntimeError(
+            "Rendered case contains unresolved placeholders: "
+            + ", ".join(unresolved)
+        )
+
+    print(
+        f"  Running AdditiveFOAM: B={B:.4f}, "
+        f"P={params['Power_W']}, v={velocity_m_s:.4g} m/s"
+    )
+    return_code = run_additivefoam_case(case_dir, config["run_command"])
+    if return_code != 0:
+        raise RuntimeError(f"AdditiveFOAM run failed in {case_dir}")
+
+    metrics = parse_melt_pool_dimensions(
+        case_dir,
+        config["melt_pool_dimensions_isovalue"],
+    )
+    metrics.update(
+        {
+            "parameters": params,
+            "B": float(B),
+            "power": float(params["Power_W"]),
+            "velocity": velocity_m_s,
+            "heat_source_radius_m": heat_source_radius_m,
+            "endTime": end_time,
+            "writeInterval": end_time,
+        }
+    )
+    finalize_run(
+        case_dir, metrics, bool(config.get("keep_successful_cases", False))
+    )
+    return float(metrics["depth_microns"])
+
+
+# Local response surrogate and Bayesian calibration
+def find_matching_simulation_subset(
+    sim_df: pd.DataFrame, params: dict
+) -> pd.DataFrame:
+    if sim_df.empty:
+        return pd.DataFrame()
+
+    mask = pd.Series(True, index=sim_df.index)
+    for key, value in params.items():
+        if key not in sim_df.columns:
+            return pd.DataFrame()
+        mask &= sim_df[key] == value
+    return sim_df.loc[mask]
+
+
+def get_sorted_simulation_curve(model_subset: pd.DataFrame):
+    curve = model_subset.sort_values("n")
+    n_coords = curve["n"].values.astype(float)
+    model_normalized_depths = curve["Normalized_Simulated_Depth"].values.astype(
+        float
+    )
+    return n_coords, model_normalized_depths
+
+
+def build_pchip_surrogate_grid(
+    n_coords: np.ndarray,
+    model_values: np.ndarray,
+    n_grid: int = 1000,
+) -> tuple[np.ndarray, np.ndarray]:
+    order = np.argsort(n_coords)
+    n_sorted = np.asarray(n_coords, dtype=float)[order]
+    y_sorted = np.asarray(model_values, dtype=float)[order]
+
+    unique_n, unique_idx = np.unique(n_sorted, return_index=True)
+    unique_y = y_sorted[unique_idx]
+
+    if len(unique_n) < 3:
+        return unique_n, unique_y
+
+    # PCHIP preserves the sampled curve shape without extrapolating beyond
+    # CFD data.
+    n_dense = np.linspace(unique_n.min(), unique_n.max(), int(n_grid))
+    y_dense = PchipInterpolator(unique_n, unique_y, extrapolate=False)(n_dense)
+    return n_dense.astype(float), np.asarray(y_dense, dtype=float)
+
+
+def pchip_grid_from_subset(
+    model_subset: pd.DataFrame,
+    value_column: str = "Normalized_Simulated_Depth",
+    n_grid: int = 1000,
+) -> tuple[np.ndarray, np.ndarray]:
+    curve = model_subset.sort_values("n")
+    return build_pchip_surrogate_grid(
+        curve["n"].values.astype(float),
+        curve[value_column].values.astype(float),
+        n_grid=n_grid,
+    )
+
+
+def proposed_B_values_for_initial_curve(
+    model_subset: pd.DataFrame, config: dict
+) -> list[float]:
+    existing = set()
+    if not model_subset.empty:
+        existing = {round(float(v), 8) for v in model_subset["n"].values}
+
+    adaptive = config["adaptive_learning"]
+    B_values = adaptive.get("initial_B_values", [0.0, 4.5, 9.0])
+    return [float(v) for v in B_values if round(float(v), 8) not in existing]
+
+
+def propose_next_B(
+    model_subset: pd.DataFrame, target_depth: float, config: dict
+):
+    adaptive = config["adaptive_learning"]
+    B_min = float(adaptive.get("B_min", 0.0))
+    B_max = float(adaptive.get("B_max", 9.0))
+
+    B_values, depths = pchip_grid_from_subset(
+        model_subset,
+        value_column="Simulated_Depth_microns",
+        n_grid=int(adaptive.get("pchip_grid_points", 1000)),
+    )
+
+    for i in range(len(B_values) - 1):
+        d0, d1 = depths[i], depths[i + 1]
+        if (d0 <= target_depth <= d1) or (d1 <= target_depth <= d0):
+            if abs(d1 - d0) < 1e-12:
+                B = 0.5 * (B_values[i] + B_values[i + 1])
+            else:
+                B = B_values[i] + (target_depth - d0) * (
+                    B_values[i + 1] - B_values[i]
+                ) / (d1 - d0)
+            B = min(max(float(B), B_min), B_max)
+            existing = model_subset["n"].values.astype(float)
+            if np.min(np.abs(existing - B)) > 1e-5:
+                return B
+            return 0.5 * (B_values[i] + B_values[i + 1])
+    return None
+
+
+def ensure_simulation_curve(
+    job_row, sim_df: pd.DataFrame, raw_simulations: list, config: dict
+):
+    if not config["adaptive_learning"].get("enabled", True):
+        return sim_df, raw_simulations
+
+    params = job_row["parameters"]
+    model_subset = find_matching_simulation_subset(sim_df, params)
+    # A missing condition starts with the configured B grid. Existing cache
+    # entries are skipped, so interrupted campaigns resume without rerunning
+    # them.
+    if len(model_subset) < 2:
+        for B in proposed_B_values_for_initial_curve(model_subset, config):
+            depth = run_one_additivefoam_simulation(params, B, config)
+            append_simulation_result(
+                raw_simulations, params, B, depth, config["simulations_file"]
+            )
+            raw_simulations = load_yaml_file(config["simulations_file"])
+            sim_df = parse_simulations(raw_simulations)
+            model_subset = find_matching_simulation_subset(sim_df, params)
+    return sim_df, raw_simulations
+
+
+def linear_interp_pt(n_val, n_data_pt, column_data_pt):
+    n_data_pt, column_data_pt, n_val = (
+        pt.cast(n_data_pt, "float64"),
+        pt.cast(column_data_pt, "float64"),
+        pt.cast(n_val, "float64"),
+    )
+    idx, data_len = pt.searchsorted(n_data_pt, n_val), pt.shape(n_data_pt)[0]
+    idx = pt.clip(idx, 1, data_len - 1)
+    idx_lower, idx_upper = idx - 1, idx
+    n_lower, n_upper = n_data_pt[idx_lower], n_data_pt[idx_upper]
+    val_lower, val_upper = column_data_pt[idx_lower], column_data_pt[idx_upper]
+    return val_lower + (val_upper - val_lower) * (n_val - n_lower) / (
+        n_upper - n_lower
+    )
+
+
+def perform_bayesian_calibration(
+    n_coords: np.ndarray,
+    model_values: np.ndarray,
+    observed_values: list[float],
+    config: dict,
+) -> az.InferenceData:
+
+    # Measurement scatter sets the likelihood width, with a 5% floor for
+    # repeated measurements that are identical or nearly identical.
+    sigma_est = max(0.05 * np.mean(observed_values), np.std(observed_values))
+
+    bayes = config.get("bayesian", {})
+    with pm.Model() as model:
+        n = pm.Uniform("n", lower=n_coords.min(), upper=n_coords.max())
+        n_data_pt = pt.constant(n_coords)
+        model_values_pt = pt.constant(model_values)
+
+        predicted_value = pm.Deterministic(
+            "predicted_value", linear_interp_pt(n, n_data_pt, model_values_pt)
+        )
+        pm.Normal(
+            "likelihood",
+            mu=predicted_value,
+            sigma=sigma_est,
+            observed=observed_values,
+        )
+        print(
+            f"  Sampling posterior with {len(observed_values)} observations "
+            f"(sigma_est={sigma_est:.3f})..."
+        )
+        trace = pm.sample(
+            draws=int(bayes.get("draws", 2000)),
+            tune=int(bayes.get("tune", 1000)),
+            cores=int(bayes.get("cores", 4)),
+            progressbar=bool(bayes.get("progressbar", True)),
+            target_accept=float(bayes.get("target_accept", 0.9)),
+            random_seed=int(bayes.get("random_seed", 42)),
+        )
+    return trace
+
+
+def summarize_local_n_posterior(trace: az.InferenceData) -> dict:
+    n_samples = trace.posterior["n"].values.flatten()
+
+    # Use the sampled point with highest log density as the reported local
+    # value.
+    if "lp" in trace.sample_stats:
+        logp = trace.sample_stats["lp"].values.flatten()
+        n_mode = float(n_samples[np.argmax(logp)])
+    else:
+        counts, edges = np.histogram(n_samples, bins=100)
+        i = int(np.argmax(counts))
+        n_mode = float(0.5 * (edges[i] + edges[i + 1]))
+
+    q025, q975 = np.quantile(n_samples, [0.025, 0.975])
+    n_variance = float(np.var(n_samples))
+
+    return {
+        "n_mode": n_mode,
+        "n_mean": float(np.mean(n_samples)),
+        "n_median": float(np.median(n_samples)),
+        "n_variance": n_variance,
+        "n_std": float(np.sqrt(n_variance)),
+        "n_95_low": float(q025),
+        "n_95_high": float(q975),
+        "samples": n_samples,
+    }
+
+
+def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
+    adaptive = config["adaptive_learning"]
+    if not adaptive.get("enabled", True):
+        return trace, sim_df, raw_simulations
+
+    params = job_row["parameters"]
+    model_subset = find_matching_simulation_subset(sim_df, params)
+    max_sims = int(adaptive.get("max_simulations_per_experiment", 7))
+    posterior_tol = float(adaptive.get("posterior_std_tolerance", 0.25))
+    depth_tol = float(adaptive.get("depth_tolerance_microns", 10.0))
+
+    # Add CFD points only while both the posterior and depth match remain broad.
+    while len(model_subset) < max_sims:
+        n_samples = trace.posterior["n"].values.flatten()
+        if np.std(n_samples) <= posterior_tol:
+            break
+
+        target_depth = float(np.mean(job_row["depths_list"]))
+        best_error = np.min(
+            np.abs(
+                model_subset["Simulated_Depth_microns"].values - target_depth
+            )
+        )
+        if best_error <= depth_tol:
+            break
+
+        B_next = propose_next_B(model_subset, target_depth, config)
+        if B_next is None:
+            break
+
+        depth = run_one_additivefoam_simulation(params, B_next, config)
+        append_simulation_result(
+            raw_simulations,
+            params,
+            B_next,
+            depth,
+            config["simulations_file"],
+        )
+        raw_simulations = load_yaml_file(config["simulations_file"])
+        sim_df = parse_simulations(raw_simulations)
+        model_subset = find_matching_simulation_subset(sim_df, params)
+
+        n_coords, model_normalized_depths = get_sorted_simulation_curve(
+            model_subset
+        )
+        n_surrogate, depth_surrogate = build_pchip_surrogate_grid(
+            n_coords,
+            model_normalized_depths,
+            n_grid=int(adaptive.get("pchip_grid_points", 1000)),
+        )
+        trace = perform_bayesian_calibration(
+            n_surrogate,
+            depth_surrogate,
+            job_row["normalized_depths_list"],
+            config,
+        )
+
+    return trace, sim_df, raw_simulations
+
+
+# Global response fit, uncertainty propagation, and reporting
+@dataclass(frozen=True)
+class ReportTheme:
+    page_size: tuple = letter
+
+    margin_left: float = 0.65 * inch
+    margin_right: float = 0.65 * inch
+    margin_top: float = 0.65 * inch
+    margin_bottom: float = 0.65 * inch
+
+    ornl_green: str = "#4B7F2A"
+    dark_green: str = "#2F5D1E"
+    gray: str = "#555555"
+    light_gray: str = "#E8E8E8"
+    very_light_gray: str = "#F7F7F7"
+    black: str = "#111111"
+    red: str = "#B22222"
+    blue: str = "#1F77B4"
+    orange: str = "#D55E00"
+
+    body_font: str = "Helvetica"
+    body_bold_font: str = "Helvetica-Bold"
+    mono_font: str = "Courier"
+
+    plot_dpi: int = 220
+
+
+REPORT_THEME = ReportTheme()
+
+
+def _escape_reportlab_text(value: Any) -> str:
+    text = str(value)
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def condition_label(params_dict: dict) -> str:
+    if not isinstance(params_dict, dict):
+        return str(params_dict)
+
+    return ", ".join(
+        f"{str(k).replace('_', ' ')}={v}" for k, v in params_dict.items()
+    )
+
+
+def wrapped_condition_label(params_dict: dict, width: int = 58) -> str:
+    label = condition_label(params_dict)
+    return "\n".join(
+        textwrap.wrap(
+            label,
+            width=width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
+
+
+def _parameter_key(params: dict) -> tuple:
+    if not isinstance(params, dict):
+        return tuple()
+    return tuple(sorted(params.items()))
+
+
+def _parse_param_key(param_key: Any) -> dict:
+    if isinstance(param_key, dict):
+        return param_key
+
+    if isinstance(param_key, (list, tuple)):
+        try:
+            return dict(param_key)
+        except Exception:
+            return {"condition": str(param_key)}
+
+    if isinstance(param_key, str):
+        try:
+            parsed = ast.literal_eval(param_key)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, (list, tuple)):
+                return dict(parsed)
+        except Exception:
+            pass
+
+    return {"condition": str(param_key)}
+
+
+def filter_simulations_by_params(
+    simulations_df: pd.DataFrame,
+    params_dict: dict,
+) -> pd.DataFrame:
+    if simulations_df.empty:
+        return simulations_df.copy()
+
+    mask = pd.Series(True, index=simulations_df.index)
+    for key, value in params_dict.items():
+        if key not in simulations_df.columns:
+            return simulations_df.iloc[0:0].copy()
+        mask &= simulations_df[key] == value
+
+    return simulations_df.loc[mask].sort_values("n")
+
+
+def report_plot_context():
+    return mpl.rc_context(
+        {
+            "figure.dpi": REPORT_THEME.plot_dpi,
+            "savefig.dpi": REPORT_THEME.plot_dpi,
+            "font.family": "DejaVu Sans",
+            "font.size": 10,
+            "axes.titlesize": 10,
+            "axes.labelsize": 10,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 10,
+            "axes.grid": True,
+            "grid.color": REPORT_THEME.black,
+            "grid.linestyle": "-",
+            "grid.linewidth": 0.6,
+            "axes.edgecolor": REPORT_THEME.black,
+            "axes.linewidth": 0.8,
+            "figure.constrained_layout.use": True,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    )
+
+
+def fig_to_reportlab_image(
+    fig: mpl.figure.Figure,
+    max_width: float,
+    max_height: float | None = None,
+    dpi: int = REPORT_THEME.plot_dpi,
+) -> Image:
+    buffer = BytesIO()
+    fig.savefig(
+        buffer,
+        format="png",
+        dpi=dpi,
+        bbox_inches="tight",
+        pad_inches=0.12,
+    )
+    buffer.seek(0)
+    plt.close(fig)
+
+    img = Image(buffer)
+    aspect = img.imageHeight / float(img.imageWidth)
+    img.drawWidth = max_width
+    img.drawHeight = max_width * aspect
+
+    if max_height is not None and img.drawHeight > max_height:
+        scale = max_height / img.drawHeight
+        img.drawWidth *= scale
+        img.drawHeight *= scale
+
+    return img
+
+
+def plot_calibration_overview_pages(
+    results_df: pd.DataFrame,
+    simulations_df: pd.DataFrame,
+    plots_per_page: int = 1,
+) -> list[mpl.figure.Figure]:
+    if results_df.empty:
+        return []
+
+    figs: list[mpl.figure.Figure] = []
+
+    with report_plot_context():
+        for plot_idx, (_, row) in enumerate(results_df.iterrows(), start=1):
+            params_dict = row["parameters"]
+            sim_curve = filter_simulations_by_params(
+                simulations_df, params_dict
+            )
+
+            fig, ax = plt.subplots(
+                figsize=(10.5, 6.4),
+                layout="constrained",
+            )
+
+            if not sim_curve.empty:
+                sim_curve = sim_curve.sort_values("n")
+
+                n_plot, y_plot = pchip_grid_from_subset(
+                    sim_curve,
+                    value_column="Normalized_Simulated_Depth",
+                    n_grid=1000,
+                )
+
+                ax.plot(
+                    n_plot,
+                    y_plot,
+                    color="black",
+                    linewidth=1.6,
+                    label="PCHIP simulation surrogate",
+                )
+
+                ax.scatter(
+                    sim_curve["n"],
+                    sim_curve["Normalized_Simulated_Depth"],
+                    s=26,
+                    color="black",
+                    zorder=3,
+                )
+
+                calibrated_depth = float(
+                    np.interp(
+                        float(row["calibrated_n"]),
+                        n_plot,
+                        y_plot,
+                    )
+                )
+            else:
+                calibrated_depth = float(row["mean_normalized_depth"])
+
+            if "calibrated_n_95_low" in row and "calibrated_n_95_high" in row:
+                interval_low = min(
+                    float(row["calibrated_n_95_low"]),
+                    float(row["calibrated_n_95_high"]),
+                )
+                interval_high = max(
+                    float(row["calibrated_n_95_low"]),
+                    float(row["calibrated_n_95_high"]),
+                )
+                ax.plot(
+                    [interval_low, interval_high],
+                    [calibrated_depth, calibrated_depth],
+                    color=REPORT_THEME.red,
+                    marker="|",
+                    markersize=9,
+                    linewidth=1.2,
+                    label="Local n with 95% interval",
+                    zorder=4,
+                )
+                xerr = None
+                calibration_label = "_nolegend_"
+            else:
+                xerr = row["calibrated_n_std"]
+                calibration_label = "Local n"
+
+            ax.errorbar(
+                x=row["calibrated_n"],
+                y=calibrated_depth,
+                xerr=xerr,
+                fmt="o",
+                color=REPORT_THEME.red,
+                ecolor=REPORT_THEME.red,
+                capsize=4,
+                markersize=7,
+                linewidth=1.2,
+                label=calibration_label,
+                zorder=5,
+            )
+
+            depths = np.asarray(row["normalized_depths_list"], dtype=float)
+            depths = depths[np.isfinite(depths)]
+
+            if len(depths) > 0:
+                ax.scatter(
+                    np.full(len(depths), row["calibrated_n"]),
+                    depths,
+                    edgecolor=REPORT_THEME.blue,
+                    facecolor="none",
+                    linewidth=1.0,
+                    s=42,
+                    label="Experiment",
+                    zorder=4,
+                )
+
+            ax.set_title(
+                wrapped_condition_label(params_dict, width=90),
+                fontsize=10,
+                fontweight="bold",
+                pad=10,
+            )
+
+            ax.set_xlabel("B used in A=0 local calibration")
+            ax.set_ylabel("d / (D4sigma / 2)")
+            ax.margins(x=0.08, y=0.12)
+
+            ax.legend(
+                loc="best",
+                frameon=True,
+                framealpha=0.92,
+                borderpad=0.45,
+                handlelength=1.6,
+                labelspacing=0.35,
+            )
+
+            ax.text(
+                0.99,
+                0.02,
+                f"Local calibration {plot_idx} of {len(results_df)}",
+                transform=ax.transAxes,
+                ha="right",
+                va="bottom",
+                fontsize=10,
+                color=REPORT_THEME.gray,
+            )
+
+            figs.append(fig)
+
+    return figs
+
+
+def plot_posterior_distributions(
+    posterior_samples_dict: dict,
+    max_legend_items: int = 10,
+) -> mpl.figure.Figure | None:
+    if not posterior_samples_dict:
+        return None
+
+    with report_plot_context():
+        fig, ax = plt.subplots(
+            figsize=(10.5, 6.4),
+            layout="constrained",
+        )
+
+        color_values = plt.cm.viridis(
+            np.linspace(0.08, 0.92, len(posterior_samples_dict))
+        )
+
+        plotted = 0
+
+        for i, (param_key, samples) in enumerate(
+            posterior_samples_dict.items()
+        ):
+            params_dict = _parse_param_key(param_key)
+            label = condition_label(params_dict)
+
+            if i >= max_legend_items:
+                label = "_nolegend_"
+
+            values = np.asarray(samples, dtype=float)
+            values = values[np.isfinite(values)]
+
+            if len(values) == 0:
+                continue
+
+            sns.histplot(
+                values,
+                label=label,
+                color=color_values[i],
+                kde=True,
+                alpha=0.38,
+                stat="probability",
+                ax=ax,
+            )
+
+            plotted += 1
+
+        ax.set_title("Local Calibration Distributions")
+        ax.set_xlabel("Calibrated n")
+        ax.set_ylabel("Probability")
+        ax.margins(x=0.04, y=0.10)
+
+        handles, labels = ax.get_legend_handles_labels()
+
+        if handles:
+            if len(posterior_samples_dict) > max_legend_items:
+                omitted = len(posterior_samples_dict) - max_legend_items
+                labels.append(
+                    f"... {omitted} additional conditions omitted from legend"
+                )
+                handles.append(mpl.lines.Line2D([], [], color="none"))
+
+            ax.legend(
+                handles,
+                labels,
+                title="Process parameters",
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.16),
+                ncol=2,
+                frameon=False,
+                fontsize=10,
+                title_fontsize=10,
+            )
+
+        if plotted == 0:
+            plt.close(fig)
+            return None
+
+        return fig
+
+
+def _weighted_linear_initial_guess(
+    z_obs: np.ndarray,
+    n_obs: np.ndarray,
+    n_sigma_obs: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """
+    Weighted least-squares initial guess for n = A*z + B.
+
+    Returns theta = [A, B], approximate covariance, and reduced chi-square.
+    """
+    X = np.column_stack([z_obs, np.ones_like(z_obs)])
+    weights = 1.0 / np.maximum(n_sigma_obs, 1.0e-12) ** 2
+
+    sqrt_w = np.sqrt(weights)
+    Xw = X * sqrt_w[:, None]
+    yw = n_obs * sqrt_w
+
+    theta, *_ = np.linalg.lstsq(Xw, yw, rcond=None)
+
+    residual = (n_obs - X @ theta) / np.maximum(n_sigma_obs, 1.0e-12)
+    dof = max(len(n_obs) - 2, 1)
+    reduced_chi2 = float(np.sum(residual**2) / dof)
+
+    xtwx = Xw.T @ Xw
+    try:
+        covariance = np.linalg.inv(xtwx) * max(reduced_chi2, 1.0)
+    except np.linalg.LinAlgError:
+        covariance = np.linalg.pinv(xtwx) * max(reduced_chi2, 1.0)
+
+    return theta.astype(float), covariance.astype(float), reduced_chi2
+
+
+def _robust_weighted_curve_fit(
+    z_obs: np.ndarray,
+    n_obs: np.ndarray,
+    n_sigma_obs: np.ndarray,
+    config: dict,
+) -> dict:
+    """
+    Fit the local n estimates with uncertainty weighting and a robust loss.
+
+    The robust loss limits the influence of isolated conditions that are
+    inconsistent with the global response.
+    """
+    final_fit_cfg = config.get("final_fit", {})
+    bayes_cfg = config.get("bayesian", {})
+
+    sigma_floor = float(
+        final_fit_cfg.get(
+            "local_n_sigma_floor",
+            bayes_cfg.get("local_n_sigma_floor", 1.0e-6),
+        )
+    )
+    n_sigma_obs = np.maximum(np.asarray(n_sigma_obs, dtype=float), sigma_floor)
+
+    theta0, covariance0, reduced_chi2_0 = _weighted_linear_initial_guess(
+        z_obs,
+        n_obs,
+        n_sigma_obs,
+    )
+
+    loss = str(final_fit_cfg.get("loss", "soft_l1"))
+    f_scale = float(final_fit_cfg.get("f_scale", 1.0))
+
+    def residual(theta):
+        A, B = theta
+        return (n_obs - (A * z_obs + B)) / n_sigma_obs
+
+    used_scipy = False
+    if least_squares is not None and len(n_obs) >= 3:
+        sol = least_squares(
+            residual,
+            x0=theta0,
+            loss=loss,
+            f_scale=f_scale,
+        )
+        theta = sol.x.astype(float)
+        used_scipy = True
+    else:
+        theta = theta0.astype(float)
+        loss = "linear_weighted_lstsq"
+
+    A, B = theta
+    weighted_residual = residual(theta)
+    dof = max(len(n_obs) - 2, 1)
+    reduced_chi2 = float(np.sum(weighted_residual**2) / dof)
+
+    X = np.column_stack([z_obs, np.ones_like(z_obs)])
+    J = X / n_sigma_obs[:, None]
+    jt_j = J.T @ J
+    try:
+        covariance = np.linalg.inv(jt_j) * max(reduced_chi2, 1.0)
+    except np.linalg.LinAlgError:
+        covariance = np.linalg.pinv(jt_j) * max(reduced_chi2, 1.0)
+
+    return {
+        "A": float(A),
+        "B": float(B),
+        "A_std": float(np.sqrt(max(covariance[0, 0], 0.0))),
+        "B_std": float(np.sqrt(max(covariance[1, 1], 0.0))),
+        "covariance": covariance.tolist(),
+        "weighted_residuals": weighted_residual.astype(float).tolist(),
+        "reduced_chi2": reduced_chi2,
+        "initial_A": float(theta0[0]),
+        "initial_B": float(theta0[1]),
+        "initial_reduced_chi2": reduced_chi2_0,
+        "loss": loss,
+        "f_scale": f_scale,
+        "used_scipy_least_squares": bool(used_scipy),
+        "local_n_sigma_floor": sigma_floor,
+    }
+
+
+def _posterior_samples_for_results(
+    results_df: pd.DataFrame,
+    posterior_samples_dict: dict | None,
+) -> list[np.ndarray | None]:
+    """
+    Return local calibration samples aligned with rows in results_df.
+
+    The posterior_samples_dict keys are expected to be
+    str(sorted(params.items())). Missing samples are returned as None;
+    downstream uncertainty propagation then falls back to a Gaussian
+    approximation using the stored calibrated value and standard uncertainty.
+    """
+    samples_by_row: list[np.ndarray | None] = []
+    posterior_samples_dict = posterior_samples_dict or {}
+
+    for _, row in results_df.iterrows():
+        key = str(sorted(row["parameters"].items()))
+        samples = posterior_samples_dict.get(key)
+        if samples is None:
+            samples_by_row.append(None)
+            continue
+
+        values = np.asarray(samples, dtype=float)
+        values = values[np.isfinite(values)]
+        if len(values) == 0:
+            samples_by_row.append(None)
+        else:
+            samples_by_row.append(values)
+
+    return samples_by_row
+
+
+def _bootstrap_robust_weighted_fit_band(
+    z_obs: np.ndarray,
+    n_mode_obs: np.ndarray,
+    n_sigma_obs: np.ndarray,
+    x_range: np.ndarray,
+    posterior_samples_by_row: list[np.ndarray | None],
+    config: dict,
+    x_log_floor: float,
+) -> dict | None:
+    """
+    Empirical 95% response-curve interval from local calibration uncertainty.
+
+    Each realization samples one n value from each local posterior, refits A and
+    B, and evaluates n = clip(A * log2(x) + B, 0, 9). Pointwise quantiles give a
+    generally asymmetric interval.
+    """
+    final_fit_cfg = config.get("final_fit", {})
+    n_bootstrap = int(final_fit_cfg.get("bootstrap_samples", 1000))
+    seed = int(final_fit_cfg.get("bootstrap_random_seed", 12345))
+    min_success = int(
+        final_fit_cfg.get("bootstrap_min_success", max(50, n_bootstrap // 10))
+    )
+
+    if n_bootstrap <= 0 or len(n_mode_obs) < 2:
+        return None
+
+    rng = np.random.default_rng(seed)
+    curves = []
+    A_samples = []
+    B_samples = []
+
+    z_range = np.log2(np.maximum(x_range, x_log_floor))
+
+    # Each realization propagates the local posteriors through a complete
+    # refit, retaining covariance between A and B in the response band.
+    for _ in range(n_bootstrap):
+        sampled_n = np.empty_like(n_mode_obs, dtype=float)
+
+        for i, samples in enumerate(posterior_samples_by_row):
+            if samples is not None and len(samples) > 0:
+                sampled_n[i] = float(rng.choice(samples))
+            else:
+                sigma = max(float(n_sigma_obs[i]), 1.0e-8)
+                sampled_n[i] = float(rng.normal(float(n_mode_obs[i]), sigma))
+
+        sampled_n = np.clip(sampled_n, 0.0, 9.0)
+
+        try:
+            fit_b = _robust_weighted_curve_fit(
+                z_obs=z_obs,
+                n_obs=sampled_n,
+                n_sigma_obs=n_sigma_obs,
+                config=config,
+            )
+        except Exception:
+            continue
+
+        A_b = float(fit_b["A"])
+        B_b = float(fit_b["B"])
+        if not np.isfinite(A_b) or not np.isfinite(B_b):
+            continue
+
+        curve = np.clip(A_b * z_range + B_b, 0.0, 9.0)
+        curves.append(curve)
+        A_samples.append(A_b)
+        B_samples.append(B_b)
+
+    if len(curves) < min_success:
+        return None
+
+    curves = np.asarray(curves, dtype=float)
+    A_samples = np.asarray(A_samples, dtype=float)
+    B_samples = np.asarray(B_samples, dtype=float)
+
+    lower, median, upper = np.quantile(curves, [0.025, 0.5, 0.975], axis=0)
+
+    return {
+        "x": x_range.astype(float).tolist(),
+        "lower": lower.astype(float).tolist(),
+        "median": median.astype(float).tolist(),
+        "upper": upper.astype(float).tolist(),
+        "A_samples": A_samples.astype(float).tolist(),
+        "B_samples": B_samples.astype(float).tolist(),
+        "A_95_low": float(np.quantile(A_samples, 0.025)),
+        "A_50": float(np.quantile(A_samples, 0.5)),
+        "A_95_high": float(np.quantile(A_samples, 0.975)),
+        "B_95_low": float(np.quantile(B_samples, 0.025)),
+        "B_50": float(np.quantile(B_samples, 0.5)),
+        "B_95_high": float(np.quantile(B_samples, 0.975)),
+        "n_successful_bootstrap": int(len(curves)),
+        "n_requested_bootstrap": int(n_bootstrap),
+        "random_seed": int(seed),
+    }
+
+
+def plot_final_fit(
+    x_obs: np.ndarray,
+    n_obs: np.ndarray,
+    n_stds_obs: np.ndarray,
+    A_m: float,
+    B_m: float,
+    covariance: np.ndarray | None,
+    x_log_floor: float,
+    n_95_low_obs: np.ndarray | None = None,
+    n_95_high_obs: np.ndarray | None = None,
+    bootstrap_band: dict | None = None,
+) -> mpl.figure.Figure:
+    """
+    Plot the fitted projected-source response and its uncertainty.
+
+    ``x_obs`` is measured depth divided by half the D4sigma spot size. Values
+    below one are valid.
+    The curve and interval use n = clip(A * log2(x) + B, 0, 9).
+    """
+    with report_plot_context():
+        fig, ax = plt.subplots(
+            figsize=(10.5, 6.4),
+            layout="constrained",
+        )
+
+        if n_95_low_obs is not None and n_95_high_obs is not None:
+            interval_a = np.asarray(n_95_low_obs, dtype=float)
+            interval_b = np.asarray(n_95_high_obs, dtype=float)
+            lower = np.minimum(interval_a, interval_b)
+            upper = np.maximum(interval_a, interval_b)
+            yerr = np.vstack(
+                [
+                    np.maximum(n_obs - lower, 0.0),
+                    np.maximum(upper - n_obs, 0.0),
+                ]
+            )
+            point_label = "Local calibration with 95% interval"
+        else:
+            yerr = n_stds_obs
+            point_label = "Local calibration with standard uncertainty"
+
+        ax.errorbar(
+            x_obs,
+            n_obs,
+            yerr=yerr,
+            fmt="o",
+            color=REPORT_THEME.blue,
+            ecolor=REPORT_THEME.blue,
+            capsize=3,
+            markersize=5,
+            linewidth=1.0,
+            label=point_label,
+            zorder=4,
+        )
+
+        x_min = max(float(np.nanmin(x_obs)) * 0.95, x_log_floor)
+        x_max = float(np.nanmax(x_obs)) * 1.05
+        x_range = np.geomspace(x_min, x_max, 300)
+        z_range = np.log2(np.maximum(x_range, x_log_floor))
+
+        n_raw_pred = A_m * z_range + B_m
+        mean_pred = np.clip(n_raw_pred, 0.0, 9.0)
+
+        ax.plot(
+            x_range,
+            mean_pred,
+            color=REPORT_THEME.orange,
+            linewidth=2.0,
+            label=f"Recommended calibration: n = {A_m:.4f} log2(x) + {B_m:.4f}",
+            zorder=3,
+        )
+
+        plotted_bootstrap_band = False
+        if bootstrap_band is not None:
+            required = {"x", "lower", "upper"}
+            if required.issubset(set(bootstrap_band.keys())):
+                x_boot = np.asarray(bootstrap_band["x"], dtype=float)
+                lower_boot = np.asarray(bootstrap_band["lower"], dtype=float)
+                upper_boot = np.asarray(bootstrap_band["upper"], dtype=float)
+                if (
+                    len(x_boot) == len(lower_boot) == len(upper_boot)
+                    and len(x_boot) > 1
+                    and np.all(np.isfinite(x_boot))
+                ):
+                    ax.fill_between(
+                        x_boot,
+                        lower_boot,
+                        upper_boot,
+                        color=REPORT_THEME.orange,
+                        alpha=0.22,
+                        label="Calibrated 95% fit interval",
+                        zorder=2,
+                    )
+                    plotted_bootstrap_band = True
+
+        if (
+            not plotted_bootstrap_band
+            and covariance is not None
+            and np.all(np.isfinite(covariance))
+        ):
+            design = np.column_stack([z_range, np.ones_like(z_range)])
+            pred_var = np.einsum("ij,jk,ik->i", design, covariance, design)
+            pred_std = np.sqrt(np.maximum(pred_var, 0.0))
+            lower_pred = np.clip(n_raw_pred - 1.96 * pred_std, 0.0, 9.0)
+            upper_pred = np.clip(n_raw_pred + 1.96 * pred_std, 0.0, 9.0)
+            ax.fill_between(
+                x_range,
+                lower_pred,
+                upper_pred,
+                color=REPORT_THEME.orange,
+                alpha=0.22,
+                label="Approximate 95% fit interval",
+                zorder=2,
+            )
+
+        ax.set_xscale("log", base=2)
+        ax.set_title("AdditiveFOAM Calibration Fit")
+        ax.set_xlabel("x = d / (D4sigma / 2)")
+        ax.set_ylabel("Shape factor n")
+        ax.margins(x=0.04, y=0.12)
+
+        ax.legend(
+            loc="best",
+            frameon=True,
+            framealpha=0.92,
+            borderpad=0.45,
+            handlelength=1.6,
+        )
+
+        return fig
+
+
+def fit_and_plot_heteroskedastic_model(
+    calibrated_results_df: pd.DataFrame,
+    config: dict,
+    posterior_samples_dict: dict | None = None,
+):
+    """
+    Fit and plot the production projected-source relation.
+
+    Each local calibration contributes an n estimate and its uncertainty. The
+    robust, uncertainty-weighted relation is
+
+        n = clip(A * log2(x) + B, 0, 9)
+
+    where x is measured depth divided by half the D4sigma spot size. The
+    reported 95% response interval is propagated from the local calibration
+    uncertainty.
+    """
+    if calibrated_results_df.empty or len(calibrated_results_df) < 2:
+        return None, None
+
+    x_raw = calibrated_results_df["mean_normalized_depth"].values.astype(float)
+
+    bayes = config.get("bayesian", {})
+    report_cfg = config.get("report", {})
+    x_log_floor = float(
+        report_cfg.get("x_log_floor", bayes.get("x_log_floor", 1.0e-12))
+    )
+
+    if np.any(~np.isfinite(x_raw)):
+        raise ValueError("mean_normalized_depth contains non-finite values.")
+
+    if np.any(x_raw <= 0.0):
+        print(
+            "\nWARNING: Some mean_normalized_depth values are <= 0. "
+            f"These will be clipped to x_log_floor={x_log_floor:g} for log2(x)."
+        )
+
+    x_obs = np.maximum(x_raw, x_log_floor)
+    z_obs = np.log2(x_obs)
+
+    n_obs = calibrated_results_df["calibrated_n"].values.astype(float)
+
+    if "calibrated_n_variance" in calibrated_results_df.columns:
+        n_var_obs = calibrated_results_df[
+            "calibrated_n_variance"
+        ].values.astype(float)
+        n_var_obs = np.where(np.isfinite(n_var_obs), n_var_obs, np.nan)
+    else:
+        n_var_obs = np.full_like(n_obs, np.nan, dtype=float)
+
+    n_std_fallback = calibrated_results_df["calibrated_n_std"].values.astype(
+        float
+    )
+    n_var_fallback = n_std_fallback**2
+    n_var_obs = np.where(
+        np.isfinite(n_var_obs) & (n_var_obs >= 0.0), n_var_obs, n_var_fallback
+    )
+    n_stds_obs = np.sqrt(np.maximum(n_var_obs, 0.0))
+
+    if "calibrated_n_95_low" in calibrated_results_df.columns:
+        n_95_low_obs = calibrated_results_df[
+            "calibrated_n_95_low"
+        ].values.astype(float)
+    else:
+        n_95_low_obs = np.maximum(n_obs - 1.96 * n_stds_obs, 0.0)
+
+    if "calibrated_n_95_high" in calibrated_results_df.columns:
+        n_95_high_obs = calibrated_results_df[
+            "calibrated_n_95_high"
+        ].values.astype(float)
+    else:
+        n_95_high_obs = np.minimum(n_obs + 1.96 * n_stds_obs, 9.0)
+
+    print("\n--- Performing final uncertainty-weighted calibration fit ---")
+
+    fit = _robust_weighted_curve_fit(
+        z_obs=z_obs,
+        n_obs=n_obs,
+        n_sigma_obs=n_stds_obs,
+        config=config,
+    )
+
+    A_m = fit["A"]
+    B_m = fit["B"]
+    covariance = np.asarray(fit["covariance"], dtype=float)
+
+    print("--- Recommended calibration: n = A*log2(x) + B ---")
+    print(f"A = {A_m:.6f}")
+    print(f"B = {B_m:.6f}")
+    print(f"n = clip({A_m:.6f}*log2(x) + {B_m:.6f}, 0, 9)")
+
+    x_min_plot = max(float(np.nanmin(x_obs)) * 0.95, x_log_floor)
+    x_max_plot = float(np.nanmax(x_obs)) * 1.05
+    x_range = np.geomspace(x_min_plot, x_max_plot, 300)
+
+    posterior_samples_by_row = _posterior_samples_for_results(
+        calibrated_results_df,
+        posterior_samples_dict,
+    )
+    bootstrap_band = _bootstrap_robust_weighted_fit_band(
+        z_obs=z_obs,
+        n_mode_obs=n_obs,
+        n_sigma_obs=n_stds_obs,
+        x_range=x_range,
+        posterior_samples_by_row=posterior_samples_by_row,
+        config=config,
+        x_log_floor=x_log_floor,
+    )
+
+    fit_fig = plot_final_fit(
+        x_obs=x_obs,
+        n_obs=n_obs,
+        n_stds_obs=n_stds_obs,
+        A_m=A_m,
+        B_m=B_m,
+        covariance=covariance,
+        x_log_floor=x_log_floor,
+        n_95_low_obs=n_95_low_obs,
+        n_95_high_obs=n_95_high_obs,
+        bootstrap_band=bootstrap_band,
+    )
+
+    x_min = float(np.nanmin(x_obs))
+    x_max = float(np.nanmax(x_obs))
+    n_raw_at_x_min = A_m * np.log2(x_min) + B_m
+    n_raw_at_x_max = A_m * np.log2(x_max) + B_m
+
+    fit_summary = {
+        "fit_method": "Robust uncertainty-weighted response fit",
+        "A": float(A_m),
+        "B": float(B_m),
+        "A_std_covariance_approx": float(fit["A_std"]),
+        "B_std_covariance_approx": float(fit["B_std"]),
+        "covariance": fit["covariance"],
+        "loss": fit["loss"],
+        "f_scale": float(fit["f_scale"]),
+        "reduced_chi2": float(fit["reduced_chi2"]),
+        "initial_A": float(fit["initial_A"]),
+        "initial_B": float(fit["initial_B"]),
+        "initial_reduced_chi2": float(fit["initial_reduced_chi2"]),
+        "used_scipy_least_squares": bool(fit["used_scipy_least_squares"]),
+        "local_n_sigma_floor": float(fit["local_n_sigma_floor"]),
+        "x_min": x_min,
+        "x_max": x_max,
+        "x_log_floor": float(x_log_floor),
+        "x_definition": "d / (D4sigma / 2)",
+        "n_raw_at_x_min": float(n_raw_at_x_min),
+        "n_raw_at_x_max": float(n_raw_at_x_max),
+        "n_applied_at_x_min": float(np.clip(n_raw_at_x_min, 0.0, 9.0)),
+        "n_applied_at_x_max": float(np.clip(n_raw_at_x_max, 0.0, 9.0)),
+        "uses_x_clipped_at_1": False,
+        "uses_n_clipped_to_0_9": True,
+        "weighted_residuals": fit["weighted_residuals"],
+        "local_interval_display": "calibrated value with 95% interval",
+        "fit_band_display": "calibrated empirical 95% interval",
+    }
+
+    if bootstrap_band is not None:
+        fit_summary.update(
+            {
+                "bootstrap_samples_requested": int(
+                    bootstrap_band["n_requested_bootstrap"]
+                ),
+                "bootstrap_samples_successful": int(
+                    bootstrap_band["n_successful_bootstrap"]
+                ),
+                "bootstrap_random_seed": int(bootstrap_band["random_seed"]),
+                "A_bootstrap_95_low": float(bootstrap_band["A_95_low"]),
+                "A_bootstrap_median": float(bootstrap_band["A_50"]),
+                "A_bootstrap_95_high": float(bootstrap_band["A_95_high"]),
+                "B_bootstrap_95_low": float(bootstrap_band["B_95_low"]),
+                "B_bootstrap_median": float(bootstrap_band["B_50"]),
+                "B_bootstrap_95_high": float(bootstrap_band["B_95_high"]),
+            }
+        )
+    else:
+        fit_summary.update(
+            {
+                "bootstrap_samples_requested": int(
+                    config.get("final_fit", {}).get("bootstrap_samples", 1000)
+                ),
+                "bootstrap_samples_successful": 0,
+                "bootstrap_note": (
+                    "Empirical fit interval unavailable; plot fell back to "
+                    "covariance approximation if possible."
+                ),
+            }
+        )
+
+    return fit_summary, fit_fig
+
+
+def posterior_samples_for_state(trace, max_samples: int = 1000) -> list[float]:
+    samples = trace.posterior["n"].values.flatten()
+
+    if len(samples) > max_samples:
+        idx = np.linspace(0, len(samples) - 1, max_samples).astype(int)
+        samples = samples[idx]
+
+    return [float(v) for v in samples]
+
+
+def build_report_dataframe(
+    exp_df: pd.DataFrame,
+    final_state_df: pd.DataFrame,
+) -> pd.DataFrame:
+    rows = []
+
+    if final_state_df.empty:
+        return pd.DataFrame()
+
+    final_state_df = final_state_df.copy()
+    final_state_df["_param_key"] = final_state_df["parameters"].apply(
+        _parameter_key
+    )
+
+    for _, exp_row in exp_df.iterrows():
+        params = exp_row["parameters"]
+        param_key = _parameter_key(params)
+
+        matches = final_state_df[final_state_df["_param_key"] == param_key]
+        if matches.empty:
+            continue
+
+        state_row = matches.iloc[0]
+
+        mean_depth = float(np.mean(exp_row["depths_list"]))
+        mean_normalized_depth = float(
+            np.mean(exp_row["normalized_depths_list"])
+        )
+
+        calibrated_n = float(state_row["calibrated_n"])
+        calibrated_n_std = float(state_row["calibrated_n_std"])
+
+        rows.append(
+            {
+                "parameters": params,
+                "calibrated_n": calibrated_n,
+                "calibrated_n_mode": float(
+                    state_row.get("calibrated_n_mode", calibrated_n)
+                ),
+                "calibrated_n_mean": float(
+                    state_row.get("calibrated_n_mean", calibrated_n)
+                ),
+                "calibrated_n_median": float(
+                    state_row.get("calibrated_n_median", calibrated_n)
+                ),
+                "calibrated_n_variance": float(
+                    state_row.get("calibrated_n_variance", calibrated_n_std**2)
+                ),
+                "calibrated_n_std": calibrated_n_std,
+                "calibrated_n_95_low": float(
+                    state_row.get(
+                        "calibrated_n_95_low", calibrated_n - calibrated_n_std
+                    )
+                ),
+                "calibrated_n_95_high": float(
+                    state_row.get(
+                        "calibrated_n_95_high", calibrated_n + calibrated_n_std
+                    )
+                ),
+                "mean_depth_microns": mean_depth,
+                "mean_normalized_depth": mean_normalized_depth,
+                "mean_x": mean_normalized_depth,
+                "normalized_depths_list": exp_row["normalized_depths_list"],
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def save_summary_table(results_df: pd.DataFrame, filepath: Path):
+    if results_df.empty:
+        return
+
+    rows = []
+
+    for _, row in results_df.iterrows():
+        params = row["parameters"]
+
+        rows.append(
+            {
+                **params,
+                "mean_depth_microns": row["mean_depth_microns"],
+                "x_depth_over_half_d4sigma": row["mean_x"],
+                "calibrated_n": row["calibrated_n"],
+                "calibrated_n_mode": row.get(
+                    "calibrated_n_mode", row["calibrated_n"]
+                ),
+                "calibrated_n_mean": row.get(
+                    "calibrated_n_mean", row["calibrated_n"]
+                ),
+                "calibrated_n_median": row.get(
+                    "calibrated_n_median", row["calibrated_n"]
+                ),
+                "calibrated_n_variance": row.get(
+                    "calibrated_n_variance",
+                    row["calibrated_n_std"] ** 2,
+                ),
+                "calibrated_n_std": row["calibrated_n_std"],
+                "calibrated_n_95_low": row.get(
+                    "calibrated_n_95_low",
+                    row["calibrated_n"] - row["calibrated_n_std"],
+                ),
+                "calibrated_n_95_high": row.get(
+                    "calibrated_n_95_high",
+                    row["calibrated_n"] + row["calibrated_n_std"],
+                ),
+            }
+        )
+
+    pd.DataFrame(rows).to_csv(filepath, index=False)
+
+
+def build_report_styles():
+    styles = getSampleStyleSheet()
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportTitle",
+            parent=styles["Title"],
+            fontName=REPORT_THEME.body_bold_font,
+            fontSize=18,
+            leading=22,
+            textColor=colors.HexColor(REPORT_THEME.dark_green),
+            spaceAfter=14,
+            alignment=TA_LEFT,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="SectionHeading",
+            parent=styles["Heading2"],
+            fontName=REPORT_THEME.body_bold_font,
+            fontSize=12,
+            leading=15,
+            textColor=colors.HexColor(REPORT_THEME.dark_green),
+            spaceBefore=12,
+            spaceAfter=6,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="BodySmall",
+            parent=styles["BodyText"],
+            fontName=REPORT_THEME.body_font,
+            fontSize=10,
+            leading=11,
+            textColor=colors.HexColor(REPORT_THEME.black),
+            spaceAfter=5,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="BodySmallBold",
+            parent=styles["BodyText"],
+            fontName=REPORT_THEME.body_bold_font,
+            fontSize=10,
+            leading=11,
+            textColor=colors.HexColor(REPORT_THEME.black),
+            spaceAfter=5,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="MonoBlock",
+            parent=styles["BodyText"],
+            fontName=REPORT_THEME.mono_font,
+            fontSize=10,
+            leading=10,
+            textColor=colors.HexColor(REPORT_THEME.black),
+            leftIndent=10,
+            spaceBefore=4,
+            spaceAfter=8,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="Caption",
+            parent=styles["BodyText"],
+            fontName=REPORT_THEME.body_font,
+            fontSize=10,
+            leading=9,
+            textColor=colors.HexColor(REPORT_THEME.black),
+            alignment=TA_CENTER,
+            spaceBefore=4,
+            spaceAfter=10,
+        )
+    )
+
+    return styles
+
+
+def make_key_value_table(
+    items: list[tuple[str, Any]],
+    col_widths: list[float],
+):
+    styles = build_report_styles()
+
+    data = []
+    for key, value in items:
+        key_text = _escape_reportlab_text(key)
+        value_text = _escape_reportlab_text(value)
+        data.append(
+            [
+                Paragraph(f"<b>{key_text}</b>", styles["BodySmall"]),
+                Paragraph(value_text, styles["BodySmall"]),
+            ]
+        )
+
+    table = Table(data, colWidths=col_widths, hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.25,
+                    colors.HexColor(REPORT_THEME.light_gray),
+                ),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F5F5F5")),
+            ]
+        )
+    )
+    return table
+
+
+def report_footer(canvas, doc):
+    canvas.saveState()
+
+    width, _ = doc.pagesize
+
+    canvas.setStrokeColor(colors.HexColor(REPORT_THEME.light_gray))
+    canvas.setLineWidth(0.5)
+    canvas.line(
+        doc.leftMargin,
+        0.45 * inch,
+        width - doc.rightMargin,
+        0.45 * inch,
+    )
+
+    canvas.setFont(REPORT_THEME.body_font, 7)
+    canvas.setFillColor(colors.HexColor(REPORT_THEME.gray))
+    canvas.drawString(
+        doc.leftMargin,
+        0.28 * inch,
+        "Oak Ridge National Laboratory",
+    )
+    canvas.drawRightString(
+        width - doc.rightMargin,
+        0.28 * inch,
+        f"Page {doc.page}",
+    )
+
+    canvas.restoreState()
+
+
+def write_report(
+    results_df: pd.DataFrame,
+    simulations_df: pd.DataFrame,
+    posterior_samples_dict: dict,
+    fit_summary: dict | None,
+    fit_fig: mpl.figure.Figure | None,
+    config: dict,
+):
+    output_pdf = config.get("report", {}).get(
+        "output_pdf",
+        "reports/calibration_report.pdf",
+    )
+
+    output_pdf = Path(output_pdf)
+    if not output_pdf.is_absolute():
+        output_pdf = Path(config["campaign_dir"]) / output_pdf
+
+    output_pdf.parent.mkdir(parents=True, exist_ok=True)
+
+    summary_csv = output_pdf.parent / "calibration_summary.csv"
+    save_summary_table(results_df, summary_csv)
+
+    styles = build_report_styles()
+
+    doc = SimpleDocTemplate(
+        str(output_pdf),
+        pagesize=REPORT_THEME.page_size,
+        rightMargin=REPORT_THEME.margin_right,
+        leftMargin=REPORT_THEME.margin_left,
+        topMargin=REPORT_THEME.margin_top,
+        bottomMargin=REPORT_THEME.margin_bottom,
+        title="AdditiveFOAM Calibration Report",
+        author="Oak Ridge National Laboratory",
+        subject="AdditiveFOAM calibration",
+    )
+
+    story = []
+
+    story.append(
+        Paragraph("AdditiveFOAM Calibration Report", styles["ReportTitle"])
+    )
+    story.append(
+        Paragraph(
+            "Automated calibration report for AdditiveFOAM",
+            styles["BodySmall"],
+        )
+    )
+    story.append(Spacer(1, 0.15 * inch))
+
+    run_items = [
+        ("Generated", datetime.now().strftime("%Y-%m-%d %H:%M")),
+        ("Experiments file", config.get("experiments_file", "not specified")),
+        ("Simulation cache", config.get("simulations_file", "not specified")),
+        ("Template case", config.get("template_case", "not specified")),
+        ("Campaign directory", config.get("campaign_dir", "not specified")),
+        (
+            "Melt pool dimensions isovalue",
+            config.get("melt_pool_dimensions_isovalue", "not specified"),
+        ),
+        ("Number of calibrated experiments", len(results_df)),
+    ]
+
+    if not results_df.empty:
+        run_items.extend(
+            [
+                (
+                    "Range x = d / (D4sigma / 2)",
+                    f"[{results_df['mean_x'].min():.4f}, "
+                    f"{results_df['mean_x'].max():.4f}]",
+                ),
+            ]
+        )
+
+    story.append(Paragraph("Run Summary", styles["SectionHeading"]))
+    story.append(
+        make_key_value_table(run_items, col_widths=[2.15 * inch, 4.95 * inch])
+    )
+    story.append(Spacer(1, 0.2 * inch))
+
+    if fit_summary:
+        A_std = fit_summary.get("A_std_covariance_approx", float("nan"))
+        B_std = fit_summary.get("B_std_covariance_approx", float("nan"))
+        fit_items = [
+            ("Calibration relation", f"n = A * log2(x) + B"),
+            ("A", f"{fit_summary['A']:.6f}"),
+            ("B", f"{fit_summary['B']:.6f}"),
+            (
+                "A standard error",
+                f"{A_std:.6f}",
+            ),
+            (
+                "B standard error",
+                f"{B_std:.6f}",
+            ),
+            (
+                "A 95% interval",
+                f"[{fit_summary.get('A_bootstrap_95_low', float('nan')):.6f}, "
+                f"{fit_summary.get('A_bootstrap_95_high', float('nan')):.6f}]",
+            ),
+            (
+                "B 95% interval",
+                f"[{fit_summary.get('B_bootstrap_95_low', float('nan')):.6f}, "
+                f"{fit_summary.get('B_bootstrap_95_high', float('nan')):.6f}]",
+            ),
+            (
+                "Weighted residual statistic",
+                f"{fit_summary.get('reduced_chi2', float('nan')):.4f}",
+            ),
+            (
+                "Calibration x range",
+                f"{fit_summary['x_min']:.4f} to {fit_summary['x_max']:.4f}",
+            ),
+            ("n at minimum x", f"{fit_summary['n_applied_at_x_min']:.6f}"),
+            ("n at maximum x", f"{fit_summary['n_applied_at_x_max']:.6f}"),
+        ]
+
+        story.append(Paragraph("Calibration Fit", styles["SectionHeading"]))
+        story.append(
+            make_key_value_table(
+                fit_items, col_widths=[2.15 * inch, 4.95 * inch]
+            )
+        )
+        story.append(Spacer(1, 0.2 * inch))
+
+    if not results_df.empty:
+        story.append(PageBreak())
+
+        story.append(
+            Paragraph("Calibration Summary Table", styles["SectionHeading"])
+        )
+
+        table_df = results_df.copy()
+        available_cols = [
+            col
+            for col in [
+                "mean_depth_microns",
+                "mean_x",
+                "calibrated_n",
+                "calibrated_n_95_low",
+                "calibrated_n_95_high",
+            ]
+            if col in table_df.columns
+        ]
+
+        table_df = table_df[available_cols].round(6)
+
+        header_map = {
+            "mean_depth_microns": "Target mean, microns",
+            "mean_x": "d / (D4sigma / 2)",
+            "calibrated_n": "n estimate",
+            "calibrated_n_95_low": "n, lower 95%",
+            "calibrated_n_95_high": "n, upper 95%",
+        }
+
+        table_data = [[header_map.get(col, col) for col in available_cols]]
+        table_data.extend(table_df.values.tolist())
+
+        col_width_lookup = {
+            "mean_depth_microns": 1.65 * inch,
+            "mean_x": 1.65 * inch,
+            "calibrated_n": 1.35 * inch,
+            "calibrated_n_95_low": 1.20 * inch,
+            "calibrated_n_95_high": 1.20 * inch,
+        }
+        col_widths = [col_width_lookup[col] for col in available_cols]
+
+        summary_table = Table(
+            table_data,
+            repeatRows=1,
+            hAlign="LEFT",
+            colWidths=col_widths,
+        )
+
+        summary_table.setStyle(
+            TableStyle(
+                [
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.HexColor(REPORT_THEME.dark_green),
+                    ),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), REPORT_THEME.body_bold_font),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    (
+                        "GRID",
+                        (0, 0),
+                        (-1, -1),
+                        0.25,
+                        colors.HexColor(REPORT_THEME.light_gray),
+                    ),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [
+                            colors.white,
+                            colors.HexColor(REPORT_THEME.very_light_gray),
+                        ],
+                    ),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ]
+            )
+        )
+
+        story.append(summary_table)
+
+    story.append(PageBreak())
+
+    max_plot_width = 7.1 * inch
+    max_plot_height = 6.3 * inch
+    figure_number = 1
+
+    overview_figs = plot_calibration_overview_pages(results_df, simulations_df)
+
+    for i, fig in enumerate(overview_figs, start=1):
+        condition = condition_label(results_df.iloc[i - 1]["parameters"])
+        condition_escaped = _escape_reportlab_text(condition)
+
+        story.append(
+            Paragraph(f"Local Calibration {i}", styles["SectionHeading"])
+        )
+        story.append(
+            fig_to_reportlab_image(
+                fig,
+                max_width=max_plot_width,
+                max_height=max_plot_height,
+                dpi=REPORT_THEME.plot_dpi,
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Figure {figure_number}:</b> "
+                f"Local calibration for {condition_escaped}.",
+                styles["Caption"],
+            )
+        )
+        figure_number += 1
+        story.append(PageBreak())
+
+    posterior_fig = plot_posterior_distributions(posterior_samples_dict)
+
+    if posterior_fig is not None:
+        story.append(
+            Paragraph(
+                "Local Calibration Distributions", styles["SectionHeading"]
+            )
+        )
+        story.append(
+            fig_to_reportlab_image(
+                posterior_fig,
+                max_width=max_plot_width,
+                max_height=max_plot_height,
+                dpi=REPORT_THEME.plot_dpi,
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Figure {figure_number}:</b> "
+                "Probability distributions for the local calibrations.",
+                styles["Caption"],
+            )
+        )
+        figure_number += 1
+        story.append(PageBreak())
+
+    if fit_fig is not None:
+        story.append(Paragraph("Calibration Fit", styles["SectionHeading"]))
+        story.append(
+            fig_to_reportlab_image(
+                fit_fig,
+                max_width=max_plot_width,
+                max_height=max_plot_height,
+                dpi=REPORT_THEME.plot_dpi,
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Figure {figure_number}:</b> "
+                "Final AdditiveFOAM calibration fit. Symbols show local n "
+                "estimates with 95% intervals. The solid curve is n = A "
+                "log2(x) + B, where x = d / (D4sigma / 2). The shaded "
+                "region is the 95% interval propagated "
+                "from local calibration uncertainty.",
+                styles["Caption"],
+            )
+        )
+        figure_number += 1
+
+    doc.build(
+        story,
+        onFirstPage=report_footer,
+        onLaterPages=report_footer,
+    )
+
+    print(f"\nWrote report: {output_pdf}")
+    print(f"Wrote summary table: {summary_csv}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run an AdditiveFOAM heat-source calibration campaign and generate "
+            "the fitted projected-source closure."
+        )
+    )
+    parser.add_argument(
+        "--config",
+        default="config.yml",
+        help="Calibration configuration file (default: config.yml)",
+    )
+    args = parser.parse_args()
+    config = load_config(args.config)
+    if not Path(config["experiments_file"]).is_file():
+        raise FileNotFoundError(
+            f"Experiments file does not exist: {config['experiments_file']}"
+        )
+    validate_template_case(
+        Path(config["template_case"]),
+        config["calibration_token"],
+    )
+
+    # Fingerprints allow unchanged conditions to reuse their saved posterior
+    # state.
+    raw_experiments = load_yaml_file(config["experiments_file"])
+    raw_simulations = load_yaml_file(config["simulations_file"])
+    current_state_data = load_yaml_file(config["calibration_state_file"])
+
+    exp_df = parse_experiments(raw_experiments)
+    sim_df = parse_simulations(raw_simulations)
+    state_df = pd.DataFrame(current_state_data)
+
+    if exp_df.empty:
+        print("No experimental data found. Exiting.")
+        return
+
+    to_process_list, fresh_states, state_lookup = [], [], {}
+    if not state_df.empty:
+        for _, row in state_df.iterrows():
+            state_lookup[str(sorted(row["parameters"].items()))] = row.to_dict()
+
+    for _, exp_row in exp_df.iterrows():
+        param_key = str(sorted(exp_row["parameters"].items()))
+        if (
+            param_key in state_lookup
+            and state_lookup[param_key].get("fingerprint")
+            == exp_row["fingerprint"]
+        ):
+            fresh_states.append(state_lookup[param_key])
+        else:
+            to_process_list.append(exp_row)
+
+    to_process_df = pd.DataFrame(to_process_list)
+
+    print("\n--- Adaptive Run Summary ---")
+    print(f"Found {len(exp_df)} total experimental parameter sets.")
+    print(f"Found {len(fresh_states)} up-to-date calibrations.")
+    print(f"Found {len(to_process_df)} new or stale experiments to process.")
+
+    newly_calibrated_states = []
+    posterior_samples = {}
+
+    # Stage 1: infer a local n independently for each process condition.
+    if not to_process_df.empty:
+        for _, job_row in to_process_df.iterrows():
+            params = job_row["parameters"]
+            print(f"\n--- Processing parameters: {params} ---")
+
+            sim_df, raw_simulations = ensure_simulation_curve(
+                job_row,
+                sim_df,
+                raw_simulations,
+                config,
+            )
+            model_subset = find_matching_simulation_subset(sim_df, params)
+            if model_subset.empty:
+                print("  No matching simulation data found.")
+                continue
+
+            n_coords, model_normalized_depths = get_sorted_simulation_curve(
+                model_subset
+            )
+            n_surrogate, depth_surrogate = build_pchip_surrogate_grid(
+                n_coords,
+                model_normalized_depths,
+                n_grid=int(
+                    config.get("adaptive_learning", {}).get(
+                        "pchip_grid_points", 1000
+                    )
+                ),
+            )
+
+            trace = perform_bayesian_calibration(
+                n_surrogate,
+                depth_surrogate,
+                job_row["normalized_depths_list"],
+                config,
+            )
+            trace, sim_df, raw_simulations = maybe_refine_curve(
+                job_row,
+                trace,
+                sim_df,
+                raw_simulations,
+                config,
+            )
+            posterior_summary = summarize_local_n_posterior(trace)
+
+            calibrated_n = posterior_summary["n_mode"]
+            calibrated_n_std = posterior_summary["n_std"]
+
+            new_state = {
+                "parameters": params,
+                "calibrated_n": float(calibrated_n),
+                "calibrated_n_mode": float(posterior_summary["n_mode"]),
+                "calibrated_n_mean": float(posterior_summary["n_mean"]),
+                "calibrated_n_median": float(posterior_summary["n_median"]),
+                "calibrated_n_variance": float(posterior_summary["n_variance"]),
+                "calibrated_n_std": float(calibrated_n_std),
+                "calibrated_n_95_low": float(posterior_summary["n_95_low"]),
+                "calibrated_n_95_high": float(posterior_summary["n_95_high"]),
+                "fingerprint": job_row["fingerprint"],
+            }
+            newly_calibrated_states.append(new_state)
+            samples = posterior_samples_for_state(trace)
+            new_state["posterior_n_samples"] = samples
+            posterior_samples[str(sorted(params.items()))] = samples
+
+            print(
+                f"  -> Local n estimate: {calibrated_n:.3f} "
+                f"(mean={posterior_summary['n_mean']:.3f}, "
+                f"std={calibrated_n_std:.3f})"
+            )
+
+    final_state = fresh_states + newly_calibrated_states
+    save_yaml_file(final_state, config["calibration_state_file"])
+    final_state_df = pd.DataFrame(final_state)
+
+    print("\n\n" + "=" * 30)
+    print(" FINAL CALIBRATION STATE ")
+    print("=" * 30)
+    if not final_state_df.empty:
+        columns = ["parameters", "calibrated_n", "calibrated_n_std"]
+        print(final_state_df[columns].to_string(index=False))
+    else:
+        print("No calibrated results exist in the state file.")
+
+    for state in final_state:
+        key = str(sorted(state["parameters"].items()))
+        if key not in posterior_samples and "posterior_n_samples" in state:
+            posterior_samples[key] = state["posterior_n_samples"]
+
+    # Stage 2: fit A and B across the completed local calibrations.
+    report_df = build_report_dataframe(exp_df, final_state_df)
+    if not report_df.empty:
+        fit_summary, fit_fig = fit_and_plot_heteroskedastic_model(
+            report_df,
+            config,
+            posterior_samples,
+        )
+        if fit_summary:
+            save_yaml_file(
+                fit_summary,
+                Path(config["campaign_dir"]) / "calibration_fit.yml",
+            )
+        if config.get("report", {}).get("enabled", True):
+            write_report(
+                report_df,
+                sim_df,
+                posterior_samples,
+                fit_summary,
+                fit_fig,
+                config,
+            )
+
+
+if __name__ == "__main__":
+    main()

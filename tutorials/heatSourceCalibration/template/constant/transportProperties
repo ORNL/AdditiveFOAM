@@ -10,13 +10,9 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      decomposeParDict;
+    object      transportProperties;
 }
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-numberOfSubdomains  8;
-
-method              scotch;
-
+#include "$ADDITIVEFOAM_ETC/materials/SS316L.cfg"
 // ************************************************************************* //

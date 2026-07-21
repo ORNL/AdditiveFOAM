@@ -54,10 +54,14 @@ Foam::absorptionModels::Kelly::Kelly
     etaMin_("etaMin", dimless, absorptionModelCoeffs_),
     aspectRatioSwitch_
     (
-        absorptionModelCoeffs_.lookupOrDefault<scalar>
+        max
         (
-            "aspectRatioSwitch",
-            1.0
+            absorptionModelCoeffs_.lookupOrDefault<scalar>
+            (
+                "aspectRatioSwitch",
+                1.0
+            ),
+            scalar(1e-10)
         )
     )
 {
@@ -116,12 +120,15 @@ bool Foam::absorptionModels::Kelly::read()
         absorptionModelCoeffs_.lookup("geometry") >> geometry_;
         absorptionModelCoeffs_.lookup("eta0") >> eta0_;
         absorptionModelCoeffs_.lookup("etaMin") >> etaMin_;
-        aspectRatioSwitch_ =
+        aspectRatioSwitch_ = max
+        (
             absorptionModelCoeffs_.lookupOrDefault<scalar>
             (
                 "aspectRatioSwitch",
                 1.0
-            );
+            ),
+            scalar(1e-10)
+        );
 
         return true;
     }

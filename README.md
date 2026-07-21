@@ -13,6 +13,8 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
 | [tutorials](tutorials)                                     | Tutorial cases |
+| [calibration utility](bin/calibrateHeatSource)             | Heat-source calibration command |
+| [calibration tutorial](tutorials/heatSourceCalibration)    | Projected heat-source calibration workflow |
 
 ## Installation
 [![OpenFOAM-14](https://img.shields.io/badge/OpenFOAM-14-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-14)
@@ -42,8 +44,28 @@ script from the repository root:
 ./Allwmake
 ```
 
-For regular use, source both environments in each new shell or add them to your
-shell startup file:
+The Python utilities require Python 3.10 or newer. To use a dedicated virtual
+environment, create it and install the pinned dependencies from the repository
+root:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip check
+calibrateHeatSource --help
+```
+
+To use an existing Python environment instead, activate that environment and
+install the same requirements into it:
+
+```sh
+python -m pip install -r /path/to/AdditiveFOAM/requirements.txt
+python -m pip check
+```
+
+The AdditiveFOAM environment does not create or activate a Python environment.
+Source the OpenFOAM and AdditiveFOAM environments in each new shell:
 
 ```sh
 source /path/to/OpenFOAM-14/etc/bashrc

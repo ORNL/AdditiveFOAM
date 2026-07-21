@@ -1,0 +1,25 @@
+- parameters:
+    Power_W: 187.5
+    Speed_mm_s: 500
+    Spot_Size_microns: 109.69
+  Measured_Depth_microns: [87.05,98.1]
+- parameters:
+    Power_W: 300.0
+    Speed_mm_s: 500
+    Spot_Size_microns: 109.69
+  Measured_Depth_microns: [168.57,190.67]
+- parameters:
+    Power_W: 412.5
+    Speed_mm_s: 500
+    Spot_Size_microns: 109.69
+  Measured_Depth_microns: [272.19,264.07]
+- parameters:
+    Power_W: 525.0
+    Speed_mm_s: 500
+    Spot_Size_microns: 109.69
+  Measured_Depth_microns: [359.24,353.71]
+- parameters:
+    Power_W: 637.5
+    Speed_mm_s: 500
+    Spot_Size_microns: 109.69
+  Measured_Depth_microns: [464.25,467.01]

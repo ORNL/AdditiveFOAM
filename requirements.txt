@@ -1,0 +1,10 @@
+arviz==0.22.0
+matplotlib==3.10.8
+numpy==1.26.4
+pandas==2.3.3
+pymc==5.25.1
+pytensor==2.31.7
+PyYAML==6.0.2
+reportlab==5.0.0
+scipy==1.15.3
+seaborn==0.13.2

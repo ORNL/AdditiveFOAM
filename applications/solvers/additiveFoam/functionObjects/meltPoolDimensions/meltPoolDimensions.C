@@ -247,7 +247,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
             // physical boundary : take face point if above iso value
             const vectorField& Cf = mesh_.Cf().boundaryField()[patchi];
 
-            const scalarField& pif(TPf.patchInternalField());
+            const scalarField pif(TPf.patchInternalField());
 
             forAll(faceCells, facei)
             {

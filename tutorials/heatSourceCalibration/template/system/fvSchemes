@@ -11,12 +11,40 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      decomposeParDict;
+    object      fvSchemes;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains  8;
+ddtSchemes
+{
+    default         Euler;
+}
 
-method              scotch;
+gradSchemes
+{
+    default         Gauss linear;
+}
+
+divSchemes
+{
+    default         Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default             Gauss linear corrected;
+    laplacian(kappa,T)	Gauss harmonic corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
 
 // ************************************************************************* //

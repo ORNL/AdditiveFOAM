@@ -12,52 +12,48 @@ FoamFile
     class       dictionary;
     object      heatSourceDict;
 }
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 sources (beam);
 
-depth   5.0e-5;
-innerA  0.0;
-innerB  1.0;
-outerA  0.0;
-outerB  1.0;
-
-#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
+heatSourceRadius <<heatSourceRadius>>;
 
 beam
 {
-    pathName            scanPath;    
+    pathName            scanPath;
 
-    absorptionModel     constant;
-    
-    constantCoeffs
+    absorptionModel     Kelly;
+
+    KellyCoeffs
     {
-        eta             0.33;
+        eta0                0.27;
+        etaMin              0.27;
+        aspectRatioSwitch   0.0;
+        geometry            cylinder;
     }
-    
-    heatSourceModel     nLightAFX;
-        
-    nLightAFXCoeffs
+
+    heatSourceModel     projectedGaussian;
+
+    projectedGaussianCoeffs
     {
-        $Index6;
-        
-        transient   true;
-        nPoints     (10 10 10);
+        dimensions      ($heatSourceRadius $heatSourceRadius 30.0e-6);
+        A               0.0;
+        B               <<B>>;
+
+        transient       true;
+        nPoints         (10 10 10);
     }
 }
 
 refinementModel
 {
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    refinementModel         targetCellLoad;
     
     refinementTemperature   1000;
 
     buffers
     {
-        beam                (200.0e-6 200.0e-6 100e-6);
+        beam                (100.0e-6 100.0e-6 600e-6);
     }
 
     targetCellLoadCoeffs

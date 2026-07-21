@@ -7,16 +7,33 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    version     2.0;
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      decomposeParDict;
+    object      dynamicMeshDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains  8;
+topoChanger
+{
+    type    refiner;
 
-method              scotch;
+    libs    ("libfvMeshTopoChangers.so");
+
+    refineInterval  1;
+
+    field           refinementField;
+
+    lowerRefineLevel 0.1;
+
+    upperRefineLevel 10.0;
+
+    nBufferLayers   5;
+
+    maxRefinement   1;
+
+    maxCells        20000000;
+
+    dumpLevel       true;
+}
 
 // ************************************************************************* //

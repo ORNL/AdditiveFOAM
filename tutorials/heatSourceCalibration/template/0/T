@@ -9,14 +9,42 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "system";
-    object      decomposeParDict;
+    class       volScalarField;
+    object      T;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains  8;
+dimensions      [0 0 0 1 0 0 0];
 
-method              scotch;
+internalField   uniform 300;
+
+boundaryField
+{
+    bottom
+    {
+        type            zeroGradient;
+        value           uniform 300;
+    }
+
+    top
+    {
+        type            mixedTemperature;
+        h               10.0;
+        Tinf            uniform 300;
+        value           uniform 300;
+    }
+
+    sides
+    {
+        type            zeroGradient;
+        value           uniform 300;
+    }
+
+    internalFaces
+    {
+        type            internal;
+    }
+}
+
 
 // ************************************************************************* //
