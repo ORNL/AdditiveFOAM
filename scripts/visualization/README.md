@@ -4,7 +4,7 @@ The documentation figures are rendered from reconstructed AdditiveFOAM tutorial 
 
 ## Required cases
 
-Prepare six case directories from the current AdditiveFOAM tutorials:
+Prepare six case directories and one completed calibration campaign from the current AdditiveFOAM tutorials:
 
 1. Run `AMB2018-02-B` without changing its supplied refinement model.
 2. Copy `AMB2018-02-B`, set `refinementModel/refinementModel` in `constant/heatSourceDict` to `timeStep`, confirm that `refineInterval` is `1` in `constant/dynamicMeshDict`, and run the case.
@@ -12,6 +12,7 @@ Prepare six case directories from the current AdditiveFOAM tutorials:
 4. Run `multiBeam`.
 5. Run `nLightAFX`.
 6. Run `tabulated`.
+7. Run `heatSourceCalibration` with `calibrateHeatSource` so its `campaign/` directory contains `simulations.yml`, `calibration_state.yml`, `calibration_fit.yml`, and the report summary.
 
 Run each supplied `Allrun` script so the parallel fields are reconstructed. Create an empty `case.foam` marker in each reconstructed case directory. For the multi-layer input, use the parent `multiLayerPBF` directory produced by `reconstructLayers`; it contains the complete temperature history across all layers.
 
@@ -19,8 +20,7 @@ Run each supplied `Allrun` script so the parallel fields are reconstructed. Crea
 
 ### Regenerate everything
 
-Place the six reconstructed cases under one directory using their standard
-tutorial names:
+Place the six reconstructed cases and the completed calibration under one directory using their standard tutorial names:
 
 ```text
 documentation-figures/
@@ -29,10 +29,13 @@ documentation-figures/
 ├── multiBeam/
 ├── multiLayerPBF/
 ├── nLightAFX/
-└── tabulated/
+├── tabulated/
+└── heatSourceCalibration/
+    ├── experiments.yml
+    └── campaign/
 ```
 
-Set the location once and regenerate and verify all 19 generated documentation
+Set the location once and regenerate and verify all 21 generated documentation
 assets with no per-case paths:
 
 ```bash
@@ -48,7 +51,7 @@ quantitative and analytic plots, writes the results to
 `assets/images/visualizations`, and verifies the expected output set. Use
 `--output-dir` to write elsewhere or `--dry-run` to inspect every command.
 Alternatively, pass `--cases-root` once on the command line. Individual case
-arguments are available only as overrides for nonstandard directory layouts.
+arguments are available only as overrides for nonstandard directory layouts. Use `--calibration-campaign` and `--calibration-experiments` when those outputs are stored elsewhere.
 
 The case directories and their computed fields remain external inputs; the
 driver does not copy them into the documentation repository.
@@ -109,3 +112,20 @@ Generate the Kelly absorption-model figure from the parameters used in the examp
 python3 scripts/visualization/plot_kelly_absorption.py \
   --output assets/images/visualizations/kelly-absorption.png
 ```
+
+## Heat-source calibration plots
+
+Generate the local AdditiveFOAM response curves and final uncertainty-propagated fit from a completed calibration campaign:
+
+```bash
+python3 scripts/visualization/plot_heat_source_calibration.py \
+  --experiments /path/to/heatSourceCalibration/experiments.yml \
+  --simulations /path/to/campaign/simulations.yml \
+  --summary /path/to/campaign/reports/calibration_summary.csv \
+  --state /path/to/campaign/calibration_state.yml \
+  --fit /path/to/campaign/calibration_fit.yml \
+  --responses-output assets/images/visualizations/heat-source-calibration-responses.png \
+  --fit-output assets/images/visualizations/heat-source-calibration-fit.png
+```
+
+The response figure reconstructs each PCHIP surrogate from the cached AdditiveFOAM trials and overlays the measured replicate range and local posterior mode. The fit figure uses `x = d / (D4sigma / 2)`, resamples the stored local posteriors with the campaign seed, repeats the robust uncertainty-weighted fit, and plots the empirical 95% response interval. The summary must contain `x_depth_over_half_d4sigma`, and the fit must declare `x_definition: d / (D4sigma / 2)`.

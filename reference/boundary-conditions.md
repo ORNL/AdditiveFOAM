@@ -2,7 +2,7 @@
 layout: versioned
 title: Boundary Conditions
 parent: User Guide
-nav_order: 5
+nav_order: 6
 permalink: /docs/boundary-conditions/
 redirect_from:
   - /reference/boundary-conditions/

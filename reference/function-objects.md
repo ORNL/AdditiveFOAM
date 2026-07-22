@@ -2,7 +2,7 @@
 layout: versioned
 title: Function Objects
 parent: User Guide
-nav_order: 9
+nav_order: 10
 permalink: /docs/function-objects/
 redirect_from:
   - /reference/function-objects/

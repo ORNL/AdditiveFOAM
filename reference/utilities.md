@@ -2,7 +2,7 @@
 layout: versioned
 title: Utilities
 parent: User Guide
-nav_order: 10
+nav_order: 11
 permalink: /docs/utilities/
 redirect_from:
   - /reference/utilities/
@@ -10,10 +10,11 @@ redirect_from:
 
 # Utilities
 
-AdditiveFOAM includes command-line utilities for generating raster scan paths, converting measured beam profiles, running and reconstructing multi-layer cases, combining parallel Function Object output, and plotting power, melt-pool dimensions, and solidification conditions.
+AdditiveFOAM includes command-line utilities for calibrating projected heat sources, generating raster scan paths, converting measured beam profiles, running and reconstructing multi-layer cases, combining parallel Function Object output, and plotting power, melt-pool dimensions, and solidification conditions.
 
 | Workflow | Utilities |
 |---|---|
+| Projected-source calibration | `calibrateHeatSource` |
 | Scan-path generation | `createScanPath` |
 | Measured beam conversion | `primesToAdditiveFoam` |
 | Multi-layer simulation | `runLayers`, `reconstructLayers` |
@@ -21,6 +22,16 @@ AdditiveFOAM includes command-line utilities for generating raster scan paths, c
 | Plotting | `plotPower`, `plotDimensions`, `plotCET` |
 
 Sourcing `etc/bashrc` adds `$ADDITIVEFOAM_BIN` to `PATH`, making these commands available in the current shell.
+
+## `calibrateHeatSource`
+
+Run a campaign of rendered AdditiveFOAM cases and infer the `A` and `B` coefficients used by the common projected-source depth distribution:
+
+```bash
+calibrateHeatSource --config config.yml
+```
+
+The command requires the Python packages pinned in the repository `requirements.txt`. It reads experimental depths and a complete case template, caches every simulated response, performs local Bayesian inversions and a robust global fit, and writes YAML, CSV, and PDF products. See the [calibration model and configuration reference]({{ '/docs/heat-source-calibration/' | relative_url }}) and [worked tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}).
 
 ## `createScanPath`
 

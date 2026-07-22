@@ -2,7 +2,7 @@
 layout: versioned
 title: Adaptive Mesh Refinement
 parent: User Guide
-nav_order: 6
+nav_order: 7
 permalink: /docs/amr/
 redirect_from:
   - /reference/amr/

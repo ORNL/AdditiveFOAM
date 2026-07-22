@@ -45,6 +45,8 @@ EXPECTED_ASSETS = (
     "amb2018-temperature.mp4",
     "amr-refinement.mp4",
     "amr-refinement.png",
+    "heat-source-calibration-fit.png",
+    "heat-source-calibration-responses.png",
     "heat-source-models.png",
     "heat-source-projection.png",
     "kelly-absorption.png",
@@ -65,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Regenerate all AdditiveFOAM documentation figures and videos "
-            "from completed, reconstructed tutorial cases."
+            "from completed tutorial cases and calibration outputs."
         )
     )
     parser.add_argument(
@@ -83,6 +85,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tabulated-case", type=Path)
     parser.add_argument("--amr-case", type=Path)
     parser.add_argument("--multi-layer-case", type=Path)
+    parser.add_argument(
+        "--calibration-campaign",
+        type=Path,
+        default=os.environ.get("ADDITIVEFOAM_CALIBRATION_CAMPAIGN"),
+        help=(
+            "Completed heat-source calibration campaign. Defaults to "
+            "ADDITIVEFOAM_CALIBRATION_CAMPAIGN or "
+            "<cases-root>/heatSourceCalibration/campaign."
+        ),
+    )
+    parser.add_argument(
+        "--calibration-experiments",
+        type=Path,
+        default=os.environ.get("ADDITIVEFOAM_CALIBRATION_EXPERIMENTS"),
+        help=(
+            "Experimental YAML used by the calibration campaign. Defaults to "
+            "ADDITIVEFOAM_CALIBRATION_EXPERIMENTS or experiments.yml beside "
+            "the campaign directory."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
         "--pvbatch",
@@ -124,6 +146,24 @@ def validate_case(name: str, path: Path) -> Path:
         raise SystemExit(
             "{} is missing. Reconstruct the case and create this empty ParaView "
             "marker before rendering.".format(marker)
+        )
+    return resolved
+
+
+def validate_calibration_campaign(path: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    required = (
+        resolved / "simulations.yml",
+        resolved / "calibration_state.yml",
+        resolved / "calibration_fit.yml",
+        resolved / "reports" / "calibration_summary.csv",
+    )
+    missing = [str(item) for item in required if not item.is_file()]
+    if missing:
+        raise SystemExit(
+            "Calibration campaign is incomplete; missing: {}".format(
+                ", ".join(missing)
+            )
         )
     return resolved
 
@@ -190,6 +230,30 @@ def main() -> None:
             CASE_DIRECTORY_NAMES["multi_layer"],
         ),
     }
+    calibration_campaign_input = args.calibration_campaign
+    if calibration_campaign_input is None:
+        if cases_root is None:
+            raise SystemExit(
+                "Set ADDITIVEFOAM_CALIBRATION_CAMPAIGN, pass "
+                "--calibration-campaign, or use --cases-root with a completed "
+                "heatSourceCalibration/campaign directory."
+            )
+        calibration_campaign_input = (
+            cases_root / "heatSourceCalibration" / "campaign"
+        )
+    calibration_campaign = validate_calibration_campaign(
+        calibration_campaign_input
+    )
+    calibration_experiments = args.calibration_experiments
+    if calibration_experiments is None:
+        calibration_experiments = calibration_campaign.parent / "experiments.yml"
+    calibration_experiments = calibration_experiments.expanduser().resolve()
+    if not calibration_experiments.is_file():
+        raise SystemExit(
+            "Calibration experiments file does not exist: {}".format(
+                calibration_experiments
+            )
+        )
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -263,6 +327,28 @@ def main() -> None:
             str(SCRIPT_DIR / "plot_kelly_absorption.py"),
             "--output",
             str(output_dir / "kelly-absorption.png"),
+        ],
+        environment,
+        args.dry_run,
+    )
+    run(
+        [
+            sys.executable,
+            str(SCRIPT_DIR / "plot_heat_source_calibration.py"),
+            "--experiments",
+            str(calibration_experiments),
+            "--simulations",
+            str(calibration_campaign / "simulations.yml"),
+            "--summary",
+            str(calibration_campaign / "reports" / "calibration_summary.csv"),
+            "--state",
+            str(calibration_campaign / "calibration_state.yml"),
+            "--fit",
+            str(calibration_campaign / "calibration_fit.yml"),
+            "--responses-output",
+            str(output_dir / "heat-source-calibration-responses.png"),
+            "--fit-output",
+            str(output_dir / "heat-source-calibration-fit.png"),
         ],
         environment,
         args.dry_run,

@@ -11,7 +11,7 @@ redirect_from:
 
 # User Guide
 
-This User Guide explains how to install, run, configure, and extend AdditiveFOAM. It documents the governing equations, numerical methods, input files, heat-source models, boundary conditions, mesh refinement, solver controls, outputs, and utilities provided by AdditiveFOAM.
+This User Guide explains how to install, run, configure, and extend AdditiveFOAM. It documents the governing equations, numerical methods, input files, heat-source models and calibration, boundary conditions, mesh refinement, solver controls, outputs, and utilities provided by AdditiveFOAM.
 
 ## Getting started
 
@@ -38,26 +38,30 @@ This User Guide explains how to install, run, configure, and extend AdditiveFOAM
 
    Define scan paths, absorption models, volumetric heat distributions, and spatial and temporal source integration.
 
-5. **[Boundary Conditions]({{ '/docs/boundary-conditions/' | relative_url }})**
+5. **[Projected Heat-source Calibration]({{ '/docs/heat-source-calibration/' | relative_url }})**
+
+   Infer the projected-source depth coefficients from measured melt-pool depths and CFD response curves.
+
+6. **[Boundary Conditions]({{ '/docs/boundary-conditions/' | relative_url }})**
 
    Configure the Marangoni velocity and mixed convection-radiation temperature conditions.
 
-6. **[Adaptive Mesh Refinement]({{ '/docs/amr/' | relative_url }})**
+7. **[Adaptive Mesh Refinement]({{ '/docs/amr/' | relative_url }})**
 
    Refine the mesh around thermal regions and moving heat sources and redistribute it between MPI processes.
 
-7. **[Case Files and Materials]({{ '/docs/case-files/' | relative_url }})**
+8. **[Case Files and Materials]({{ '/docs/case-files/' | relative_url }})**
 
    Define initial fields, material properties, phase paths, scan paths, and the required case dictionaries.
 
-8. **[Solver and Time Controls]({{ '/docs/solver-controls/' | relative_url }})**
+9. **[Solver and Time Controls]({{ '/docs/solver-controls/' | relative_url }})**
 
    Select temperature-phase coupling, time discretization, fluid-flow coupling, linear solvers, and adaptive time stepping.
 
-9. **[Function Objects]({{ '/docs/function-objects/' | relative_url }})**
+10. **[Function Objects]({{ '/docs/function-objects/' | relative_url }})**
 
    Write melt-pool dimensions, solidification conditions, and ExaCA temperature histories during a simulation.
 
-10. **[Utilities]({{ '/docs/utilities/' | relative_url }})**
+11. **[Utilities]({{ '/docs/utilities/' | relative_url }})**
 
     Generate scan paths, run multi-layer cases, reconstruct parallel output, convert beam profiles, and plot results.

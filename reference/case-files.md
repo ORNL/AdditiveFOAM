@@ -2,7 +2,7 @@
 layout: versioned
 title: Case Files and Materials
 parent: User Guide
-nav_order: 7
+nav_order: 8
 permalink: /docs/case-files/
 redirect_from:
   - /reference/case-files/

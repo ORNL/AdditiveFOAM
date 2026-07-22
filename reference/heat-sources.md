@@ -406,6 +406,8 @@ projectedGaussianCoeffs
 }
 ```
 
+Use [`calibrateHeatSource`]({{ '/docs/heat-source-calibration/' | relative_url }}) to infer `A` and `B` from measured melt-pool depths and AdditiveFOAM response curves. The [worked calibration tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}) provides an SS316L example.
+
 ### `nLightAFX`
 
 The `nLightAFX` model represents a measured beam as the weighted sum of two normalized concentric Gaussian-ring components. Each component uses the common projection-function form, but its coefficients can produce a different depth exponent.

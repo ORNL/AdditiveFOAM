@@ -17,10 +17,13 @@ Copy tutorials from `$ADDITIVEFOAM_TUTORIALS` into `$FOAM_RUN`; their `Allrun` s
 | [Multi-layer PBF]({{ '/tutorials/multi-layer/' | relative_url }}) | IN625 | Powder deposition, layer mapping, dynamic source depth, and ExaCA |
 | [nLight AFX]({{ '/tutorials/nlight-afx/' | relative_url }}) | SS316L | Characterized ring-beam modes |
 | [Tabulated profile]({{ '/tutorials/tabulated/' | relative_url }}) | AlSi10Mg | Measured PRIMES profile conversion and interpolation |
+| [Heat-source calibration]({{ '/tutorials/heat-source-calibration/' | relative_url }}) | SS316L | Bayesian calibration of the projected depth distribution |
 
 ## Common workflow
 
 Single-layer tutorials run `blockMesh`, `decomposePar`, `additiveFoam`, `reconstructPar`, and the optional Function Object reconstruction helpers. The multi-layer tutorial uses `createScanPath`, `runLayers`, and `reconstructLayers` instead.
+
+The heat-source calibration tutorial is a campaign rather than one case. `calibrateHeatSource` renders and runs a trial-case grid, extracts liquidus melt-pool depths, fits the projected-source closure, and writes its own report and cache files.
 
 ## Post-processing workflows
 

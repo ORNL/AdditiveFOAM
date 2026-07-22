@@ -2,7 +2,7 @@
 layout: versioned
 title: Solver and Time Controls
 parent: User Guide
-nav_order: 8
+nav_order: 9
 permalink: /docs/solver-controls/
 redirect_from:
   - /reference/solver-controls/
