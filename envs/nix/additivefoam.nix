@@ -87,7 +87,7 @@ stdenv.mkDerivation rec {
     cd app
 
     # Ensure ExaCA is found
-    # substituteInPlace $HOME/app/Allrun --replace-fail "~/install/exaca/bin/ExaCA" "ExaCA"
+    substituteInPlace $HOME/app/Allrun --replace-fail "~/install/exaca/bin/ExaCA" "ExaCA"
 
     ./Allrun -withExaCA
 
