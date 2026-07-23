@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     makeWrapper
   ];
-  
+
   buildInputs = [
     openfoam
     openmpi
@@ -28,7 +28,7 @@ stdenv.mkDerivation rec {
     exaca
     openmpi
   ];
-  
+
   buildPhase = ''
     runHook preBuild
 
@@ -74,7 +74,7 @@ stdenv.mkDerivation rec {
     LINKER=${glibc}/lib/ld-linux-x86-64.so.2;
     patchelf --set-interpreter $LINKER $out/bin/.additiveFoam-wrapped
   '';
-  
+
   doCheck = false;
   doInstallCheck = true;
 
@@ -87,20 +87,20 @@ stdenv.mkDerivation rec {
     cd app
 
     # Ensure ExaCA is found
-    substituteInPlace $HOME/app/Allrun --replace-fail "~/install/exaca/bin/ExaCA" "ExaCA"
-    
+    # substituteInPlace $HOME/app/Allrun --replace-fail "~/install/exaca/bin/ExaCA" "ExaCA"
+
     ./Allrun -withExaCA
 
     if [ -f "ExaCA/Output.vtk" ]; then
         echo "Check PASSED: Output.vtk generated."
     else
         echo "Check FAILED: Output.vtk not found."
-        exit 1 
+        exit 1
     fi
 
     cd ..
     rm -rf app
 
   '';
-  
+
 }
