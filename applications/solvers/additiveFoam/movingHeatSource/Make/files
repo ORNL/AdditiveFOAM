@@ -13,6 +13,7 @@ heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
 heatSourceModels/projectedGaussian/projectedGaussian.C
 heatSourceModels/nLightAFX/nLightAFX.C
+heatSourceModels/tabulated/tabulatedProfile.C
 heatSourceModels/tabulated/tabulated.C
 
 refinementModels/refinementModel/refinementModel.C

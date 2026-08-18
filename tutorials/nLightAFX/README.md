@@ -56,10 +56,10 @@ The corresponding coefficient dictionary is:
 
 ```foam
 depth   5.0e-5;
-innerA  0.0;
-innerB  1.0;
-outerA  0.0;
-outerB  1.0;
+innerNSlope  0.0;
+innerNIntercept  1.0;
+outerNSlope  0.0;
+outerNIntercept  1.0;
 
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
@@ -103,16 +103,16 @@ inner
 {
     radius
     sigma
-    A
-    B
+    nSlope
+    nIntercept
 }
 
 outer
 {
     radius
     sigma
-    A
-    B
+    nSlope
+    nIntercept
 }
 ```
 
@@ -128,15 +128,18 @@ Define the radial beam-shape parameters for the inner and outer components. The 
 
 Sets the lateral heat source dimensions from the characterized beam size. The third component is the initial projected depth and is updated by the transient heat source logic when `transient` is enabled.
 
-`A` and `B`
+`nSlope` and `nIntercept`
 
 Define the projected axial shape closure for each component:
 
 ```text
-n = A*log2(x) + B
+n = clip(nSlope*log2(x) + nIntercept, 0, 9)
+k = 2^n
 ```
 
-where `x` is the ratio between the current heat source depth and lateral heat source size. The implementation clamps this internal numerical exponent consistently with the `projectedGaussian` model.
+where `x` is the ratio between the current heat source depth and lateral heat
+source size, and `k` is the exponent in the axial decay. This is the same
+notation and closure used by the `projectedGaussian` model.
 
 ## Example mode
 
@@ -153,16 +156,16 @@ Index3
     {
         radius  14.39e-6;
         sigma   20.78e-6;
-        A       0.0;
-        B       1.0;
+        nSlope 0.0;
+        nIntercept 1.0;
     }
 
     outer
     {
         radius  100.98e-6;
         sigma   16.92e-6;
-        A       0.0;
-        B       1.0;
+        nSlope 0.0;
+        nIntercept 1.0;
     }
 }
 ```

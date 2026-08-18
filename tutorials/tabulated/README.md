@@ -110,11 +110,11 @@ The corresponding coefficient dictionary is:
 ```foam
 tabulatedCoeffs
 {
-    file        "beamProfile.txt";
-    dimensions  (2.50e-4 2.50e-4 5.0e-5);
-    A           0;
-    B           1;
-    nPoints     (10 10 10);
+    file            "beamProfile.txt";
+    minimumDepth    5.0e-5;
+    nSlope          0;
+    nIntercept      1;
+    nPoints         (10 10 10);
 }
 ```
 
@@ -125,12 +125,12 @@ tabulatedCoeffs
 Name of the tabulated two-dimensional beam file. Relative paths are interpreted
 relative to the `constant/` directory.
 
-`dimensions`
+`minimumDepth`
 
-Sets the heat-source dimensions used by the base moving heat-source integration.
-For this tutorial, the lateral dimensions should cover the support of the
-measured nLight AFX Index 3 beam profile. The third component is the initial
-projected heat-source depth.
+Sets the minimum projected heat-source depth. The tabulated model derives its
+lateral characteristic size, interpolation bounds, normalization, and D4sigma
+metrics directly from the profile file; the user does not supply lateral
+dimensions.
 
 `transient`
 
@@ -143,16 +143,18 @@ Optional temperature isovalue used by the transient projected heat-source
 closure. If omitted, the material liquidus from `constant/transportProperties`
 is used.
 
-`A` and `B`
+`nSlope` and `nIntercept`
 
 Define the projected axial shape closure:
 
 ```text
-n = A*log2(x) + B
+n = clip(nSlope*log2(x) + nIntercept, 0, 9)
+k = 2^n
 ```
 
-where `x` is the ratio between the current heat-source depth and lateral
-heat-source size.
+where `x = 2*depth/D4sigmaEquivalent`. The source is applied below the beam
+plane with axial weight `exp(-3*(-z/depth)^k)`; its normalization uses the
+matching one-sided axial integral.
 
 `nPoints`
 

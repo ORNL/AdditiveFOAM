@@ -3,13 +3,17 @@ paths:
   template: template
   campaign: campaign
 
+profiles:
+  measured_beam:
+    file: template/constant/beam_profile.txt
+
 case:
   command: ./Allrun
   keep_successful: false
   melt_pool_isovalue: liquidus
 
 calibration:
-  token: B
+  token: nIntercept
   initial_values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
   bounds: [0.0, 9.0]
   max_simulations_per_experiment: 10

@@ -1,7 +1,10 @@
 EXE_INC = \
+    -I$(ADDITIVEFOAM_APPLICATIONS)/solvers/additiveFoam/movingHeatSource/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude
 
 EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lmovingBeamModels \
     -lfiniteVolume \
     -lmeshTools

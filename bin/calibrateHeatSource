@@ -3,10 +3,12 @@
 Calibrate the projected depth distribution used by AdditiveFOAM heat sources.
 
 For each experimental condition, the routine builds a response curve from CFD
-results obtained with A = 0 and trial values of B. It infers a local n from the
-measured melt-pool depths, then fits the production relation
+results obtained with nSlope = 0 and trial nIntercept values. It
+infers a local n from the measured melt-pool depths, then fits the production
+relation
 
-    n = clip(A * log2(depth / heat_source_radius) + B, 0, 9)
+    n = clip(nSlope * log2(depth / beam_radius) +
+             nIntercept, 0, 9)
 
 Local posterior uncertainty is used in both the global fit and its uncertainty
 band. Simulation results and calibration state are cached by process condition.
@@ -59,25 +61,84 @@ from reportlab.platypus import (
 
 
 # Input data, configuration, and persistent simulation cache
-def _create_data_fingerprint(data_list: list) -> str:
-    sorted_data_str = str(sorted(data_list))
-    return hashlib.sha256(sorted_data_str.encode()).hexdigest()
+def _create_data_fingerprint(data: Any) -> str:
+    serialized = yaml.safe_dump(data, sort_keys=True)
+    return hashlib.sha256(serialized.encode()).hexdigest()
 
 
-def heat_source_radius_microns(params: dict) -> float:
-    try:
-        spot_size_d4sigma_microns = float(params["Spot_Size_microns"])
-    except (KeyError, TypeError, ValueError) as error:
+def profile_for_params(params: dict, profiles: dict) -> dict:
+    profile_name = params.get("Profile")
+    if profile_name not in profiles:
+        available = ", ".join(sorted(profiles)) or "none"
         raise ValueError(
-            "Each experiment requires a numeric Spot_Size_microns value"
-        ) from error
+            f"Unknown beam Profile '{profile_name}'; available: {available}"
+        )
+    return profiles[profile_name]
 
-    if not math.isfinite(spot_size_d4sigma_microns):
-        raise ValueError("Spot_Size_microns must be finite")
-    if spot_size_d4sigma_microns <= 0.0:
-        raise ValueError("Spot_Size_microns must be greater than zero")
 
-    return 0.5 * spot_size_d4sigma_microns
+def heat_source_radius_microns(params: dict, profiles: dict) -> float:
+    profile = profile_for_params(params, profiles)
+    return 0.5 * float(profile["D4sigmaEquivalent_microns"])
+
+
+def read_profile_metrics(profiles: dict) -> dict:
+    utility = shutil.which("tabulatedProfileInfo")
+    if utility is None:
+        raise RuntimeError("tabulatedProfileInfo is not available on PATH")
+
+    result = {}
+    numeric_keys = {
+        "integral",
+        "centroidX",
+        "centroidY",
+        "D4sigmaMajor",
+        "D4sigmaMinor",
+        "D4sigmaEquivalent",
+        "azimuthRadians",
+    }
+    for name, profile in profiles.items():
+        completed = subprocess.run(
+            [utility, profile["file"]],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"Could not read beam profile '{name}':\n{completed.stdout}"
+            )
+
+        metrics = {}
+        for line in completed.stdout.splitlines():
+            key, separator, value = line.partition(":")
+            if separator and key in numeric_keys:
+                metrics[key] = float(value.strip())
+
+        required = {
+            "integral",
+            "D4sigmaMajor",
+            "D4sigmaMinor",
+            "D4sigmaEquivalent",
+        }
+        missing = sorted(required - metrics.keys())
+        if missing:
+            raise RuntimeError(
+                f"tabulatedProfileInfo did not report {', '.join(missing)} "
+                f"for '{name}'"
+            )
+
+        d4sigma = metrics["D4sigmaEquivalent"]
+        if not math.isfinite(d4sigma) or d4sigma <= 0.0:
+            raise ValueError(f"Beam profile '{name}' has invalid D4sigma")
+
+        profile_path = Path(profile["file"])
+        result[name] = {
+            **profile,
+            **metrics,
+            "D4sigmaEquivalent_microns": d4sigma * 1.0e6,
+            "sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+        }
+    return result
 
 
 def load_yaml_file(filepath: str):
@@ -107,7 +168,14 @@ def load_config(filepath: str) -> dict:
     with open(filepath, "r") as f:
         raw = yaml.safe_load(f) or {}
 
-    required_sections = ("paths", "case", "calibration", "bayesian", "report")
+    required_sections = (
+        "paths",
+        "profiles",
+        "case",
+        "calibration",
+        "bayesian",
+        "report",
+    )
     missing_sections = [
         key for key in required_sections if not isinstance(raw.get(key), dict)
     ]
@@ -134,6 +202,21 @@ def load_config(filepath: str) -> dict:
     campaign_dir = Path(
         _resolve_config_path(paths["campaign"], config_dir, "paths.campaign")
     )
+
+    profiles = {}
+    for name, profile in raw["profiles"].items():
+        if not isinstance(profile, dict) or "file" not in profile:
+            raise ValueError(f"profiles.{name} requires a file entry")
+        profile_file = _resolve_config_path(
+            profile["file"], config_dir, f"profiles.{name}.file"
+        )
+        if not Path(profile_file).is_file():
+            raise FileNotFoundError(
+                f"Beam profile does not exist: {profile_file}"
+            )
+        profiles[str(name)] = {"file": profile_file}
+    if not profiles:
+        raise ValueError("profiles must define at least one beam profile")
 
     case = raw["case"]
     calibration = raw["calibration"]
@@ -168,15 +251,15 @@ def load_config(filepath: str) -> dict:
             "the number of initial_values"
         )
 
-    token = str(calibration.get("token", "B"))
+    token = str(calibration.get("token", "nIntercept"))
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", token):
         raise ValueError("calibration.token must be an alphanumeric identifier")
 
     adaptive_learning = {
         "enabled": True,
-        "initial_B_values": initial_values,
-        "B_min": float(bounds[0]),
-        "B_max": float(bounds[1]),
+        "initial_n_intercepts": initial_values,
+        "n_intercept_min": float(bounds[0]),
+        "n_intercept_max": float(bounds[1]),
         "max_simulations_per_experiment": max_simulations,
         "depth_tolerance_microns": float(
             calibration.get("depth_tolerance_microns", 10.0)
@@ -204,6 +287,7 @@ def load_config(filepath: str) -> dict:
             "melt_pool_isovalue", "liquidus"
         ),
         "calibration_token": token,
+        "profiles": profiles,
         "adaptive_learning": adaptive_learning,
         "bayesian": dict(raw["bayesian"]),
         "final_fit": dict(raw.get("final_fit", {})),
@@ -211,7 +295,7 @@ def load_config(filepath: str) -> dict:
     }
 
 
-def parse_experiments(raw_experiments: list) -> pd.DataFrame:
+def parse_experiments(raw_experiments: list, profiles: dict) -> pd.DataFrame:
     if not raw_experiments:
         return pd.DataFrame(
             columns=[
@@ -225,7 +309,8 @@ def parse_experiments(raw_experiments: list) -> pd.DataFrame:
     records = []
     for exp in raw_experiments:
         params = exp["parameters"]
-        heat_source_radius = heat_source_radius_microns(params)
+        profile = profile_for_params(params, profiles)
+        heat_source_radius = heat_source_radius_microns(params, profiles)
         depths = exp["Measured_Depth_microns"]
         normalized_depths = [float(d) / heat_source_radius for d in depths]
 
@@ -234,22 +319,27 @@ def parse_experiments(raw_experiments: list) -> pd.DataFrame:
                 "parameters": params,
                 "depths_list": depths,
                 "normalized_depths_list": normalized_depths,
-                "fingerprint": _create_data_fingerprint(depths),
+                "fingerprint": _create_data_fingerprint(
+                    {"depths": depths, "profile_sha256": profile["sha256"]}
+                ),
             }
         )
     return pd.DataFrame(records)
 
 
-def parse_simulations(raw_simulations: list) -> pd.DataFrame:
+def parse_simulations(raw_simulations: list, profiles: dict) -> pd.DataFrame:
     if not raw_simulations:
         return pd.DataFrame()
 
     records = []
     for sim_run in raw_simulations:
         params = sim_run["parameters"]
+        profile = profile_for_params(params, profiles)
+        if sim_run.get("profile_sha256") != profile["sha256"]:
+            continue
         n_values = sim_run["n"]
         depths = sim_run["Simulated_Depth_microns"]
-        heat_source_radius = heat_source_radius_microns(params)
+        heat_source_radius = heat_source_radius_microns(params, profiles)
 
         for n, depth in zip(n_values, depths):
             records.append(
@@ -271,19 +361,24 @@ def params_equal(a: dict, b: dict) -> bool:
 def append_simulation_result(
     raw_simulations: list,
     params: dict,
-    B: float,
+    n_intercept: float,
     depth_microns: float,
     simulations_path: str,
+    profile_sha256: str,
 ):
     target = None
     for sim_run in raw_simulations:
-        if params_equal(sim_run["parameters"], params):
+        if (
+            params_equal(sim_run["parameters"], params)
+            and sim_run.get("profile_sha256") == profile_sha256
+        ):
             target = sim_run
             break
 
     if target is None:
         target = {
             "parameters": dict(params),
+            "profile_sha256": profile_sha256,
             "n": [],
             "Simulated_Depth_microns": [],
         }
@@ -292,12 +387,12 @@ def append_simulation_result(
     existing = [float(v) for v in target["n"]]
     match_index = None
     for i, value in enumerate(existing):
-        if abs(value - B) < 1e-8:
+        if abs(value - n_intercept) < 1e-8:
             match_index = i
             break
 
     if match_index is None:
-        target["n"].append(float(B))
+        target["n"].append(float(n_intercept))
         target["Simulated_Depth_microns"].append(float(depth_microns))
     else:
         target["Simulated_Depth_microns"][match_index] = float(depth_microns)
@@ -370,10 +465,7 @@ def validate_template_case(template_case: Path, calibration_token: str):
         raise ValueError("Template case is missing: " + ", ".join(missing))
 
     placeholder_locations = {
-        "constant/heatSourceDict": [
-            calibration_token,
-            "heatSourceRadius",
-        ],
+        "constant/heatSourceDict": [calibration_token],
         "constant/scanPath": ["power", "velocity"],
         "system/controlDict": ["endTime", "writeInterval"],
     }
@@ -403,6 +495,8 @@ def validate_additivefoam_environment():
             )
     if shutil.which("additiveFoam") is None:
         raise RuntimeError("additiveFoam is not available on PATH")
+    if shutil.which("tabulatedProfileInfo") is None:
+        raise RuntimeError("tabulatedProfileInfo is not available on PATH")
 
 
 def resolve_material_isovalue(
@@ -531,8 +625,6 @@ def parse_melt_pool_dimensions(
         "isovalue_K": isovalue,
         "melt_pool_dimensions_file_name": csv_path.name,
         "time_s": float(row["time(s)"]),
-        "length_microns": float(row["length(m)"]) * 1e6,
-        "width_microns": float(row["width(m)"]) * 1e6,
         "depth_microns": float(row["depth(m)"]) * 1e6,
     }
 
@@ -574,13 +666,13 @@ def format_case_value(value, decimals: int | None = None) -> str:
 def make_condition_key(params: dict) -> str:
     power = format_case_value(params["Power_W"])
     speed = format_case_value(params["Speed_mm_s"])
-    spot = format_case_value(params["Spot_Size_microns"])
-    return f"P{power}_V{speed}_D{spot}"
+    profile = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(params["Profile"]))
+    return f"P{power}_V{speed}_{profile}"
 
 
-def make_run_key(B: float) -> str:
-    B_key = format_case_value(B)
-    return f"B{B_key}"
+def make_run_key(n_intercept: float) -> str:
+    value_key = format_case_value(n_intercept)
+    return f"nIntercept{value_key}"
 
 
 def run_additivefoam_case(case_dir: Path, run_command: str) -> int:
@@ -597,26 +689,29 @@ def run_additivefoam_case(case_dir: Path, run_command: str) -> int:
 
 
 def run_one_additivefoam_simulation(
-    params: dict, B: float, config: dict
+    params: dict, n_intercept: float, config: dict
 ) -> float:
     validate_additivefoam_environment()
     campaign_dir = Path(config["campaign_dir"])
     template_case = Path(config["template_case"])
     condition_key = make_condition_key(params)
-    run_key = make_run_key(B)
+    run_key = make_run_key(n_intercept)
 
     case_dir = campaign_dir / "cases" / condition_key / run_key
     if case_dir.exists():
         shutil.rmtree(case_dir)
     shutil.copytree(template_case, case_dir)
 
+    profile = profile_for_params(params, config["profiles"])
+    shutil.copyfile(
+        profile["file"], case_dir / "constant" / "beam_profile.txt"
+    )
+
     velocity_m_s = float(params["Speed_mm_s"]) * 1e-3
-    heat_source_radius_m = heat_source_radius_microns(params) * 1.0e-6
     values = {
-        config["calibration_token"]: float(B),
+        config["calibration_token"]: float(n_intercept),
         "power": float(params["Power_W"]),
         "velocity": velocity_m_s,
-        "heatSourceRadius": heat_source_radius_m,
     }
 
     # Render the scan first because its geometry and velocity determine endTime.
@@ -635,7 +730,7 @@ def run_one_additivefoam_simulation(
         )
 
     print(
-        f"  Running AdditiveFOAM: B={B:.4f}, "
+        f"  Running AdditiveFOAM: nIntercept={n_intercept:.4f}, "
         f"P={params['Power_W']}, v={velocity_m_s:.4g} m/s"
     )
     return_code = run_additivefoam_case(case_dir, config["run_command"])
@@ -649,10 +744,12 @@ def run_one_additivefoam_simulation(
     metrics.update(
         {
             "parameters": params,
-            "B": float(B),
+            "nIntercept": float(n_intercept),
             "power": float(params["Power_W"]),
             "velocity": velocity_m_s,
-            "heat_source_radius_m": heat_source_radius_m,
+            "beam_profile": params["Profile"],
+            "beam_profile_sha256": profile["sha256"],
+            "D4sigma_microns": profile["D4sigmaEquivalent_microns"],
             "endTime": end_time,
             "writeInterval": end_time,
         }
@@ -722,7 +819,7 @@ def pchip_grid_from_subset(
     )
 
 
-def proposed_B_values_for_initial_curve(
+def proposed_n_intercepts_for_initial_curve(
     model_subset: pd.DataFrame, config: dict
 ) -> list[float]:
     existing = set()
@@ -730,37 +827,37 @@ def proposed_B_values_for_initial_curve(
         existing = {round(float(v), 8) for v in model_subset["n"].values}
 
     adaptive = config["adaptive_learning"]
-    B_values = adaptive.get("initial_B_values", [0.0, 4.5, 9.0])
-    return [float(v) for v in B_values if round(float(v), 8) not in existing]
+    values = adaptive.get("initial_n_intercepts", [0.0, 4.5, 9.0])
+    return [float(v) for v in values if round(float(v), 8) not in existing]
 
 
-def propose_next_B(
+def propose_next_n_intercept(
     model_subset: pd.DataFrame, target_depth: float, config: dict
 ):
     adaptive = config["adaptive_learning"]
-    B_min = float(adaptive.get("B_min", 0.0))
-    B_max = float(adaptive.get("B_max", 9.0))
+    value_min = float(adaptive.get("n_intercept_min", 0.0))
+    value_max = float(adaptive.get("n_intercept_max", 9.0))
 
-    B_values, depths = pchip_grid_from_subset(
+    values, depths = pchip_grid_from_subset(
         model_subset,
         value_column="Simulated_Depth_microns",
         n_grid=int(adaptive.get("pchip_grid_points", 1000)),
     )
 
-    for i in range(len(B_values) - 1):
+    for i in range(len(values) - 1):
         d0, d1 = depths[i], depths[i + 1]
         if (d0 <= target_depth <= d1) or (d1 <= target_depth <= d0):
             if abs(d1 - d0) < 1e-12:
-                B = 0.5 * (B_values[i] + B_values[i + 1])
+                value = 0.5 * (values[i] + values[i + 1])
             else:
-                B = B_values[i] + (target_depth - d0) * (
-                    B_values[i + 1] - B_values[i]
+                value = values[i] + (target_depth - d0) * (
+                    values[i + 1] - values[i]
                 ) / (d1 - d0)
-            B = min(max(float(B), B_min), B_max)
+            value = min(max(float(value), value_min), value_max)
             existing = model_subset["n"].values.astype(float)
-            if np.min(np.abs(existing - B)) > 1e-5:
-                return B
-            return 0.5 * (B_values[i] + B_values[i + 1])
+            if np.min(np.abs(existing - value)) > 1e-5:
+                return value
+            return 0.5 * (values[i] + values[i + 1])
     return None
 
 
@@ -772,17 +869,26 @@ def ensure_simulation_curve(
 
     params = job_row["parameters"]
     model_subset = find_matching_simulation_subset(sim_df, params)
-    # A missing condition starts with the configured B grid. Existing cache
-    # entries are skipped, so interrupted campaigns resume without rerunning
-    # them.
+    # A missing condition starts with the configured nIntercept grid. Existing
+    # cache entries are skipped, so interrupted campaigns resume without
+    # rerunning them.
     if len(model_subset) < 2:
-        for B in proposed_B_values_for_initial_curve(model_subset, config):
-            depth = run_one_additivefoam_simulation(params, B, config)
+        for n_intercept in proposed_n_intercepts_for_initial_curve(
+            model_subset, config
+        ):
+            depth = run_one_additivefoam_simulation(
+                params, n_intercept, config
+            )
             append_simulation_result(
-                raw_simulations, params, B, depth, config["simulations_file"]
+                raw_simulations,
+                params,
+                n_intercept,
+                depth,
+                config["simulations_file"],
+                profile_for_params(params, config["profiles"])["sha256"],
             )
             raw_simulations = load_yaml_file(config["simulations_file"])
-            sim_df = parse_simulations(raw_simulations)
+            sim_df = parse_simulations(raw_simulations, config["profiles"])
             model_subset = find_matching_simulation_subset(sim_df, params)
     return sim_df, raw_simulations
 
@@ -898,20 +1004,25 @@ def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
         if best_error <= depth_tol:
             break
 
-        B_next = propose_next_B(model_subset, target_depth, config)
-        if B_next is None:
+        n_intercept = propose_next_n_intercept(
+            model_subset, target_depth, config
+        )
+        if n_intercept is None:
             break
 
-        depth = run_one_additivefoam_simulation(params, B_next, config)
+        depth = run_one_additivefoam_simulation(
+            params, n_intercept, config
+        )
         append_simulation_result(
             raw_simulations,
             params,
-            B_next,
+            n_intercept,
             depth,
             config["simulations_file"],
+            profile_for_params(params, config["profiles"])["sha256"],
         )
         raw_simulations = load_yaml_file(config["simulations_file"])
-        sim_df = parse_simulations(raw_simulations)
+        sim_df = parse_simulations(raw_simulations, config["profiles"])
         model_subset = find_matching_simulation_subset(sim_df, params)
 
         n_coords, model_normalized_depths = get_sorted_simulation_curve(
@@ -1206,7 +1317,7 @@ def plot_calibration_overview_pages(
                 pad=10,
             )
 
-            ax.set_xlabel("B used in A=0 local calibration")
+            ax.set_xlabel("nIntercept used with nSlope=0")
             ax.set_ylabel("d / (D4sigma / 2)")
             ax.margins(x=0.08, y=0.12)
 
@@ -1321,9 +1432,11 @@ def _weighted_linear_initial_guess(
     n_sigma_obs: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, float]:
     """
-    Weighted least-squares initial guess for n = A*z + B.
+    Weighted least-squares initial guess for
+    n = nSlope*z + nIntercept.
 
-    Returns theta = [A, B], approximate covariance, and reduced chi-square.
+    Returns the two coefficients, approximate covariance, and reduced
+    chi-square.
     """
     X = np.column_stack([z_obs, np.ones_like(z_obs)])
     weights = 1.0 / np.maximum(n_sigma_obs, 1.0e-12) ** 2
@@ -1380,8 +1493,9 @@ def _robust_weighted_curve_fit(
     f_scale = float(final_fit_cfg.get("f_scale", 1.0))
 
     def residual(theta):
-        A, B = theta
-        return (n_obs - (A * z_obs + B)) / n_sigma_obs
+        n_slope, n_intercept = theta
+        predicted = n_slope * z_obs + n_intercept
+        return (n_obs - predicted) / n_sigma_obs
 
     used_scipy = False
     if least_squares is not None and len(n_obs) >= 3:
@@ -1397,7 +1511,7 @@ def _robust_weighted_curve_fit(
         theta = theta0.astype(float)
         loss = "linear_weighted_lstsq"
 
-    A, B = theta
+    n_slope, n_intercept = theta
     weighted_residual = residual(theta)
     dof = max(len(n_obs) - 2, 1)
     reduced_chi2 = float(np.sum(weighted_residual**2) / dof)
@@ -1411,15 +1525,17 @@ def _robust_weighted_curve_fit(
         covariance = np.linalg.pinv(jt_j) * max(reduced_chi2, 1.0)
 
     return {
-        "A": float(A),
-        "B": float(B),
-        "A_std": float(np.sqrt(max(covariance[0, 0], 0.0))),
-        "B_std": float(np.sqrt(max(covariance[1, 1], 0.0))),
+        "nSlope": float(n_slope),
+        "nIntercept": float(n_intercept),
+        "nSlope_std": float(np.sqrt(max(covariance[0, 0], 0.0))),
+        "nIntercept_std": float(
+            np.sqrt(max(covariance[1, 1], 0.0))
+        ),
         "covariance": covariance.tolist(),
         "weighted_residuals": weighted_residual.astype(float).tolist(),
         "reduced_chi2": reduced_chi2,
-        "initial_A": float(theta0[0]),
-        "initial_B": float(theta0[1]),
+        "initial_nSlope": float(theta0[0]),
+        "initial_nIntercept": float(theta0[1]),
         "initial_reduced_chi2": reduced_chi2_0,
         "loss": loss,
         "f_scale": f_scale,
@@ -1472,9 +1588,9 @@ def _bootstrap_robust_weighted_fit_band(
     """
     Empirical 95% response-curve interval from local calibration uncertainty.
 
-    Each realization samples one n value from each local posterior, refits A and
-    B, and evaluates n = clip(A * log2(x) + B, 0, 9). Pointwise quantiles give a
-    generally asymmetric interval.
+    Each realization samples one n value from each local posterior, refits the
+    nSlope and nIntercept, and evaluates the clipped response. Pointwise
+    quantiles give a generally asymmetric interval.
     """
     final_fit_cfg = config.get("final_fit", {})
     n_bootstrap = int(final_fit_cfg.get("bootstrap_samples", 1000))
@@ -1488,13 +1604,13 @@ def _bootstrap_robust_weighted_fit_band(
 
     rng = np.random.default_rng(seed)
     curves = []
-    A_samples = []
-    B_samples = []
+    n_slope_samples = []
+    n_intercept_samples = []
 
     z_range = np.log2(np.maximum(x_range, x_log_floor))
 
     # Each realization propagates the local posteriors through a complete
-    # refit, retaining covariance between A and B in the response band.
+    # refit, retaining coefficient covariance in the response band.
     for _ in range(n_bootstrap):
         sampled_n = np.empty_like(n_mode_obs, dtype=float)
 
@@ -1517,22 +1633,28 @@ def _bootstrap_robust_weighted_fit_band(
         except Exception:
             continue
 
-        A_b = float(fit_b["A"])
-        B_b = float(fit_b["B"])
-        if not np.isfinite(A_b) or not np.isfinite(B_b):
+        n_slope = float(fit_b["nSlope"])
+        n_intercept = float(fit_b["nIntercept"])
+        if not np.isfinite(n_slope) or not np.isfinite(
+            n_intercept
+        ):
             continue
 
-        curve = np.clip(A_b * z_range + B_b, 0.0, 9.0)
+        curve = np.clip(
+            n_slope * z_range + n_intercept, 0.0, 9.0
+        )
         curves.append(curve)
-        A_samples.append(A_b)
-        B_samples.append(B_b)
+        n_slope_samples.append(n_slope)
+        n_intercept_samples.append(n_intercept)
 
     if len(curves) < min_success:
         return None
 
     curves = np.asarray(curves, dtype=float)
-    A_samples = np.asarray(A_samples, dtype=float)
-    B_samples = np.asarray(B_samples, dtype=float)
+    n_slope_samples = np.asarray(n_slope_samples, dtype=float)
+    n_intercept_samples = np.asarray(
+        n_intercept_samples, dtype=float
+    )
 
     lower, median, upper = np.quantile(curves, [0.025, 0.5, 0.975], axis=0)
 
@@ -1541,14 +1663,26 @@ def _bootstrap_robust_weighted_fit_band(
         "lower": lower.astype(float).tolist(),
         "median": median.astype(float).tolist(),
         "upper": upper.astype(float).tolist(),
-        "A_samples": A_samples.astype(float).tolist(),
-        "B_samples": B_samples.astype(float).tolist(),
-        "A_95_low": float(np.quantile(A_samples, 0.025)),
-        "A_50": float(np.quantile(A_samples, 0.5)),
-        "A_95_high": float(np.quantile(A_samples, 0.975)),
-        "B_95_low": float(np.quantile(B_samples, 0.025)),
-        "B_50": float(np.quantile(B_samples, 0.5)),
-        "B_95_high": float(np.quantile(B_samples, 0.975)),
+        "nSlope_samples": n_slope_samples.astype(float).tolist(),
+        "nIntercept_samples": n_intercept_samples.astype(
+            float
+        ).tolist(),
+        "nSlope_95_low": float(
+            np.quantile(n_slope_samples, 0.025)
+        ),
+        "nSlope_50": float(np.quantile(n_slope_samples, 0.5)),
+        "nSlope_95_high": float(
+            np.quantile(n_slope_samples, 0.975)
+        ),
+        "nIntercept_95_low": float(
+            np.quantile(n_intercept_samples, 0.025)
+        ),
+        "nIntercept_50": float(
+            np.quantile(n_intercept_samples, 0.5)
+        ),
+        "nIntercept_95_high": float(
+            np.quantile(n_intercept_samples, 0.975)
+        ),
         "n_successful_bootstrap": int(len(curves)),
         "n_requested_bootstrap": int(n_bootstrap),
         "random_seed": int(seed),
@@ -1559,8 +1693,8 @@ def plot_final_fit(
     x_obs: np.ndarray,
     n_obs: np.ndarray,
     n_stds_obs: np.ndarray,
-    A_m: float,
-    B_m: float,
+    n_slope: float,
+    n_intercept: float,
     covariance: np.ndarray | None,
     x_log_floor: float,
     n_95_low_obs: np.ndarray | None = None,
@@ -1572,7 +1706,7 @@ def plot_final_fit(
 
     ``x_obs`` is measured depth divided by half the D4sigma spot size. Values
     below one are valid.
-    The curve and interval use n = clip(A * log2(x) + B, 0, 9).
+    The curve and interval use the clipped nSlope-nIntercept relation.
     """
     with report_plot_context():
         fig, ax = plt.subplots(
@@ -1615,7 +1749,7 @@ def plot_final_fit(
         x_range = np.geomspace(x_min, x_max, 300)
         z_range = np.log2(np.maximum(x_range, x_log_floor))
 
-        n_raw_pred = A_m * z_range + B_m
+        n_raw_pred = n_slope * z_range + n_intercept
         mean_pred = np.clip(n_raw_pred, 0.0, 9.0)
 
         ax.plot(
@@ -1623,7 +1757,7 @@ def plot_final_fit(
             mean_pred,
             color=REPORT_THEME.orange,
             linewidth=2.0,
-            label=f"Recommended calibration: n = {A_m:.4f} log2(x) + {B_m:.4f}",
+            label=f"Recommended calibration: n = {n_slope:.4f} log2(x) + {n_intercept:.4f}",
             zorder=3,
         )
 
@@ -1698,7 +1832,7 @@ def fit_and_plot_heteroskedastic_model(
     Each local calibration contributes an n estimate and its uncertainty. The
     robust, uncertainty-weighted relation is
 
-        n = clip(A * log2(x) + B, 0, 9)
+        n = clip(nSlope * log2(x) + nIntercept, 0, 9)
 
     where x is measured depth divided by half the D4sigma spot size. The
     reported 95% response interval is propagated from the local calibration
@@ -1769,14 +1903,17 @@ def fit_and_plot_heteroskedastic_model(
         config=config,
     )
 
-    A_m = fit["A"]
-    B_m = fit["B"]
+    n_slope = fit["nSlope"]
+    n_intercept = fit["nIntercept"]
     covariance = np.asarray(fit["covariance"], dtype=float)
 
-    print("--- Recommended calibration: n = A*log2(x) + B ---")
-    print(f"A = {A_m:.6f}")
-    print(f"B = {B_m:.6f}")
-    print(f"n = clip({A_m:.6f}*log2(x) + {B_m:.6f}, 0, 9)")
+    print(
+        "--- Recommended calibration: "
+        "n = nSlope*log2(x) + nIntercept ---"
+    )
+    print(f"nSlope = {n_slope:.6f}")
+    print(f"nIntercept = {n_intercept:.6f}")
+    print(f"n = clip({n_slope:.6f}*log2(x) + {n_intercept:.6f}, 0, 9)")
 
     x_min_plot = max(float(np.nanmin(x_obs)) * 0.95, x_log_floor)
     x_max_plot = float(np.nanmax(x_obs)) * 1.05
@@ -1800,8 +1937,8 @@ def fit_and_plot_heteroskedastic_model(
         x_obs=x_obs,
         n_obs=n_obs,
         n_stds_obs=n_stds_obs,
-        A_m=A_m,
-        B_m=B_m,
+        n_slope=n_slope,
+        n_intercept=n_intercept,
         covariance=covariance,
         x_log_floor=x_log_floor,
         n_95_low_obs=n_95_low_obs,
@@ -1811,21 +1948,27 @@ def fit_and_plot_heteroskedastic_model(
 
     x_min = float(np.nanmin(x_obs))
     x_max = float(np.nanmax(x_obs))
-    n_raw_at_x_min = A_m * np.log2(x_min) + B_m
-    n_raw_at_x_max = A_m * np.log2(x_max) + B_m
+    n_raw_at_x_min = n_slope * np.log2(x_min) + n_intercept
+    n_raw_at_x_max = n_slope * np.log2(x_max) + n_intercept
 
     fit_summary = {
         "fit_method": "Robust uncertainty-weighted response fit",
-        "A": float(A_m),
-        "B": float(B_m),
-        "A_std_covariance_approx": float(fit["A_std"]),
-        "B_std_covariance_approx": float(fit["B_std"]),
+        "nSlope": float(n_slope),
+        "nIntercept": float(n_intercept),
+        "nSlope_std_covariance_approx": float(
+            fit["nSlope_std"]
+        ),
+        "nIntercept_std_covariance_approx": float(
+            fit["nIntercept_std"]
+        ),
         "covariance": fit["covariance"],
         "loss": fit["loss"],
         "f_scale": float(fit["f_scale"]),
         "reduced_chi2": float(fit["reduced_chi2"]),
-        "initial_A": float(fit["initial_A"]),
-        "initial_B": float(fit["initial_B"]),
+        "initial_nSlope": float(fit["initial_nSlope"]),
+        "initial_nIntercept": float(
+            fit["initial_nIntercept"]
+        ),
         "initial_reduced_chi2": float(fit["initial_reduced_chi2"]),
         "used_scipy_least_squares": bool(fit["used_scipy_least_squares"]),
         "local_n_sigma_floor": float(fit["local_n_sigma_floor"]),
@@ -1854,12 +1997,24 @@ def fit_and_plot_heteroskedastic_model(
                     bootstrap_band["n_successful_bootstrap"]
                 ),
                 "bootstrap_random_seed": int(bootstrap_band["random_seed"]),
-                "A_bootstrap_95_low": float(bootstrap_band["A_95_low"]),
-                "A_bootstrap_median": float(bootstrap_band["A_50"]),
-                "A_bootstrap_95_high": float(bootstrap_band["A_95_high"]),
-                "B_bootstrap_95_low": float(bootstrap_band["B_95_low"]),
-                "B_bootstrap_median": float(bootstrap_band["B_50"]),
-                "B_bootstrap_95_high": float(bootstrap_band["B_95_high"]),
+                "nSlope_bootstrap_95_low": float(
+                    bootstrap_band["nSlope_95_low"]
+                ),
+                "nSlope_bootstrap_median": float(
+                    bootstrap_band["nSlope_50"]
+                ),
+                "nSlope_bootstrap_95_high": float(
+                    bootstrap_band["nSlope_95_high"]
+                ),
+                "nIntercept_bootstrap_95_low": float(
+                    bootstrap_band["nIntercept_95_low"]
+                ),
+                "nIntercept_bootstrap_median": float(
+                    bootstrap_band["nIntercept_50"]
+                ),
+                "nIntercept_bootstrap_95_high": float(
+                    bootstrap_band["nIntercept_95_high"]
+                ),
             }
         )
     else:
@@ -2235,29 +2390,39 @@ def write_report(
     story.append(Spacer(1, 0.2 * inch))
 
     if fit_summary:
-        A_std = fit_summary.get("A_std_covariance_approx", float("nan"))
-        B_std = fit_summary.get("B_std_covariance_approx", float("nan"))
+        n_slope_std = fit_summary.get(
+            "nSlope_std_covariance_approx", float("nan")
+        )
+        n_intercept_std = fit_summary.get(
+            "nIntercept_std_covariance_approx", float("nan")
+        )
         fit_items = [
-            ("Calibration relation", f"n = A * log2(x) + B"),
-            ("A", f"{fit_summary['A']:.6f}"),
-            ("B", f"{fit_summary['B']:.6f}"),
             (
-                "A standard error",
-                f"{A_std:.6f}",
+                "Calibration relation",
+                "n = nSlope * log2(x) + nIntercept",
+            ),
+            ("nSlope", f"{fit_summary['nSlope']:.6f}"),
+            (
+                "nIntercept",
+                f"{fit_summary['nIntercept']:.6f}",
             ),
             (
-                "B standard error",
-                f"{B_std:.6f}",
+                "nSlope standard error",
+                f"{n_slope_std:.6f}",
             ),
             (
-                "A 95% interval",
-                f"[{fit_summary.get('A_bootstrap_95_low', float('nan')):.6f}, "
-                f"{fit_summary.get('A_bootstrap_95_high', float('nan')):.6f}]",
+                "nIntercept standard error",
+                f"{n_intercept_std:.6f}",
             ),
             (
-                "B 95% interval",
-                f"[{fit_summary.get('B_bootstrap_95_low', float('nan')):.6f}, "
-                f"{fit_summary.get('B_bootstrap_95_high', float('nan')):.6f}]",
+                "nSlope 95% interval",
+                f"[{fit_summary.get('nSlope_bootstrap_95_low', float('nan')):.6f}, "
+                f"{fit_summary.get('nSlope_bootstrap_95_high', float('nan')):.6f}]",
+            ),
+            (
+                "nIntercept 95% interval",
+                f"[{fit_summary.get('nIntercept_bootstrap_95_low', float('nan')):.6f}, "
+                f"{fit_summary.get('nIntercept_bootstrap_95_high', float('nan')):.6f}]",
             ),
             (
                 "Weighted residual statistic",
@@ -2441,8 +2606,9 @@ def write_report(
             Paragraph(
                 f"<b>Figure {figure_number}:</b> "
                 "Final AdditiveFOAM calibration fit. Symbols show local n "
-                "estimates with 95% intervals. The solid curve is n = A "
-                "log2(x) + B, where x = d / (D4sigma / 2). The shaded "
+                "estimates with 95% intervals. The solid curve uses "
+                "nSlope and nIntercept, where "
+                "x = d / (D4sigma / 2). The shaded "
                 "region is the 95% interval propagated "
                 "from local calibration uncertainty.",
                 styles["Caption"],
@@ -2474,6 +2640,8 @@ def main():
     )
     args = parser.parse_args()
     config = load_config(args.config)
+    validate_additivefoam_environment()
+    config["profiles"] = read_profile_metrics(config["profiles"])
     if not Path(config["experiments_file"]).is_file():
         raise FileNotFoundError(
             f"Experiments file does not exist: {config['experiments_file']}"
@@ -2489,8 +2657,8 @@ def main():
     raw_simulations = load_yaml_file(config["simulations_file"])
     current_state_data = load_yaml_file(config["calibration_state_file"])
 
-    exp_df = parse_experiments(raw_experiments)
-    sim_df = parse_simulations(raw_simulations)
+    exp_df = parse_experiments(raw_experiments, config["profiles"])
+    sim_df = parse_simulations(raw_simulations, config["profiles"])
     state_df = pd.DataFrame(current_state_data)
 
     if exp_df.empty:
@@ -2612,7 +2780,8 @@ def main():
         if key not in posterior_samples and "posterior_n_samples" in state:
             posterior_samples[key] = state["posterior_n_samples"]
 
-    # Stage 2: fit A and B across the completed local calibrations.
+    # Stage 2: fit nSlope and nIntercept across the completed
+    # local calibrations.
     report_df = build_report_dataframe(exp_df, final_state_df)
     if not report_df.empty:
         fit_summary, fit_fig = fit_and_plot_heteroskedastic_model(

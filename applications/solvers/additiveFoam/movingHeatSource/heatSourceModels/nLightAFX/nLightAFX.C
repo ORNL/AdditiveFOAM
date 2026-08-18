@@ -67,13 +67,13 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
 
     r0_ = innerDict.lookup<scalar>("radius");
     sigma0_ = innerDict.lookup<scalar>("sigma");
-    A0_ = innerDict.lookup<scalar>("A");
-    B0_ = innerDict.lookup<scalar>("B");
+    innerNSlope_ = innerDict.lookup<scalar>("nSlope");
+    innerNIntercept_ = innerDict.lookup<scalar>("nIntercept");
 
     r1_ = outerDict.lookup<scalar>("radius");
     sigma1_ = outerDict.lookup<scalar>("sigma");
-    A1_ = outerDict.lookup<scalar>("A");
-    B1_ = outerDict.lookup<scalar>("B");
+    outerNSlope_ = outerDict.lookup<scalar>("nSlope");
+    outerNIntercept_ = outerDict.lookup<scalar>("nIntercept");
 
     const scalar d = dimensions_.z();
 
@@ -84,14 +84,35 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
             0.001
         );
 
-    const scalar p0 = min(max(A0_*std::log2(x) + B0_, 0.0), 9.0);
-    const scalar p1 = min(max(A1_*std::log2(x) + B1_, 0.0), 9.0);
+    const scalar n0 =
+        min
+        (
+            max
+            (
+                innerNSlope_*std::log2(x)
+              + innerNIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
-    n0_ = Foam::pow(2.0, p0);
-    n1_ = Foam::pow(2.0, p1);
+    const scalar n1 =
+        min
+        (
+            max
+            (
+                outerNSlope_*std::log2(x)
+              + outerNIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
-    a0_ = ai(r0_, sigma0_, d, n0_);
-    a1_ = ai(r1_, sigma1_, d, n1_);
+    k0_ = Foam::pow(2.0, n0);
+    k1_ = Foam::pow(2.0, n1);
+
+    a0_ = ai(r0_, sigma0_, d, k0_);
+    a1_ = ai(r1_, sigma1_, d, k1_);
 }
 
 
@@ -115,10 +136,10 @@ Foam::heatSourceModels::nLightAFX::weight(const vector& x)
       + std::exp(-0.5*Foam::sqr((r + r1_)/sigma1_));
 
     const scalar s0 =
-        std::exp(-3.0*Foam::pow(mag(z/d), n0_));
+        std::exp(-3.0*Foam::pow(mag(z/d), k0_));
 
     const scalar s1 =
-        std::exp(-3.0*Foam::pow(mag(z/d), n1_));
+        std::exp(-3.0*Foam::pow(mag(z/d), k1_));
 
     return ((1.0 - alpha_)*x0*s0*a1_) + (alpha_*x1*s1*a0_);
 }
@@ -130,12 +151,12 @@ Foam::heatSourceModels::nLightAFX::ai
     scalar x,
     scalar s,
     scalar d,
-    scalar n
+    scalar k
 )
 {
     const scalar t1 =
-        2.0*pi*s*d*Foam::tgamma(1.0/n)
-      / (n*Foam::pow(3.0, 1.0/n));
+        2.0*pi*s*d*Foam::tgamma(1.0/k)
+      / (k*Foam::pow(3.0, 1.0/k));
 
     const scalar t2 =
         2.0*s*std::exp(-0.5*Foam::sqr(x/s))
@@ -157,14 +178,35 @@ Foam::heatSourceModels::nLightAFX::V0()
             0.001
         );
 
-    const scalar p0 = min(max(A0_*std::log2(x) + B0_, 0.0), 9.0);
-    const scalar p1 = min(max(A1_*std::log2(x) + B1_, 0.0), 9.0);
+    const scalar n0 =
+        min
+        (
+            max
+            (
+                innerNSlope_*std::log2(x)
+              + innerNIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
-    n0_ = Foam::pow(2.0, p0);
-    n1_ = Foam::pow(2.0, p1);
+    const scalar n1 =
+        min
+        (
+            max
+            (
+                outerNSlope_*std::log2(x)
+              + outerNIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
-    a0_ = ai(r0_, sigma0_, d, n0_);
-    a1_ = ai(r1_, sigma1_, d, n1_);
+    k0_ = Foam::pow(2.0, n0);
+    k1_ = Foam::pow(2.0, n1);
+
+    a0_ = ai(r0_, sigma0_, d, k0_);
+    a1_ = ai(r1_, sigma1_, d, k1_);
 
     return dimensionedScalar("V0", dimVolume, a0_*a1_);
 }
@@ -190,13 +232,13 @@ bool Foam::heatSourceModels::nLightAFX::read()
 
         innerDict.lookup("radius") >> r0_;
         innerDict.lookup("sigma") >> sigma0_;
-        innerDict.lookup("A") >> A0_;
-        innerDict.lookup("B") >> B0_;
+        innerDict.lookup("nSlope") >> innerNSlope_;
+        innerDict.lookup("nIntercept") >> innerNIntercept_;
 
         outerDict.lookup("radius") >> r1_;
         outerDict.lookup("sigma") >> sigma1_;
-        outerDict.lookup("A") >> A1_;
-        outerDict.lookup("B") >> B1_;
+        outerDict.lookup("nSlope") >> outerNSlope_;
+        outerDict.lookup("nIntercept") >> outerNIntercept_;
 
         return true;
     }

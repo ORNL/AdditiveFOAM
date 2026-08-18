@@ -59,11 +59,13 @@ class projectedGaussian
         //- Pointer to mesh information
         const fvMesh& mesh_;
 
-        //- weights for axial decay of 2D gaussian distribution in the form:
-        //- n = Alog2(x) + B
-        scalar A_;
-        scalar B_;
+        //- nSlope in n = nSlope*log2(x) + nIntercept
+        scalar nSlope_;
 
+        //- nIntercept in n = nSlope*log2(x) + nIntercept
+        scalar nIntercept_;
+
+        //- Axial decay exponent
         scalar k_;
 
 public:

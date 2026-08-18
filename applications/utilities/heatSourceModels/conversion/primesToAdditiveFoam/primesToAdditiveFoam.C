@@ -19,7 +19,7 @@ Description
 #include "scalarField.H"
 #include "stringList.H"
 #include "HashTable.H"
-#include "mathematicalConstants.H"
+#include "tabulatedProfile.H"
 
 using namespace Foam;
 
@@ -253,83 +253,36 @@ int main(int argc, char *argv[])
     }
 
     mkDir(outputFile.path());
-    OFstream os(outputFile);
-    os.precision(12);
-
-    os << nx << " " << ny << nl
-       << x0 << " " << y0 << nl
-       << dx << " " << dy << nl;
-
-    forAll(table, rowi)
     {
-        forAll(table[rowi], coli)
+        OFstream os(outputFile);
+        os.precision(16);
+
+        os << nx << " " << ny << nl
+           << x0 << " " << y0 << nl
+           << dx << " " << dy << nl;
+
+        forAll(table, rowi)
         {
-            os << table[rowi][coli] << (coli == nx-1 ? "" : " ");
+            forAll(table[rowi], coli)
+            {
+                os << table[rowi][coli] << (coli == nx-1 ? "" : " ");
+            }
+            os << nl;
         }
-        os << nl;
     }
+
+    const tabulatedProfile profile(outputFile);
 
     Info<< "Input: " << inputFile << nl
         << "Output: " << outputFile << nl
         << "Grid: " << nx << " x " << ny << nl
         << "Spacing: " << dx << " x " << dy << " m" << nl
-        << "Integral: " << integral << nl;
-
-    Info<< nl
-        << "PRIMES laser radius metadata" << nl
-        << "----------------------------" << endl;
-
-    if (metadata.found("Ellipticity"))
-    {
-        Info<< "Ellipticity: "
-            << parseScalarValue(metadata["Ellipticity"]) << endl;
-    }
-
-    if (metadata.found("Radius a") && metadata.found("Radius b"))
-    {
-        const scalar convertToMetres = 1e-6;
-
-        scalar radiusA =
-            parseScalarValue(metadata["Radius a"]) * convertToMetres;
-
-        scalar radiusB =
-            parseScalarValue(metadata["Radius b"]) * convertToMetres;
-
-        Info<< "Radius a: " << radiusA << " m" << endl
-            << "Radius b: " << radiusB << " m" << endl;
-
-        scalar radiusX = radiusA;
-        scalar radiusY = radiusB;
-
-        //- Calculate axis-aligned bounding box half-span
-        if (metadata.found("Azimuth angle φ"))
-        {
-            scalar phi =
-                parseScalarValue(metadata["Azimuth angle φ"])
-              * Foam::constant::mathematical::pi/180.0;
-
-            scalar c = std::cos(phi);
-            scalar s = std::sin(phi);
-
-            radiusX =
-                std::sqrt
-                (
-                    radiusA*radiusA*c*c
-                  + radiusB*radiusB*s*s
-                );
-
-            radiusY =
-                std::sqrt
-                (
-                    radiusA*radiusA*s*s
-                  + radiusB*radiusB*c*c
-                );
-        }
-
-        Info<< nl
-            << "Suggested beam dimensions (x y): "
-            << "(" << radiusX << " " << radiusY << ") m" << endl;
-    }
+        << "Input integral: " << integral << nl
+        << "Normalized integral: " << profile.integral() << nl
+        << "D4sigma equivalent: " << profile.d4SigmaEquivalent() << " m" << nl
+        << "D4sigma major: " << profile.d4SigmaMajor() << " m" << nl
+        << "D4sigma minor: " << profile.d4SigmaMinor() << " m" << nl
+        << "Azimuth: " << profile.azimuth() << " rad" << endl;
 
     return 0;
 }

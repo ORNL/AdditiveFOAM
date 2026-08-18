@@ -16,8 +16,6 @@ FoamFile
 
 sources (beam);
 
-heatSourceRadius <<heatSourceRadius>>;
-
 beam
 {
     pathName            scanPath;
@@ -32,13 +30,14 @@ beam
         geometry            cylinder;
     }
 
-    heatSourceModel     projectedGaussian;
+    heatSourceModel     tabulated;
 
-    projectedGaussianCoeffs
+    tabulatedCoeffs
     {
-        dimensions      ($heatSourceRadius $heatSourceRadius 30.0e-6);
-        A               0.0;
-        B               <<B>>;
+        file            "beam_profile.txt";
+        minimumDepth        30.0e-6;
+        nSlope       0.0;
+        nIntercept   <<nIntercept>>;
 
         transient       true;
         nPoints         (10 10 10);

@@ -53,8 +53,9 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh)
 {
-    A_ = heatSourceModelCoeffs_.lookup<scalar>("A");
-    B_ = heatSourceModelCoeffs_.lookup<scalar>("B");
+    nSlope_ = heatSourceModelCoeffs_.lookup<scalar>("nSlope");
+    nIntercept_ =
+        heatSourceModelCoeffs_.lookup<scalar>("nIntercept");
 
     // set initial shape function
     const scalar x_ =
@@ -64,7 +65,16 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
           / min(staticDimensions_.x(), staticDimensions_.y()),
             0.001
         );
-    const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
+    const scalar n_ =
+        min
+        (
+            max
+            (
+                nSlope_*std::log2(x_) + nIntercept_,
+                0.0
+            ),
+            9.0
+        );
     k_ = std::pow(2.0, n_);
 }
 
@@ -101,7 +111,16 @@ Foam::heatSourceModels::projectedGaussian::V0()
             0.001
         );
 
-    const scalar n_ = min(max(A_*std::log2(x_) + B_, 0.0), 9.0);
+    const scalar n_ =
+        min
+        (
+            max
+            (
+                nSlope_*std::log2(x_) + nIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
     k_ = std::pow(2.0, n_);
 
@@ -124,8 +143,9 @@ bool Foam::heatSourceModels::projectedGaussian::read()
         heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
 
         //- Mandatory entries
-        heatSourceModelCoeffs_.lookup("A") >> A_;
-        heatSourceModelCoeffs_.lookup("B") >> B_;
+        heatSourceModelCoeffs_.lookup("nSlope") >> nSlope_;
+        heatSourceModelCoeffs_.lookup("nIntercept")
+            >> nIntercept_;
 
         return true;
     }

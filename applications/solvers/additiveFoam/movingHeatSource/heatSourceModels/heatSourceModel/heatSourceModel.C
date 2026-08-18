@@ -90,6 +90,14 @@ Foam::heatSourceModel::heatSourceModel
     sourceDict_(heatSourceDict_.optionalSubDict(sourceName_)),
     heatSourceModelCoeffs_(sourceDict_.optionalSubDict(type + "Coeffs")),
     mesh_(mesh),
+    transient_(false),
+    isoValue_(great),
+    dimensions_(vector::zero),
+    staticDimensions_(vector::zero),
+    measuredDepth_(0),
+    nPoints_(vector::one),
+    sourceLowerBound_(vector::zero),
+    sourceUpperBound_(vector::zero),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
 {
@@ -99,15 +107,18 @@ Foam::heatSourceModel::heatSourceModel
     movingBeam_ =
         movingBeam::New(sourceName_, heatSourceDict_, mesh_.time());
 
-    dimensions_ =
-        heatSourceModelCoeffs_.lookup<vector>("dimensions");
+    if (type != "tabulated")
+    {
+        dimensions_ =
+            heatSourceModelCoeffs_.lookup<vector>("dimensions");
+    }
 
     staticDimensions_ = dimensions_;
+    sourceLowerBound_ = -1.5*dimensions_;
+    sourceUpperBound_ = 1.5*dimensions_;
 
     transient_ =
         heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
-
-    isoValue_ = great;
 
     if
     (
@@ -128,6 +139,8 @@ Foam::heatSourceModel::heatSourceModel
             "nPoints",
             vector::one
         );
+
+    measuredDepth_ = transient_ ? 0 : dimensions_.z();
 }
 
 
@@ -137,6 +150,9 @@ void Foam::heatSourceModel::updateDimensions()
 {
     if (!transient_ )
     {
+        measuredDepth_ = dimensions_.z();
+        sourceLowerBound_ = -1.5*dimensions_;
+        sourceUpperBound_ = 1.5*dimensions_;
         Info << "maxDepth: " << dimensions_.z() << endl;
         return;
     }
@@ -157,7 +173,7 @@ void Foam::heatSourceModel::updateDimensions()
 
     const volVectorField& cc = mesh_.C();
 
-    scalar maxDepth = staticDimensions_.z();
+    scalar measuredDepth = 0;
 
     // isocontour location evaluated linearly across faces
     for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
@@ -179,7 +195,7 @@ void Foam::heatSourceModel::updateDimensions()
 
             if (pxy <= searchRadius)
             {
-                maxDepth = max(p.z(), maxDepth);
+                measuredDepth = max(p.z(), measuredDepth);
             }
         }
     }
@@ -220,19 +236,27 @@ void Foam::heatSourceModel::updateDimensions()
 
                     if (pxy <= searchRadius)
                     {
-                        maxDepth = max(p.z(), maxDepth);
+                        measuredDepth = max(p.z(), measuredDepth);
                     }
                 }
             }
         }
     }
 
-    reduce(maxDepth, maxOp<scalar>());
+    reduce(measuredDepth, maxOp<scalar>());
+
+    measuredDepth_ = measuredDepth;
+
+    const scalar effectiveDepth = max(staticDimensions_.z(), measuredDepth_);
 
     dimensions_ =
-        vector(staticDimensions_.x(), staticDimensions_.y(), maxDepth);
+        vector(staticDimensions_.x(), staticDimensions_.y(), effectiveDepth);
 
-    Info << "maxDepth: " << dimensions_.z() << endl;
+    sourceLowerBound_ = -1.5*dimensions_;
+    sourceUpperBound_ = 1.5*dimensions_;
+
+    Info<< "measuredDepth: " << measuredDepth_
+        << ", effectiveDepth: " << dimensions_.z() << endl;
 }
 
 Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
@@ -263,8 +287,10 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
         const vector position_ = movingBeam_->position();
 
         // udpate the absorbed power and heat source normalization term
+        const scalar sourceDepth =
+            transient_ ? measuredDepth_ : dimensions_.z();
         const scalar aspectRatio =
-            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
+            sourceDepth/min(dimensions_.x(), dimensions_.y());
 
         const dimensionedScalar absorbedPower
         (
@@ -294,8 +320,8 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
 
         treeBoundBox beamBb
         (
-            position_ - 1.5*dimensions_,
-            position_ + 1.5*dimensions_
+            position_ + sourceLowerBound_,
+            position_ + sourceUpperBound_
         );
 
         hexMatcher hex;
@@ -363,7 +389,7 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
                 else
                 {
                     // cell is not hexahedral, evaluate at centre
-                    point d = cmptMag(mesh_.cellCentres()[celli] - position_);
+                    point d = mesh_.cellCentres()[celli] - position_;
 
                     weights[celli] = weight(d);
                 }

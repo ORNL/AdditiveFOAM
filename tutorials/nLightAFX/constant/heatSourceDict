@@ -18,10 +18,10 @@ FoamFile
 sources (beam);
 
 depth   5.0e-5;
-innerA  0.0;
-innerB  1.0;
-outerA  0.0;
-outerB  1.0;
+innerNSlope  0.0;
+innerNIntercept  1.0;
+outerNSlope  0.0;
+outerNIntercept  1.0;
 
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 

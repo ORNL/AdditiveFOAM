@@ -74,23 +74,23 @@ class nLightAFX
         //- Standard deviation of the outer Gaussian ring
         scalar sigma1_;
 
-        //- Inner axial decay coefficient in the form n = Alog2(x) + B
-        scalar A0_;
+        //- Inner nSlope in n = nSlope*log2(x) + nIntercept
+        scalar innerNSlope_;
 
-        //- Inner axial decay coefficient in the form n = Alog2(x) + B
-        scalar B0_;
+        //- Inner nIntercept in n = nSlope*log2(x) + nIntercept
+        scalar innerNIntercept_;
 
-        //- Outer axial decay coefficient in the form n = Alog2(x) + B
-        scalar A1_;
+        //- Outer nSlope in n = nSlope*log2(x) + nIntercept
+        scalar outerNSlope_;
 
-        //- Outer axial decay coefficient in the form n = Alog2(x) + B
-        scalar B1_;
+        //- Outer nIntercept in n = nSlope*log2(x) + nIntercept
+        scalar outerNIntercept_;
 
         //- Inner axial decay exponent
-        scalar n0_;
+        scalar k0_;
 
         //- Outer axial decay exponent
-        scalar n1_;
+        scalar k1_;
 
         //- Inner normalization factor
         scalar a0_;
@@ -124,7 +124,7 @@ public:
 
         inline virtual scalar weight(const vector& d);
 
-        inline scalar ai(scalar x, scalar s, scalar d, scalar n);
+        inline scalar ai(scalar x, scalar s, scalar d, scalar k);
 
         inline virtual dimensionedScalar V0();
 

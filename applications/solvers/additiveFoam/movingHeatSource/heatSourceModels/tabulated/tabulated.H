@@ -38,6 +38,7 @@ SourceFiles
 #define tabulated_H
 
 #include "heatSourceModel.H"
+#include "tabulatedProfile.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,53 +60,26 @@ class tabulated
         //- Pointer to mesh information
         const fvMesh& mesh_;
 
-        //- Axial decay coefficient in the form n = Alog2(x) + B
-        scalar A_;
+        //- nSlope in n = nSlope*log2(x) + nIntercept
+        scalar nSlope_;
 
-        //- Axial decay coefficient in the form n = Alog2(x) + B
-        scalar B_;
+        //- nIntercept in n = nSlope*log2(x) + nIntercept
+        scalar nIntercept_;
 
         //- Axial decay exponent
-        scalar k_;
+        scalar axialExponent_;
 
-        //- Minimum x coordinate of the table
-        scalar x0_;
+        //- Minimum effective axial source depth
+        scalar minimumDepth_;
 
-        //- Minimum y coordinate of the table
-        scalar y0_;
-
-        //- Uniform x spacing
-        scalar dx_;
-
-        //- Uniform y spacing
-        scalar dy_;
-
-        //- Inverse uniform x spacing
-        scalar invDx_;
-
-        //- Inverse uniform y spacing
-        scalar invDy_;
-
-        //- Number of x points
-        label nx_;
-
-        //- Number of y points
-        label ny_;
-
-        //- Tabulated planar intensity, stored as i + nx*j
-        scalarField f_;
-
-        //- Integrated planar distribution
-        scalar Axy_;
+        //- Planar profile and derived beam metrics
+        tabulatedProfile profile_;
 
 
     // Private Member Functions
 
-        //- Read tabulated planar distribution
-        void readTable(const fileName& tableFile);
-
-        //- Integrate tabulated planar distribution
-        void integrateTable();
+        //- Update the depth-dependent axial state
+        void updateAxialState();
 
 
 public:

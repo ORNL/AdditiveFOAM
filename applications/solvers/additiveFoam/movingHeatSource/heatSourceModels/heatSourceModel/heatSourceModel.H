@@ -96,8 +96,15 @@ protected:
         //- Dimensions of the heat source (static)
         vector staticDimensions_;
 
+        //- Measured isotherm depth, zero when no isotherm is detected
+        scalar measuredDepth_;
+
         //- Number of points along heat source dimensions resolved by sampling
         labelVector nPoints_;
+
+        //- Source bounds relative to the beam position
+        vector sourceLowerBound_;
+        vector sourceUpperBound_;
 
         //- AutoPtrs to absorption model and moving beam instances
         autoPtr<absorptionModel> absorptionModel_;

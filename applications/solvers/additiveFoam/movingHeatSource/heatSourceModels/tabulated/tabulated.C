@@ -27,7 +27,6 @@ License
 
 #include "tabulated.H"
 #include "addToRunTimeSelectionTable.H"
-#include "IFstream.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -51,22 +50,27 @@ Foam::heatSourceModels::tabulated::tabulated
 :
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh),
-    A_(Zero),
-    B_(Zero),
-    k_(Zero),
-    x0_(Zero),
-    y0_(Zero),
-    dx_(Zero),
-    dy_(Zero),
-    invDx_(Zero),
-    invDy_(Zero),
-    nx_(Zero),
-    ny_(Zero),
-    f_(0),
-    Axy_(Zero)
+    nSlope_(Zero),
+    nIntercept_(Zero),
+    axialExponent_(1),
+    minimumDepth_(Zero),
+    profile_()
 {
-    A_ = heatSourceModelCoeffs_.lookup<scalar>("A");
-    B_ = heatSourceModelCoeffs_.lookup<scalar>("B");
+    nSlope_ =
+        heatSourceModelCoeffs_.lookup<scalar>("nSlope");
+
+    nIntercept_ =
+        heatSourceModelCoeffs_.lookup<scalar>("nIntercept");
+
+    minimumDepth_ =
+        heatSourceModelCoeffs_.lookup<scalar>("minimumDepth");
+
+    if (minimumDepth_ <= 0)
+    {
+        FatalIOErrorInFunction(heatSourceModelCoeffs_)
+            << "minimumDepth must be greater than zero"
+            << exit(FatalIOError);
+    }
 
     const fileName fName(heatSourceModelCoeffs_.lookup("file"));
 
@@ -78,71 +82,72 @@ Foam::heatSourceModels::tabulated::tabulated
        /fName
     );
 
-    readTable(tableFile);
-    integrateTable();
+    profile_.read(tableFile);
 
-    const scalar x =
-        max
+    dimensions_ =
+        vector
         (
-            dimensions_.z()/min(staticDimensions_.x(), staticDimensions_.y()),
-            0.001
+            0.5*profile_.d4SigmaEquivalent(),
+            0.5*profile_.d4SigmaEquivalent(),
+            minimumDepth_
         );
 
-    const scalar n = min(max(A_*std::log2(x) + B_, 0.0), 9.0);
+    staticDimensions_ = dimensions_;
+    measuredDepth_ = transient_ ? 0 : minimumDepth_;
 
-    k_ = std::pow(2.0, n);
+    updateAxialState();
+
+    Info<< "Tabulated profile: integral=" << profile_.integral()
+        << ", centroid=(" << profile_.centroidX()
+        << ' ' << profile_.centroidY() << ") m"
+        << ", D4sigma equivalent/major/minor="
+        << profile_.d4SigmaEquivalent() << '/'
+        << profile_.d4SigmaMajor() << '/'
+        << profile_.d4SigmaMinor() << " m"
+        << ", azimuth=" << profile_.azimuth() << " rad" << endl;
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::heatSourceModels::tabulated::readTable(const fileName& tableFile)
+void Foam::heatSourceModels::tabulated::updateAxialState()
 {
-    IFstream is(tableFile);
+    const scalar sourceAspectRatio =
+        max
+        (
+            2.0*dimensions_.z()/profile_.d4SigmaEquivalent(),
+            0.001
+        );
 
-    if (!is.good())
-    {
-        FatalIOErrorInFunction(heatSourceModelCoeffs_)
-            << "Cannot find tabulated heat source file " << tableFile
-            << exit(FatalIOError);
-    }
+    const scalar log2AxialExponent =
+        min
+        (
+            max
+            (
+                nSlope_*std::log2(sourceAspectRatio)
+              + nIntercept_,
+                0.0
+            ),
+            9.0
+        );
 
-    is >> nx_ >> ny_;
-    is >> x0_ >> y0_;
-    is >> dx_ >> dy_;
+    axialExponent_ = std::pow(2.0, log2AxialExponent);
 
-    invDx_ = 1.0/dx_;
-    invDy_ = 1.0/dy_;
+    static const scalar cutoffTolerance = 1.0e-3;
 
-    f_.setSize(nx_*ny_);
+    const scalar cutoffDepth =
+        dimensions_.z()
+       *std::pow
+        (
+            -std::log(cutoffTolerance)/3.0,
+            1.0/axialExponent_
+        );
 
-    forAll(f_, i)
-    {
-        is >> f_[i];
-    }
-}
+    sourceLowerBound_ =
+        vector(profile_.x0(), profile_.y0(), -cutoffDepth);
 
-
-void Foam::heatSourceModels::tabulated::integrateTable()
-{
-    Axy_ = Zero;
-
-    for (label j=0; j<ny_ - 1; ++j)
-    {
-        for (label i=0; i<nx_ - 1; ++i)
-        {
-            const label id = i + nx_*j;
-
-            Axy_ +=
-                0.25*dx_*dy_
-              * (
-                    f_[id]
-                  + f_[id + 1]
-                  + f_[id + nx_]
-                  + f_[id + nx_ + 1]
-                );
-        }
-    }
+    sourceUpperBound_ =
+        vector(profile_.x1(), profile_.y1(), 0);
 }
 
 
@@ -151,58 +156,36 @@ void Foam::heatSourceModels::tabulated::integrateTable()
 inline Foam::scalar
 Foam::heatSourceModels::tabulated::weight(const vector& d)
 {
-    const scalar xp = (d.x() - x0_)*invDx_;
-    const scalar yp = (d.y() - y0_)*invDy_;
-
-    if (xp < 0.0 || xp > nx_ - 1 || yp < 0.0 || yp > ny_ - 1)
+    if (d.z() > small)
     {
-        return 0.0;
+        return 0;
     }
 
-    label i = label(xp);
-    label j = label(yp);
+    const scalar planarWeight = profile_.interpolate(d.x(), d.y());
 
-    i = min(i, nx_ - 2);
-    j = min(j, ny_ - 2);
+    const scalar axialWeight =
+        std::exp
+        (
+            -3.0
+           *std::pow(max(-d.z(), scalar(0))/dimensions_.z(), axialExponent_)
+        );
 
-    const scalar tx = xp - i;
-    const scalar ty = yp - j;
-
-    const label id = i + nx_*j;
-
-    const scalar f =
-        (1.0 - tx)*(1.0 - ty)*f_[id]
-      + tx*(1.0 - ty)*f_[id + 1]
-      + (1.0 - tx)*ty*f_[id + nx_]
-      + tx*ty*f_[id + nx_ + 1];
-
-    const scalar s =
-        std::exp(-3.0*std::pow(mag(d.z()/dimensions_.z()), k_));
-
-    return f*s;
+    return planarWeight*axialWeight;
 }
 
 
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::tabulated::V0()
 {
-    const scalar x =
-        max
-        (
-            dimensions_.z()/min(staticDimensions_.x(), staticDimensions_.y()),
-            0.001
-        );
-
-    const scalar n = min(max(A_*std::log2(x) + B_, 0.0), 9.0);
-
-    k_ = std::pow(2.0, n);
+    updateAxialState();
 
     const dimensionedScalar V0
     (
         "V0",
         dimVolume,
-        Axy_*dimensions_.z()*Foam::tgamma(1.0/k_)
-      / (k_*std::pow(3.0, 1.0/k_))
+        profile_.integral()*dimensions_.z()
+       *Foam::tgamma(1.0/axialExponent_)
+       /(axialExponent_*std::pow(3.0, 1.0/axialExponent_))
     );
 
     return V0;
@@ -215,8 +198,17 @@ bool Foam::heatSourceModels::tabulated::read()
     {
         heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
 
-        heatSourceModelCoeffs_.lookup("A") >> A_;
-        heatSourceModelCoeffs_.lookup("B") >> B_;
+        heatSourceModelCoeffs_.lookup("nSlope") >> nSlope_;
+        heatSourceModelCoeffs_.lookup("nIntercept")
+            >> nIntercept_;
+        heatSourceModelCoeffs_.lookup("minimumDepth") >> minimumDepth_;
+
+        if (minimumDepth_ <= 0)
+        {
+            FatalIOErrorInFunction(heatSourceModelCoeffs_)
+                << "minimumDepth must be greater than zero"
+                << exit(FatalIOError);
+        }
 
         const fileName fName(heatSourceModelCoeffs_.lookup("file"));
 
@@ -228,8 +220,28 @@ bool Foam::heatSourceModels::tabulated::read()
            /fName
         );
 
-        readTable(tableFile);
-        integrateTable();
+        profile_.read(tableFile);
+
+        const scalar effectiveDepth =
+            transient_ ? max(minimumDepth_, measuredDepth_) : minimumDepth_;
+
+        dimensions_ =
+            vector
+            (
+                0.5*profile_.d4SigmaEquivalent(),
+                0.5*profile_.d4SigmaEquivalent(),
+                effectiveDepth
+            );
+
+        staticDimensions_ =
+            vector(dimensions_.x(), dimensions_.y(), minimumDepth_);
+
+        if (!transient_)
+        {
+            measuredDepth_ = minimumDepth_;
+        }
+
+        updateAxialState();
 
         return true;
     }

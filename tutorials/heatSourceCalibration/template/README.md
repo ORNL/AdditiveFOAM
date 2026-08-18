@@ -1,9 +1,9 @@
 # Calibration case template
 
 This is the OpenFOAM-14 AdditiveFOAM case copied for every trial value in the
-heat-source calibration campaign. It uses a `projectedGaussian` heat source
-with SS316L. The laser D4sigma diameter was measured to be 109.69 microns,
-giving a 2sigma heat-source radius of 54.845 microns.
+heat-source calibration campaign. It uses a `tabulated` heat source with SS316L
+and a circular Gaussian planar profile. The measured D4sigma diameter is 109.69
+microns. AdditiveFOAM calculates this value directly from the finite table.
 
 The calibration command expects this full case structure:
 
@@ -17,17 +17,19 @@ Allclean
 
 The required renderer placeholders are:
 
-- `constant/heatSourceDict`: `<<B>>` and `<<heatSourceRadius>>`
+- `constant/heatSourceDict`: `<<nIntercept>>`
 - `constant/scanPath`: `<<power>>`, `<<velocity>>`
 - `system/controlDict`: `<<endTime>>`, `<<writeInterval>>`
 
-The projected Gaussian closure reads `<<B>>` directly. The
-`$heatSourceRadius` alias supplies both lateral dimensions from one rendered
-value.
+The normalized 67-by-67 profile is provided directly in
+`constant/beam_profile.txt`. It uses 2.5-micron spacing and spans -82.5 through
++82.5 microns in both lateral directions. The tabulated projected-depth closure
+reads `<<nIntercept>>` directly. The model calculates the profile
+integral and D4sigma during initialization; the user supplies only
+`minimumDepth` for the initial projected source depth.
 
-The calibration command divides `Spot_Size_microns` by two, converts the
-result to metres, assigns it to both lateral source dimensions, and uses the
-same radius to normalize measured and simulated depth.
+The projected closure is `n = clip(nSlope*log2(x) + nIntercept, 0, 9)` and the
+axial decay exponent is `k = 2^n`.
 
 The SS316L material configuration supplies `thermoPath`, emissivity, and the
 Marangoni coefficient. Transient source depth and `meltPoolDimensions` obtain
