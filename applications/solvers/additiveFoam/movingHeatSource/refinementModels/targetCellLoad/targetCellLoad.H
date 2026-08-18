@@ -158,7 +158,7 @@ public:
         //- Update the refinement marker field
         virtual bool update();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

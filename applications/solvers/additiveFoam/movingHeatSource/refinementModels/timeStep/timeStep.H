@@ -84,7 +84,7 @@ public:
         //- Update every time step
         virtual bool update();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

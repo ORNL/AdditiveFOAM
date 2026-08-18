@@ -52,7 +52,7 @@ Foam::heatSourceModels::tabulated::tabulated
     mesh_(mesh),
     nSlope_(Zero),
     nIntercept_(Zero),
-    axialExponent_(1),
+    k_(1),
     minimumDepth_(Zero),
     profile_()
 {
@@ -64,13 +64,6 @@ Foam::heatSourceModels::tabulated::tabulated
 
     minimumDepth_ =
         heatSourceModelCoeffs_.lookup<scalar>("minimumDepth");
-
-    if (minimumDepth_ <= 0)
-    {
-        FatalIOErrorInFunction(heatSourceModelCoeffs_)
-            << "minimumDepth must be greater than zero"
-            << exit(FatalIOError);
-    }
 
     const fileName fName(heatSourceModelCoeffs_.lookup("file"));
 
@@ -87,23 +80,23 @@ Foam::heatSourceModels::tabulated::tabulated
     dimensions_ =
         vector
         (
-            0.5*profile_.d4SigmaEquivalent(),
-            0.5*profile_.d4SigmaEquivalent(),
+            0.5*profile_.D4Sigma(),
+            0.5*profile_.D4Sigma(),
             minimumDepth_
         );
 
     staticDimensions_ = dimensions_;
-    measuredDepth_ = transient_ ? 0 : minimumDepth_;
+    isoDepth_ = transient_ ? 0 : minimumDepth_;
 
     updateAxialState();
 
     Info<< "Tabulated profile: integral=" << profile_.integral()
         << ", centroid=(" << profile_.centroidX()
         << ' ' << profile_.centroidY() << ") m"
-        << ", D4sigma equivalent/major/minor="
-        << profile_.d4SigmaEquivalent() << '/'
-        << profile_.d4SigmaMajor() << '/'
-        << profile_.d4SigmaMinor() << " m"
+        << ", D4sigma/major/minor="
+        << profile_.D4Sigma() << '/'
+        << profile_.D4SigmaMajor() << '/'
+        << profile_.D4SigmaMinor() << " m"
         << ", azimuth=" << profile_.azimuth() << " rad" << endl;
 }
 
@@ -115,11 +108,11 @@ void Foam::heatSourceModels::tabulated::updateAxialState()
     const scalar sourceAspectRatio =
         max
         (
-            2.0*dimensions_.z()/profile_.d4SigmaEquivalent(),
+            2.0*dimensions_.z()/profile_.D4Sigma(),
             0.001
         );
 
-    const scalar log2AxialExponent =
+    const scalar n =
         min
         (
             max
@@ -131,7 +124,7 @@ void Foam::heatSourceModels::tabulated::updateAxialState()
             9.0
         );
 
-    axialExponent_ = std::pow(2.0, log2AxialExponent);
+    k_ = std::pow(2.0, n);
 
     static const scalar cutoffTolerance = 1.0e-3;
 
@@ -140,7 +133,7 @@ void Foam::heatSourceModels::tabulated::updateAxialState()
        *std::pow
         (
             -std::log(cutoffTolerance)/3.0,
-            1.0/axialExponent_
+            1.0/k_
         );
 
     sourceLowerBound_ =
@@ -167,7 +160,7 @@ Foam::heatSourceModels::tabulated::weight(const vector& d)
         std::exp
         (
             -3.0
-           *std::pow(max(-d.z(), scalar(0))/dimensions_.z(), axialExponent_)
+           *std::pow(max(-d.z(), scalar(0))/dimensions_.z(), k_)
         );
 
     return planarWeight*axialWeight;
@@ -184,8 +177,8 @@ Foam::heatSourceModels::tabulated::V0()
         "V0",
         dimVolume,
         profile_.integral()*dimensions_.z()
-       *Foam::tgamma(1.0/axialExponent_)
-       /(axialExponent_*std::pow(3.0, 1.0/axialExponent_))
+       *Foam::tgamma(1.0/k_)
+       /(k_*std::pow(3.0, 1.0/k_))
     );
 
     return V0;
@@ -203,13 +196,6 @@ bool Foam::heatSourceModels::tabulated::read()
             >> nIntercept_;
         heatSourceModelCoeffs_.lookup("minimumDepth") >> minimumDepth_;
 
-        if (minimumDepth_ <= 0)
-        {
-            FatalIOErrorInFunction(heatSourceModelCoeffs_)
-                << "minimumDepth must be greater than zero"
-                << exit(FatalIOError);
-        }
-
         const fileName fName(heatSourceModelCoeffs_.lookup("file"));
 
         const fileName tableFile
@@ -223,13 +209,13 @@ bool Foam::heatSourceModels::tabulated::read()
         profile_.read(tableFile);
 
         const scalar effectiveDepth =
-            transient_ ? max(minimumDepth_, measuredDepth_) : minimumDepth_;
+            transient_ ? max(minimumDepth_, isoDepth_) : minimumDepth_;
 
         dimensions_ =
             vector
             (
-                0.5*profile_.d4SigmaEquivalent(),
-                0.5*profile_.d4SigmaEquivalent(),
+                0.5*profile_.D4Sigma(),
+                0.5*profile_.D4Sigma(),
                 effectiveDepth
             );
 
@@ -238,7 +224,7 @@ bool Foam::heatSourceModels::tabulated::read()
 
         if (!transient_)
         {
-            measuredDepth_ = minimumDepth_;
+            isoDepth_ = minimumDepth_;
         }
 
         updateAxialState();

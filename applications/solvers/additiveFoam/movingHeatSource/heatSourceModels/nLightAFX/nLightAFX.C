@@ -53,27 +53,16 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh)
 {
-    const dictionary innerDict
-    (
-        heatSourceModelCoeffs_.optionalSubDict("inner")
-    );
-
-    const dictionary outerDict
-    (
-        heatSourceModelCoeffs_.optionalSubDict("outer")
-    );
-
     alpha_ = heatSourceModelCoeffs_.lookup<scalar>("alpha");
 
-    r0_ = innerDict.lookup<scalar>("radius");
-    sigma0_ = innerDict.lookup<scalar>("sigma");
-    innerNSlope_ = innerDict.lookup<scalar>("nSlope");
-    innerNIntercept_ = innerDict.lookup<scalar>("nIntercept");
+    r0_ = heatSourceModelCoeffs_.lookup<scalar>("r0");
+    sigma0_ = heatSourceModelCoeffs_.lookup<scalar>("sigma0");
 
-    r1_ = outerDict.lookup<scalar>("radius");
-    sigma1_ = outerDict.lookup<scalar>("sigma");
-    outerNSlope_ = outerDict.lookup<scalar>("nSlope");
-    outerNIntercept_ = outerDict.lookup<scalar>("nIntercept");
+    r1_ = heatSourceModelCoeffs_.lookup<scalar>("r1");
+    sigma1_ = heatSourceModelCoeffs_.lookup<scalar>("sigma1");
+
+    nSlope_ = heatSourceModelCoeffs_.lookup<scalar>("nSlope");
+    nIntercept_ = heatSourceModelCoeffs_.lookup<scalar>("nIntercept");
 
     const scalar d = dimensions_.z();
 
@@ -84,35 +73,22 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
             0.001
         );
 
-    const scalar n0 =
+    const scalar n =
         min
         (
             max
             (
-                innerNSlope_*std::log2(x)
-              + innerNIntercept_,
+                nSlope_*std::log2(x)
+              + nIntercept_,
                 0.0
             ),
             9.0
         );
 
-    const scalar n1 =
-        min
-        (
-            max
-            (
-                outerNSlope_*std::log2(x)
-              + outerNIntercept_,
-                0.0
-            ),
-            9.0
-        );
+    k_ = Foam::pow(2.0, n);
 
-    k0_ = Foam::pow(2.0, n0);
-    k1_ = Foam::pow(2.0, n1);
-
-    a0_ = ai(r0_, sigma0_, d, k0_);
-    a1_ = ai(r1_, sigma1_, d, k1_);
+    a0_ = ai(r0_, sigma0_, d, k_);
+    a1_ = ai(r1_, sigma1_, d, k_);
 }
 
 
@@ -121,7 +97,12 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
 inline Foam::scalar
 Foam::heatSourceModels::nLightAFX::weight(const vector& x)
 {
-    const scalar z = Foam::mag(x.z());
+    if (x.z() > small)
+    {
+        return 0;
+    }
+
+    const scalar z = max(-x.z(), scalar(0));
 
     const scalar r = Foam::sqrt(x.x()*x.x() + x.y()*x.y());
 
@@ -135,13 +116,10 @@ Foam::heatSourceModels::nLightAFX::weight(const vector& x)
         std::exp(-0.5*Foam::sqr((r - r1_)/sigma1_))
       + std::exp(-0.5*Foam::sqr((r + r1_)/sigma1_));
 
-    const scalar s0 =
-        std::exp(-3.0*Foam::pow(mag(z/d), k0_));
+    const scalar s =
+        std::exp(-3.0*Foam::pow(z/d, k_));
 
-    const scalar s1 =
-        std::exp(-3.0*Foam::pow(mag(z/d), k1_));
-
-    return ((1.0 - alpha_)*x0*s0*a1_) + (alpha_*x1*s1*a0_);
+    return s*((1.0 - alpha_)*x0 + alpha_*x1*a0_/a1_);
 }
 
 
@@ -178,37 +156,24 @@ Foam::heatSourceModels::nLightAFX::V0()
             0.001
         );
 
-    const scalar n0 =
+    const scalar n =
         min
         (
             max
             (
-                innerNSlope_*std::log2(x)
-              + innerNIntercept_,
+                nSlope_*std::log2(x)
+              + nIntercept_,
                 0.0
             ),
             9.0
         );
 
-    const scalar n1 =
-        min
-        (
-            max
-            (
-                outerNSlope_*std::log2(x)
-              + outerNIntercept_,
-                0.0
-            ),
-            9.0
-        );
+    k_ = Foam::pow(2.0, n);
 
-    k0_ = Foam::pow(2.0, n0);
-    k1_ = Foam::pow(2.0, n1);
+    a0_ = ai(r0_, sigma0_, d, k_);
+    a1_ = ai(r1_, sigma1_, d, k_);
 
-    a0_ = ai(r0_, sigma0_, d, k0_);
-    a1_ = ai(r1_, sigma1_, d, k1_);
-
-    return dimensionedScalar("V0", dimVolume, a0_*a1_);
+    return dimensionedScalar("V0", dimVolume, a0_);
 }
 
 
@@ -218,27 +183,16 @@ bool Foam::heatSourceModels::nLightAFX::read()
     {
         heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
 
-        const dictionary innerDict
-        (
-            heatSourceModelCoeffs_.optionalSubDict("inner")
-        );
-
-        const dictionary outerDict
-        (
-            heatSourceModelCoeffs_.optionalSubDict("outer")
-        );
-
         heatSourceModelCoeffs_.lookup("alpha") >> alpha_;
 
-        innerDict.lookup("radius") >> r0_;
-        innerDict.lookup("sigma") >> sigma0_;
-        innerDict.lookup("nSlope") >> innerNSlope_;
-        innerDict.lookup("nIntercept") >> innerNIntercept_;
+        heatSourceModelCoeffs_.lookup("r0") >> r0_;
+        heatSourceModelCoeffs_.lookup("sigma0") >> sigma0_;
 
-        outerDict.lookup("radius") >> r1_;
-        outerDict.lookup("sigma") >> sigma1_;
-        outerDict.lookup("nSlope") >> outerNSlope_;
-        outerDict.lookup("nIntercept") >> outerNIntercept_;
+        heatSourceModelCoeffs_.lookup("r1") >> r1_;
+        heatSourceModelCoeffs_.lookup("sigma1") >> sigma1_;
+
+        heatSourceModelCoeffs_.lookup("nSlope") >> nSlope_;
+        heatSourceModelCoeffs_.lookup("nIntercept") >> nIntercept_;
 
         return true;
     }

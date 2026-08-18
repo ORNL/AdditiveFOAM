@@ -1,3 +1,54 @@
+# Release 2.0.0
+
+## Features
+
+- Ported AdditiveFOAM to OpenFOAM-14.
+- Added dynamic refinement models and reusable material and heat-source
+  configuration files.
+- Added `nLightAFX` and tabulated heat-source models, including conversion of
+  PRIMES beam measurements with `primesToAdditiveFoam`.
+- Added tabulated-profile inspection and automatic D4sigma calculation.
+- Added an adaptive Bayesian workflow for calibrating the projected
+  heat-source depth distribution.
+- Expanded the AMB2018, multi-beam, multi-layer, nLight AFX, and tabulated
+  tutorials.
+
+## Upgrade notes
+
+- AdditiveFOAM 2.0 requires OpenFOAM-14. Source the OpenFOAM-14 environment
+  before sourcing `etc/bashrc` and rebuild AdditiveFOAM with `./Allwmake`.
+- The `A` and `B` projected-depth coefficients are now named `nSlope` and
+  `nIntercept` in `projectedGaussian`, `tabulated`, and `nLightAFX`.
+- The tabulated model now derives its lateral dimensions and D4sigma metrics
+  from the beam-profile table. Replace the old `dimensions` entry with
+  `minimumDepth`; no user-supplied lateral dimensions are required.
+- Python 3.10 or newer and the packages in `requirements.txt` are required only
+  for the calibration and plotting utilities.
+
+## Full Changelog
+
+For a complete list of changes, see the [full changelog](https://github.com/ORNL/AdditiveFOAM/compare/1.2.0...2.0.0).
+
+
+# Release 1.2.0
+
+## Features
+
+- Added the projected Gaussian heat-source model.
+- Added melt-pool-dimension and solidification-data function objects.
+- Added optional implicit temperature limiting through the PIMPLE dictionary.
+- Added multi-layer scan-path support and updated the ExaCA tutorials.
+- Added the top-level build script for solvers and utilities.
+
+## Bug Fixes
+
+- Corrected thermophysical file handling for cases launched with `-case`.
+
+## Full Changelog
+
+For a complete list of changes, see the [full changelog](https://github.com/ORNL/AdditiveFOAM/compare/1.1.0...1.2.0).
+
+
 # Release 1.1
 
 ## Features

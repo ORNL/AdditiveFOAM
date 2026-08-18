@@ -152,7 +152,8 @@ n = clip(nSlope*log2(x) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `x = 2*depth/D4sigmaEquivalent`. The source is applied below the beam
+where `x = 2*depth/D4sigma`. Here `D4sigma` is the area-equivalent diameter,
+`sqrt(D4sigmaMajor*D4sigmaMinor)`. The source is applied below the beam
 plane with axial weight `exp(-3*(-z/depth)^k)`; its normalization uses the
 matching one-sided axial integral.
 

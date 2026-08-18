@@ -65,9 +65,9 @@ class tabulatedProfile
         scalar integral_;
         scalar centroidX_;
         scalar centroidY_;
-        scalar d4SigmaMajor_;
-        scalar d4SigmaMinor_;
-        scalar d4SigmaEquivalent_;
+        scalar D4SigmaMajor_;
+        scalar D4SigmaMinor_;
+        scalar D4Sigma_;
         scalar azimuth_;
 
     // Private Member Functions
@@ -165,19 +165,21 @@ public:
             return centroidY_;
         }
 
-        inline scalar d4SigmaMajor() const
+        inline scalar D4SigmaMajor() const
         {
-            return d4SigmaMajor_;
+            return D4SigmaMajor_;
         }
 
-        inline scalar d4SigmaMinor() const
+        inline scalar D4SigmaMinor() const
         {
-            return d4SigmaMinor_;
+            return D4SigmaMinor_;
         }
 
-        inline scalar d4SigmaEquivalent() const
+        //- Area-equivalent D4sigma diameter
+        //- sqrt(D4SigmaMajor()*D4SigmaMinor())
+        inline scalar D4Sigma() const
         {
-            return d4SigmaEquivalent_;
+            return D4Sigma_;
         }
 
         inline scalar azimuth() const

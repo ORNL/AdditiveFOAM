@@ -94,7 +94,7 @@ Foam::heatSourceModel::heatSourceModel
     isoValue_(great),
     dimensions_(vector::zero),
     staticDimensions_(vector::zero),
-    measuredDepth_(0),
+    isoDepth_(0),
     nPoints_(vector::one),
     sourceLowerBound_(vector::zero),
     sourceUpperBound_(vector::zero),
@@ -140,7 +140,7 @@ Foam::heatSourceModel::heatSourceModel
             vector::one
         );
 
-    measuredDepth_ = transient_ ? 0 : dimensions_.z();
+    isoDepth_ = transient_ ? 0 : dimensions_.z();
 }
 
 
@@ -150,7 +150,7 @@ void Foam::heatSourceModel::updateDimensions()
 {
     if (!transient_ )
     {
-        measuredDepth_ = dimensions_.z();
+        isoDepth_ = dimensions_.z();
         sourceLowerBound_ = -1.5*dimensions_;
         sourceUpperBound_ = 1.5*dimensions_;
         Info << "maxDepth: " << dimensions_.z() << endl;
@@ -173,7 +173,7 @@ void Foam::heatSourceModel::updateDimensions()
 
     const volVectorField& cc = mesh_.C();
 
-    scalar measuredDepth = 0;
+    scalar isoDepth = 0;
 
     // isocontour location evaluated linearly across faces
     for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
@@ -195,7 +195,7 @@ void Foam::heatSourceModel::updateDimensions()
 
             if (pxy <= searchRadius)
             {
-                measuredDepth = max(p.z(), measuredDepth);
+                isoDepth = max(p.z(), isoDepth);
             }
         }
     }
@@ -236,18 +236,18 @@ void Foam::heatSourceModel::updateDimensions()
 
                     if (pxy <= searchRadius)
                     {
-                        measuredDepth = max(p.z(), measuredDepth);
+                        isoDepth = max(p.z(), isoDepth);
                     }
                 }
             }
         }
     }
 
-    reduce(measuredDepth, maxOp<scalar>());
+    reduce(isoDepth, maxOp<scalar>());
 
-    measuredDepth_ = measuredDepth;
+    isoDepth_ = isoDepth;
 
-    const scalar effectiveDepth = max(staticDimensions_.z(), measuredDepth_);
+    const scalar effectiveDepth = max(staticDimensions_.z(), isoDepth_);
 
     dimensions_ =
         vector(staticDimensions_.x(), staticDimensions_.y(), effectiveDepth);
@@ -255,7 +255,7 @@ void Foam::heatSourceModel::updateDimensions()
     sourceLowerBound_ = -1.5*dimensions_;
     sourceUpperBound_ = 1.5*dimensions_;
 
-    Info<< "measuredDepth: " << measuredDepth_
+    Info<< "isoDepth: " << isoDepth_
         << ", effectiveDepth: " << dimensions_.z() << endl;
 }
 
@@ -288,7 +288,7 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
 
         // udpate the absorbed power and heat source normalization term
         const scalar sourceDepth =
-            transient_ ? measuredDepth_ : dimensions_.z();
+            transient_ ? isoDepth_ : dimensions_.z();
         const scalar aspectRatio =
             sourceDepth/min(dimensions_.x(), dimensions_.y());
 

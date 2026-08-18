@@ -32,7 +32,7 @@
 #------------------------------------------------------------------------------
 
 # AdditiveFOAM version
-export ADDITIVEFOAM_VERSION=2.0.0-dev
+export ADDITIVEFOAM_VERSION=2.0.0
 
 # OpenFOAM version
 export ADDITIVEFOAM_OPENFOAM_VERSION=14

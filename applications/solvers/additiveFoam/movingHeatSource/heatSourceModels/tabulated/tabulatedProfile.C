@@ -26,13 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "tabulatedProfile.H"
-#include "IOstreams.H"
-#include "error.H"
-
-#include <cmath>
-#include <fstream>
-#include <limits>
-#include <string>
+#include "IFstream.H"
 
 // * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -52,9 +46,9 @@ Foam::tabulatedProfile::tabulatedProfile()
     integral_(0),
     centroidX_(0),
     centroidY_(0),
-    d4SigmaMajor_(0),
-    d4SigmaMinor_(0),
-    d4SigmaEquivalent_(0),
+    D4SigmaMajor_(0),
+    D4SigmaMinor_(0),
+    D4Sigma_(0),
     azimuth_(0)
 {}
 
@@ -161,13 +155,6 @@ void Foam::tabulatedProfile::integrate()
         }
     }
 
-    if (!std::isfinite(integral_) || integral_ <= 0)
-    {
-        FatalErrorInFunction
-            << "Tabulated profile integral must be finite and positive"
-            << exit(FatalError);
-    }
-
     centroidX_ = firstMomentX/integral_;
     centroidY_ = firstMomentY/integral_;
 
@@ -180,20 +167,6 @@ void Foam::tabulatedProfile::integrate()
     const scalar covariance =
         crossMoment/integral_ - centroidX_*centroidY_;
 
-    if
-    (
-        !std::isfinite(varianceX)
-     || !std::isfinite(varianceY)
-     || !std::isfinite(covariance)
-     || varianceX <= 0
-     || varianceY <= 0
-    )
-    {
-        FatalErrorInFunction
-            << "Tabulated profile must have finite positive lateral width"
-            << exit(FatalError);
-    }
-
     const scalar meanVariance = 0.5*(varianceX + varianceY);
     const scalar varianceRadius =
         Foam::sqrt(0.25*sqr(varianceX - varianceY) + sqr(covariance));
@@ -201,79 +174,32 @@ void Foam::tabulatedProfile::integrate()
     const scalar majorVariance = meanVariance + varianceRadius;
     const scalar minorVariance = meanVariance - varianceRadius;
 
-    if (minorVariance <= 0)
-    {
-        FatalErrorInFunction
-            << "Tabulated profile must have positive principal widths"
-            << exit(FatalError);
-    }
-
-    d4SigmaMajor_ = 4.0*Foam::sqrt(majorVariance);
-    d4SigmaMinor_ = 4.0*Foam::sqrt(minorVariance);
-    d4SigmaEquivalent_ = Foam::sqrt(d4SigmaMajor_*d4SigmaMinor_);
+    D4SigmaMajor_ = 4.0*Foam::sqrt(majorVariance);
+    D4SigmaMinor_ = 4.0*Foam::sqrt(minorVariance);
+    D4Sigma_ = Foam::sqrt(D4SigmaMajor_*D4SigmaMinor_);
 
     azimuth_ =
-        varianceRadius
-      <= 64.0*std::numeric_limits<scalar>::epsilon()*meanVariance
-      ? 0.0
-      : 0.5*Foam::atan2(2.0*covariance, varianceX - varianceY);
+        varianceRadius > small
+      ? 0.5*Foam::atan2(2.0*covariance, varianceX - varianceY)
+      : 0.0;
 }
 
 // * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::tabulatedProfile::read(const fileName& profileFile)
 {
-    std::ifstream input(profileFile.c_str());
+    IFstream is(profileFile);
 
-    if (!input.good())
+    if (!is.good())
     {
         FatalErrorInFunction
             << "Cannot open tabulated profile " << profileFile
             << exit(FatalError);
     }
 
-    long long nx = 0;
-    long long ny = 0;
-
-    if (!(input >> nx >> ny) || nx < 2 || ny < 2)
-    {
-        FatalErrorInFunction
-            << "Tabulated profile " << profileFile
-            << " must begin with dimensions of at least 2 by 2"
-            << exit(FatalError);
-    }
-
-    if
-    (
-        nx > std::numeric_limits<label>::max()
-     || ny > std::numeric_limits<label>::max()
-     || nx*ny > std::numeric_limits<label>::max()
-    )
-    {
-        FatalErrorInFunction
-            << "Tabulated profile " << profileFile << " is too large"
-            << exit(FatalError);
-    }
-
-    nx_ = nx;
-    ny_ = ny;
-
-    if
-    (
-        !(input >> x0_ >> y0_ >> dx_ >> dy_)
-     || !std::isfinite(x0_)
-     || !std::isfinite(y0_)
-     || !std::isfinite(dx_)
-     || !std::isfinite(dy_)
-     || dx_ <= 0
-     || dy_ <= 0
-    )
-    {
-        FatalErrorInFunction
-            << "Tabulated profile " << profileFile
-            << " requires finite coordinates and positive spacing"
-            << exit(FatalError);
-    }
+    is >> nx_ >> ny_;
+    is >> x0_ >> y0_;
+    is >> dx_ >> dy_;
 
     x1_ = x0_ + (nx_ - 1)*dx_;
     y1_ = y0_ + (ny_ - 1)*dy_;
@@ -284,27 +210,7 @@ void Foam::tabulatedProfile::read(const fileName& profileFile)
 
     forAll(values_, i)
     {
-        if
-        (
-            !(input >> values_[i])
-         || !std::isfinite(values_[i])
-         || values_[i] < 0
-        )
-        {
-            FatalErrorInFunction
-                << "Tabulated profile " << profileFile
-                << " requires exactly " << values_.size()
-                << " finite nonnegative values"
-                << exit(FatalError);
-        }
-    }
-
-    std::string trailing;
-    if (input >> trailing)
-    {
-        FatalErrorInFunction
-            << "Unexpected trailing data in tabulated profile " << profileFile
-            << exit(FatalError);
+        is >> values_[i];
     }
 
     integrate();

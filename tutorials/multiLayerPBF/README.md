@@ -43,10 +43,11 @@ constant/heatSourceDict
 Defines the moving heat source and absorption model.
 
 ```text
-constant/scanPath
+constant/createScanPathDict
 ```
 
-Defines the laser path, laser power, and scan speed or dwell time for the current layer.
+Defines the laser path, laser power, and scan speed or dwell time used by
+`createScanPath` to generate `constant/scanPath` for the current layer.
 
 ```text
 system/extrudeMeshDict
@@ -82,7 +83,7 @@ beam
 
     modifiedSuperGaussianCoeffs
     {
-        dimensions      (40.0e-6 40.0e-6 30e-6);
+        dimensions      (40.0e-6 40.0e-6 20.0e-6);
         m               2.72;
         k               7.95;
         transient       true;

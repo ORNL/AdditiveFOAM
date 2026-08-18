@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#------------------------------------------------------------------------------
+#                Copyright (C) 2026 Oak Ridge National Laboratory
+#------------------------------------------------------------------------------
 """
 Calibrate the projected depth distribution used by AdditiveFOAM heat sources.
 
@@ -66,6 +69,52 @@ def _create_data_fingerprint(data: Any) -> str:
     return hashlib.sha256(serialized.encode()).hexdigest()
 
 
+def _file_fingerprint(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _directory_fingerprint(directory: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(path for path in directory.rglob("*") if path.is_file()):
+        digest.update(str(path.relative_to(directory)).encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def create_simulation_fingerprint(config: dict) -> str:
+    additivefoam = Path(shutil.which("additiveFoam"))
+    library_dir = Path(os.environ["FOAM_USER_LIBBIN"])
+    libraries = {
+        path.name: _file_fingerprint(path)
+        for path in sorted(
+            list(library_dir.glob("libadditiveFoam*.so"))
+            + list(library_dir.glob("libmovingBeamModels.so"))
+        )
+        if path.is_file()
+    }
+
+    return _create_data_fingerprint(
+        {
+            "additivefoam_sha256": _file_fingerprint(additivefoam),
+            "additivefoam_libraries": libraries,
+            "additivefoam_etc_sha256": _directory_fingerprint(
+                Path(os.environ["ADDITIVEFOAM_ETC"])
+            ),
+            "openfoam_version": os.environ["WM_PROJECT_VERSION"],
+            "template_sha256": _directory_fingerprint(
+                Path(config["template_case"])
+            ),
+            "run_command": config["run_command"],
+            "melt_pool_dimensions_isovalue": config[
+                "melt_pool_dimensions_isovalue"
+            ],
+            "calibration_token": config["calibration_token"],
+        }
+    )
+
+
 def profile_for_params(params: dict, profiles: dict) -> dict:
     profile_name = params.get("Profile")
     if profile_name not in profiles:
@@ -78,7 +127,7 @@ def profile_for_params(params: dict, profiles: dict) -> dict:
 
 def heat_source_radius_microns(params: dict, profiles: dict) -> float:
     profile = profile_for_params(params, profiles)
-    return 0.5 * float(profile["D4sigmaEquivalent_microns"])
+    return 0.5 * float(profile["D4sigma_microns"])
 
 
 def read_profile_metrics(profiles: dict) -> dict:
@@ -93,7 +142,7 @@ def read_profile_metrics(profiles: dict) -> dict:
         "centroidY",
         "D4sigmaMajor",
         "D4sigmaMinor",
-        "D4sigmaEquivalent",
+        "D4sigma",
         "azimuthRadians",
     }
     for name, profile in profiles.items():
@@ -118,7 +167,7 @@ def read_profile_metrics(profiles: dict) -> dict:
             "integral",
             "D4sigmaMajor",
             "D4sigmaMinor",
-            "D4sigmaEquivalent",
+            "D4sigma",
         }
         missing = sorted(required - metrics.keys())
         if missing:
@@ -127,7 +176,7 @@ def read_profile_metrics(profiles: dict) -> dict:
                 f"for '{name}'"
             )
 
-        d4sigma = metrics["D4sigmaEquivalent"]
+        d4sigma = metrics["D4sigma"]
         if not math.isfinite(d4sigma) or d4sigma <= 0.0:
             raise ValueError(f"Beam profile '{name}' has invalid D4sigma")
 
@@ -135,7 +184,7 @@ def read_profile_metrics(profiles: dict) -> dict:
         result[name] = {
             **profile,
             **metrics,
-            "D4sigmaEquivalent_microns": d4sigma * 1.0e6,
+            "D4sigma_microns": d4sigma * 1.0e6,
             "sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
         }
     return result
@@ -295,7 +344,9 @@ def load_config(filepath: str) -> dict:
     }
 
 
-def parse_experiments(raw_experiments: list, profiles: dict) -> pd.DataFrame:
+def parse_experiments(
+    raw_experiments: list, profiles: dict, config: dict
+) -> pd.DataFrame:
     if not raw_experiments:
         return pd.DataFrame(
             columns=[
@@ -320,14 +371,27 @@ def parse_experiments(raw_experiments: list, profiles: dict) -> pd.DataFrame:
                 "depths_list": depths,
                 "normalized_depths_list": normalized_depths,
                 "fingerprint": _create_data_fingerprint(
-                    {"depths": depths, "profile_sha256": profile["sha256"]}
+                    {
+                        "depths": depths,
+                        "profile_sha256": profile["sha256"],
+                        "D4sigma_microns": profile[
+                            "D4sigma_microns"
+                        ],
+                        "simulation_fingerprint": config[
+                            "simulation_fingerprint"
+                        ],
+                        "adaptive_learning": config["adaptive_learning"],
+                        "bayesian": config["bayesian"],
+                    }
                 ),
             }
         )
     return pd.DataFrame(records)
 
 
-def parse_simulations(raw_simulations: list, profiles: dict) -> pd.DataFrame:
+def parse_simulations(
+    raw_simulations: list, profiles: dict, simulation_fingerprint: str
+) -> pd.DataFrame:
     if not raw_simulations:
         return pd.DataFrame()
 
@@ -335,7 +399,11 @@ def parse_simulations(raw_simulations: list, profiles: dict) -> pd.DataFrame:
     for sim_run in raw_simulations:
         params = sim_run["parameters"]
         profile = profile_for_params(params, profiles)
-        if sim_run.get("profile_sha256") != profile["sha256"]:
+        if (
+            sim_run.get("profile_sha256") != profile["sha256"]
+            or sim_run.get("simulation_fingerprint")
+            != simulation_fingerprint
+        ):
             continue
         n_values = sim_run["n"]
         depths = sim_run["Simulated_Depth_microns"]
@@ -365,12 +433,15 @@ def append_simulation_result(
     depth_microns: float,
     simulations_path: str,
     profile_sha256: str,
+    simulation_fingerprint: str,
 ):
     target = None
     for sim_run in raw_simulations:
         if (
             params_equal(sim_run["parameters"], params)
             and sim_run.get("profile_sha256") == profile_sha256
+            and sim_run.get("simulation_fingerprint")
+            == simulation_fingerprint
         ):
             target = sim_run
             break
@@ -379,6 +450,7 @@ def append_simulation_result(
         target = {
             "parameters": dict(params),
             "profile_sha256": profile_sha256,
+            "simulation_fingerprint": simulation_fingerprint,
             "n": [],
             "Simulated_Depth_microns": [],
         }
@@ -749,7 +821,8 @@ def run_one_additivefoam_simulation(
             "velocity": velocity_m_s,
             "beam_profile": params["Profile"],
             "beam_profile_sha256": profile["sha256"],
-            "D4sigma_microns": profile["D4sigmaEquivalent_microns"],
+            "simulation_fingerprint": config["simulation_fingerprint"],
+            "D4sigma_microns": profile["D4sigma_microns"],
             "endTime": end_time,
             "writeInterval": end_time,
         }
@@ -886,9 +959,14 @@ def ensure_simulation_curve(
                 depth,
                 config["simulations_file"],
                 profile_for_params(params, config["profiles"])["sha256"],
+                config["simulation_fingerprint"],
             )
             raw_simulations = load_yaml_file(config["simulations_file"])
-            sim_df = parse_simulations(raw_simulations, config["profiles"])
+            sim_df = parse_simulations(
+                raw_simulations,
+                config["profiles"],
+                config["simulation_fingerprint"],
+            )
             model_subset = find_matching_simulation_subset(sim_df, params)
     return sim_df, raw_simulations
 
@@ -1020,9 +1098,14 @@ def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
             depth,
             config["simulations_file"],
             profile_for_params(params, config["profiles"])["sha256"],
+            config["simulation_fingerprint"],
         )
         raw_simulations = load_yaml_file(config["simulations_file"])
-        sim_df = parse_simulations(raw_simulations, config["profiles"])
+        sim_df = parse_simulations(
+            raw_simulations,
+            config["profiles"],
+            config["simulation_fingerprint"],
+        )
         model_subset = find_matching_simulation_subset(sim_df, params)
 
         n_coords, model_normalized_depths = get_sorted_simulation_curve(
@@ -2650,6 +2733,7 @@ def main():
         Path(config["template_case"]),
         config["calibration_token"],
     )
+    config["simulation_fingerprint"] = create_simulation_fingerprint(config)
 
     # Fingerprints allow unchanged conditions to reuse their saved posterior
     # state.
@@ -2657,8 +2741,12 @@ def main():
     raw_simulations = load_yaml_file(config["simulations_file"])
     current_state_data = load_yaml_file(config["calibration_state_file"])
 
-    exp_df = parse_experiments(raw_experiments, config["profiles"])
-    sim_df = parse_simulations(raw_simulations, config["profiles"])
+    exp_df = parse_experiments(raw_experiments, config["profiles"], config)
+    sim_df = parse_simulations(
+        raw_simulations,
+        config["profiles"],
+        config["simulation_fingerprint"],
+    )
     state_df = pd.DataFrame(current_state_data)
 
     if exp_df.empty:
@@ -2750,6 +2838,7 @@ def main():
                 "calibrated_n_95_low": float(posterior_summary["n_95_low"]),
                 "calibrated_n_95_high": float(posterior_summary["n_95_high"]),
                 "fingerprint": job_row["fingerprint"],
+                "simulation_fingerprint": config["simulation_fingerprint"],
             }
             newly_calibrated_states.append(new_state)
             samples = posterior_samples_for_state(trace)

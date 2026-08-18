@@ -17,12 +17,6 @@ FoamFile
 
 sources (beam);
 
-depth   5.0e-5;
-innerNSlope  0.0;
-innerNIntercept  1.0;
-outerNSlope  0.0;
-outerNIntercept  1.0;
-
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
 beam
@@ -41,6 +35,9 @@ beam
     nLightAFXCoeffs
     {
         $Index6;
+
+        nSlope         0.0;
+        nIntercept     1.0;
         
         transient   true;
         nPoints     (10 10 10);

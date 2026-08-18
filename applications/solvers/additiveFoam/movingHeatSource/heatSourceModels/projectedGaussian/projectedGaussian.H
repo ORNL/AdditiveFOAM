@@ -27,7 +27,7 @@ Class
     Foam::heatSourceModels::projectedGaussian
 
 Description
-    projectedGaussian heat source model for additive manufacting
+    projectedGaussian heat source model for additive manufacturing
 
 SourceFiles
     projectedGaussian.C
@@ -96,7 +96,7 @@ public:
 
         inline virtual dimensionedScalar V0();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

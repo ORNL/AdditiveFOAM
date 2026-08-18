@@ -87,7 +87,7 @@ protected:
         //- Flag for transient or static heat source dimensions
         Switch transient_;
 
-        //- Isotherm depth tracked in transient heat source model
+        //- Temperature isovalue used to calculate the transient source depth
         scalar isoValue_;
 
         //- Dimensions of the heat source (dynamic)
@@ -96,8 +96,8 @@ protected:
         //- Dimensions of the heat source (static)
         vector staticDimensions_;
 
-        //- Measured isotherm depth, zero when no isotherm is detected
-        scalar measuredDepth_;
+        //- Calculated isotherm depth, zero when no isotherm is detected
+        scalar isoDepth_;
 
         //- Number of points along heat source dimensions resolved by sampling
         labelVector nPoints_;
@@ -115,7 +115,7 @@ public:
     //- Runtime type information
     TypeName("heatSourceModel");
 
-    //- Default heatSourceProperties dictionary name
+    //- Default heatSourceDict dictionary name
     static const word heatSourceDictName;
 
     // Declare run-time constructor selection table

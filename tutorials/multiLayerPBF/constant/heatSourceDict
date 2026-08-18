@@ -32,7 +32,7 @@ beam
     heatSourceModel     modifiedSuperGaussian;
     modifiedSuperGaussianCoeffs
     {
-        dimensions      (40.0e-6 40.0e-6 30e-6);
+        dimensions      (40.0e-6 40.0e-6 20.0e-6);
         m               2.72;
         k               7.95;
         transient       true;

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,7 +27,7 @@ Class
     Foam::heatSourceModels::superGaussian
 
 Description
-    superGaussian heat source model for additive manufacting
+    superGaussian heat source model for additive manufacturing
 
 SourceFiles
     superGaussian.C
@@ -90,7 +90,7 @@ public:
 
         inline virtual dimensionedScalar V0();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

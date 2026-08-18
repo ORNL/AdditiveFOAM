@@ -2,7 +2,10 @@
 
 ## Case description
 
-This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM. The model represents an nLight AFX beam as a linear combination of inner and outer Gaussian-ring components with the same projected axial distribution used by the `projectedGaussian` heat source.
+This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM.
+The model represents an nLight AFX beam as a linear combination of two
+Gaussian-ring components with the same projected axial distribution used by
+the `projectedGaussian` heat source.
 
 The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs.
 
@@ -55,22 +58,21 @@ heatSourceModel nLightAFX;
 The corresponding coefficient dictionary is:
 
 ```foam
-depth   5.0e-5;
-innerNSlope  0.0;
-innerNIntercept  1.0;
-outerNSlope  0.0;
-outerNIntercept  1.0;
-
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
 nLightAFXCoeffs
 {
     $Index6;
 
+    nSlope      0.0;
+    nIntercept  1.0;
+
     transient   true;
     nPoints     (10 10 10);
 }
 ```
+
+The shared configuration sets the initial heat-source depth to 20 microns.
 
 The selected mode can be changed by replacing:
 
@@ -98,39 +100,31 @@ parameters for modes 0 through 6. Each mode defines:
 ```foam
 dimensions
 alpha
-
-inner
-{
-    radius
-    sigma
-    nSlope
-    nIntercept
-}
-
-outer
-{
-    radius
-    sigma
-    nSlope
-    nIntercept
-}
+r0
+sigma0
+r1
+sigma1
 ```
 
 `alpha`
 
-Fraction of the laser power applied to the outer Gaussian-ring component.
+Integrated fraction of laser power assigned to component 1, which represents
+the outer ring in the characterized AFX modes.
 
-`inner` and `outer`
+`r0`, `sigma0`, `r1`, and `sigma1`
 
-Define the radial beam-shape parameters for the inner and outer components. The `radius` and `sigma` values are specified in meters.
+Define the radial beam-shape parameters for Gaussian components 0 and 1. The
+values are specified in meters.
 
 `dimensions`
 
-Sets the lateral heat source dimensions from the characterized beam size. The third component is the initial projected depth and is updated by the transient heat source logic when `transient` is enabled.
+Sets the lateral heat source dimensions to half of D4sigma. The third component
+is the initial projected depth and is updated by the transient heat source
+logic when `transient` is enabled.
 
 `nSlope` and `nIntercept`
 
-Define the projected axial shape closure for each component:
+Define the projected axial shape closure shared by both components:
 
 ```text
 n = clip(nSlope*log2(x) + nIntercept, 0, 9)
@@ -141,6 +135,16 @@ where `x` is the ratio between the current heat source depth and lateral heat
 source size, and `k` is the exponent in the axial decay. This is the same
 notation and closure used by the `projectedGaussian` model.
 
+`transient`
+
+Enables heat-source depth adjustment using the depth of the selected
+temperature isotherm. The solver reports this calculated value as `isoDepth`.
+
+`isoValue`
+
+Optional temperature isovalue used to calculate `isoDepth`. If omitted, the
+material liquidus from `constant/transportProperties` is used.
+
 ## Example mode
 
 A typical mode block from `nLightAFX-1000.cfg` looks like:
@@ -148,29 +152,55 @@ A typical mode block from `nLightAFX-1000.cfg` looks like:
 ```foam
 Index3
 {
-    dimensions  (1.09290e-4 1.09290e-4 5.0e-5);
+    dimensions  (1.09290e-4 1.09290e-4 20.0e-6);
 
     alpha       0.483;
 
-    inner
-    {
-        radius  14.39e-6;
-        sigma   20.78e-6;
-        nSlope 0.0;
-        nIntercept 1.0;
-    }
-
-    outer
-    {
-        radius  100.98e-6;
-        sigma   16.92e-6;
-        nSlope 0.0;
-        nIntercept 1.0;
-    }
+    r0          14.39e-6;
+    sigma0      20.78e-6;
+    r1          100.98e-6;
+    sigma1      16.92e-6;
 }
 ```
 
-This mode has approximately half of the power in the outer ring. Lower modes are more center-weighted, while higher modes place more power in the outer ring.
+The selected mode is combined with the shared projection coefficients:
+
+```foam
+nLightAFXCoeffs
+{
+    $Index3;
+
+    nSlope      0.0;
+    nIntercept  1.0;
+}
+```
+
+This mode has approximately half of the power in component 1. Lower modes are
+more center-weighted, while higher modes place more power in the outer ring.
+
+The component integrals are accounted for independently so `alpha` remains the
+integrated power fraction in component 1. If `a0` and `a1` are the one-sided
+volume integrals of the two Gaussian components with their shared axial
+distribution, the implemented weight and normalization are
+
+```text
+gi(r) = exp(-0.5*((r - ri)/sigmai)^2)
+      + exp(-0.5*((r + ri)/sigmai)^2)
+s(z) = exp(-3*(-z/d)^k), z <= 0
+w = s(z)*((1 - alpha)*g0(r) + alpha*g1(r)*a0/a1)
+V0 = a0
+```
+
+The analytic component integral is
+
+```text
+ai = 2*pi*sigmai*d*Gamma(1/k)/(k*3^(1/k))
+   * (2*sigmai*exp(-0.5*(ri/sigmai)^2)
+      + sqrt(2*pi)*ri*erf(ri/(sqrt(2)*sigmai)))
+```
+
+Therefore, the normalized component contributions integrate to `1 - alpha`
+and `alpha`, and the total normalized heat source integrates to one.
 
 ## Post-processing
 

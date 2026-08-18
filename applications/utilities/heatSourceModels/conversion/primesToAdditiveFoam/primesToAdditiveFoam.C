@@ -279,9 +279,9 @@ int main(int argc, char *argv[])
         << "Spacing: " << dx << " x " << dy << " m" << nl
         << "Input integral: " << integral << nl
         << "Normalized integral: " << profile.integral() << nl
-        << "D4sigma equivalent: " << profile.d4SigmaEquivalent() << " m" << nl
-        << "D4sigma major: " << profile.d4SigmaMajor() << " m" << nl
-        << "D4sigma minor: " << profile.d4SigmaMinor() << " m" << nl
+        << "D4sigma: " << profile.D4Sigma() << " m" << nl
+        << "D4sigma major: " << profile.D4SigmaMajor() << " m" << nl
+        << "D4sigma minor: " << profile.D4SigmaMinor() << " m" << nl
         << "Azimuth: " << profile.azimuth() << " rad" << endl;
 
     return 0;

@@ -67,7 +67,7 @@ class tabulated
         scalar nIntercept_;
 
         //- Axial decay exponent
-        scalar axialExponent_;
+        scalar k_;
 
         //- Minimum effective axial source depth
         scalar minimumDepth_;
@@ -110,7 +110,7 @@ public:
 
         inline virtual dimensionedScalar V0();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

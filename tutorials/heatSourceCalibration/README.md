@@ -57,7 +57,7 @@ campaign/
 ├── cases/
 │   └── P187p5_V500_measured_beam/
 │       ├── nIntercept0/
-│       ├── nIntercept4p5/
+│       ├── nIntercept4/
 │       └── nIntercept9/
 ├── simulations.yml
 ├── calibration_state.yml
@@ -111,7 +111,7 @@ the two closure coefficients. No lateral `dimensions` input is required:
 tabulatedCoeffs
 {
     file            "beam_profile.txt";
-    minimumDepth    30.0e-6;
+    minimumDepth    20.0e-6;
     nSlope          0.0;
     nIntercept      <<nIntercept>>;
 }
@@ -124,7 +124,7 @@ n = clip(nSlope*log2(x) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `x = 2*depth/D4sigmaEquivalent` and `k` is the exponent in the axial
+where `x = 2*depth/D4sigma` and `k` is the exponent in the axial
 decay. Calibration trials set `nSlope` to zero, so each trial `nIntercept` is
 also its applied `n` value.
 
@@ -142,12 +142,25 @@ The sampled Gaussian width differs slightly from `109.69/4` because D4sigma is
 calculated from the finite table and its bilinear interpolation, rather than an
 infinite analytic Gaussian.
 
-At startup, `tabulatedProfileInfo` validates each configured profile and
-reports its integral, centroid, principal D4sigma values, equivalent D4sigma,
-and azimuth. The calibration uses half the equivalent D4sigma to normalize
+At startup, the calibration uses `tabulatedProfileInfo` to inspect each
+configured profile and report its integral, centroid, principal D4sigma
+values, area-equivalent D4sigma, and azimuth. The reported `D4sigma` is
+`sqrt(D4sigmaMajor*D4sigmaMinor)`, the diameter of the circular beam with the
+same second-moment area. The calibration uses half this value to normalize
 measured and simulated depths. The profile file and measured melt-pool depths
 are therefore the only beam-size and calibration measurements supplied by the
 user; there is no separate expected-D4sigma or tolerance input.
+
+## Resuming a campaign
+
+`simulations.yml` caches completed AdditiveFOAM runs. A cached result is reused
+only when the beam profile, template case, AdditiveFOAM executable and
+libraries, shared AdditiveFOAM configuration, OpenFOAM version, run command,
+and melt-pool isovalue are unchanged. The local posterior state additionally
+tracks the experimental depths and calibration settings. Changing any of these
+inputs marks the affected results as stale. Stale simulation entries remain in
+`simulations.yml` for provenance but are ignored; stale posterior entries are
+replaced after recalibration.
 
 The calibration consumes melt-pool depth only. Power, speed, end time, and
 write interval are rendered for each case. Width is left available for a later

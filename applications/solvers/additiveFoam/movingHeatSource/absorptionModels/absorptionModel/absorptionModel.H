@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -88,7 +88,7 @@ public:
     //- Runtime type information
     TypeName("absorptionModel");
 
-    //- Default heatSourceProperties dictionary name
+    //- Default heatSourceDict dictionary name
     static const word heatSourceDictName;
 
     // Declare run-time constructor selection table

@@ -27,7 +27,8 @@ Class
     Foam::heatSourceModels::nLightAFX
 
 Description
-    nLight AFX heat source model for additive manufacturing
+    Two-component nLight AFX heat source model with a shared projected axial
+    distribution
 
 SourceFiles
     nLightAFX.C
@@ -59,43 +60,34 @@ class nLightAFX
         //- Pointer to mesh information
         const fvMesh& mesh_;
 
-        //- Fraction of power applied to the outer component
+        //- Fraction of power applied to Gaussian component 1
         scalar alpha_;
 
-        //- Radius of the inner Gaussian ring
+        //- Radius of Gaussian component 0
         scalar r0_;
 
-        //- Radius of the outer Gaussian ring
+        //- Radius of Gaussian component 1
         scalar r1_;
 
-        //- Standard deviation of the inner Gaussian ring
+        //- Standard deviation of Gaussian component 0
         scalar sigma0_;
 
-        //- Standard deviation of the outer Gaussian ring
+        //- Standard deviation of Gaussian component 1
         scalar sigma1_;
 
-        //- Inner nSlope in n = nSlope*log2(x) + nIntercept
-        scalar innerNSlope_;
+        //- nSlope in n = nSlope*log2(x) + nIntercept
+        scalar nSlope_;
 
-        //- Inner nIntercept in n = nSlope*log2(x) + nIntercept
-        scalar innerNIntercept_;
+        //- nIntercept in n = nSlope*log2(x) + nIntercept
+        scalar nIntercept_;
 
-        //- Outer nSlope in n = nSlope*log2(x) + nIntercept
-        scalar outerNSlope_;
+        //- Axial decay exponent
+        scalar k_;
 
-        //- Outer nIntercept in n = nSlope*log2(x) + nIntercept
-        scalar outerNIntercept_;
-
-        //- Inner axial decay exponent
-        scalar k0_;
-
-        //- Outer axial decay exponent
-        scalar k1_;
-
-        //- Inner normalization factor
+        //- One-sided volume integral of Gaussian component 0
         scalar a0_;
 
-        //- Outer normalization factor
+        //- One-sided volume integral of Gaussian component 1
         scalar a1_;
 
 public:
@@ -124,11 +116,12 @@ public:
 
         inline virtual scalar weight(const vector& d);
 
+        //- One-sided volume integral of a projected Gaussian ring
         inline scalar ai(scalar x, scalar s, scalar d, scalar k);
 
         inline virtual dimensionedScalar V0();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

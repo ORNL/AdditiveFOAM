@@ -35,7 +35,7 @@ beam
     tabulatedCoeffs
     {
         file            "beam_profile.txt";
-        minimumDepth        30.0e-6;
+        minimumDepth        20.0e-6;
         nSlope       0.0;
         nIntercept   <<nIntercept>>;
 
