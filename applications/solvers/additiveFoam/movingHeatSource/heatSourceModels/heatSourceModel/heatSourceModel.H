@@ -102,9 +102,9 @@ protected:
         //- Number of points along heat source dimensions resolved by sampling
         labelVector nPoints_;
 
-        //- Source bounds relative to the beam position
-        vector sourceLowerBound_;
-        vector sourceUpperBound_;
+        //- Source minimum and maximum relative to the beam position
+        vector sourceMin_;
+        vector sourceMax_;
 
         //- AutoPtrs to absorption model and moving beam instances
         autoPtr<absorptionModel> absorptionModel_;

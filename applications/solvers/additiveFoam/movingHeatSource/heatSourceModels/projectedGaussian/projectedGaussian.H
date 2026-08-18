@@ -27,7 +27,9 @@ Class
     Foam::heatSourceModels::projectedGaussian
 
 Description
-    projectedGaussian heat source model for additive manufacturing
+    One-sided projected Gaussian heat source model applied in the negative z
+    direction from the beam plane. The beam plane is expected to coincide with
+    the material surface.
 
 SourceFiles
     projectedGaussian.C

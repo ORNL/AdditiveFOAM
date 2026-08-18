@@ -71,7 +71,7 @@ class Kelly
         //- Fresnel absorption of the liquid metal
         dimensionedScalar eta0_;
 
-        //- Effective absorption in the conduction regime
+        //- Minimum effective absorption
         dimensionedScalar etaMin_;
 
         //- Aspect ratio above which the Kelly multiple-reflection model is used
@@ -103,7 +103,7 @@ public:
         //- Return the absorption as a scalar field
         virtual scalar eta
         (
-            const scalar& aspectRatio
+            scalar aspectRatio
         ) const;
 
         //- Read the absorption properties

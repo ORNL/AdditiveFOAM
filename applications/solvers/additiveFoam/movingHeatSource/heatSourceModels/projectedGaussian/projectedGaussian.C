@@ -84,6 +84,11 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
 inline Foam::scalar
 Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
 {
+    if (d.z() > 0)
+    {
+        return 0;
+    }
+
     const scalar f_ =
         std::exp
         (
@@ -95,7 +100,7 @@ Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
         );
 
     const scalar s_ =
-        std::exp(-3.0 * std::pow(mag(mag(d.z()) / dimensions_.z()), k_));
+        std::exp(-3.0 * std::pow(-d.z() / dimensions_.z(), k_));
 
     return f_ * s_;
 }
@@ -123,6 +128,9 @@ Foam::heatSourceModels::projectedGaussian::V0()
         );
 
     k_ = std::pow(2.0, n_);
+
+    sourceMin_.z() = -1.5*dimensions_.z();
+    sourceMax_.z() = 0;
 
     const dimensionedScalar V0
     (

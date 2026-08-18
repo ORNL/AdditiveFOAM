@@ -27,7 +27,9 @@ Class
     Foam::heatSourceModels::tabulated
 
 Description
-    Tabulated 2D heat source model with a projected axial distribution
+    Tabulated 2D heat source model with a projected axial distribution applied
+    in the negative z direction from the beam plane. The beam plane is expected
+    to coincide with the material surface.
 
 SourceFiles
     tabulated.C

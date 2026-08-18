@@ -85,7 +85,7 @@ public:
         //- Return the absorption as a scalar field
         virtual scalar eta
         (
-            const scalar& aspectRatio
+            scalar aspectRatio
         ) const
         {
             return eta_.value();

@@ -54,14 +54,10 @@ Foam::absorptionModels::Kelly::Kelly
     etaMin_("etaMin", dimless, absorptionModelCoeffs_),
     aspectRatioSwitch_
     (
-        max
+        absorptionModelCoeffs_.lookupOrDefault<scalar>
         (
-            absorptionModelCoeffs_.lookupOrDefault<scalar>
-            (
-                "aspectRatioSwitch",
-                1.0
-            ),
-            scalar(1e-10)
+            "aspectRatioSwitch",
+            1.0
         )
     )
 {
@@ -79,9 +75,11 @@ Foam::absorptionModels::Kelly::Kelly
 Foam::scalar
 Foam::absorptionModels::Kelly::eta
 (
-    const scalar& aspectRatio
+    scalar aspectRatio
 ) const
 {
+    aspectRatio = max(aspectRatio, small);
+
     if (aspectRatio > aspectRatioSwitch_)
     {
         const scalar theta = Foam::atan(1.0 / aspectRatio);
@@ -101,8 +99,14 @@ Foam::absorptionModels::Kelly::eta
             G = 0.5 / (1.0 + aspectRatio);
         }
 
-        return (eta0_ * (1.0 + (1.0 - eta0_)*(G - F))
-                / (1.0 - (1.0 - eta0_)*(1.0 - G))).value();
+        return max
+        (
+            etaMin_.value(),
+            (
+                eta0_*(1.0 + (1.0 - eta0_)*(G - F))
+               /(1.0 - (1.0 - eta0_)*(1.0 - G))
+            ).value()
+        );
     }
     else
     {
@@ -120,15 +124,12 @@ bool Foam::absorptionModels::Kelly::read()
         absorptionModelCoeffs_.lookup("geometry") >> geometry_;
         absorptionModelCoeffs_.lookup("eta0") >> eta0_;
         absorptionModelCoeffs_.lookup("etaMin") >> etaMin_;
-        aspectRatioSwitch_ = max
-        (
+        aspectRatioSwitch_ =
             absorptionModelCoeffs_.lookupOrDefault<scalar>
             (
                 "aspectRatioSwitch",
                 1.0
-            ),
-            scalar(1e-10)
-        );
+            );
 
         return true;
     }

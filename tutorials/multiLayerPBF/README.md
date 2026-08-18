@@ -104,13 +104,13 @@ Fresnel absorption of the liquid metal.
 
 `etaMin`
 
-Effective absorption in the conduction regime, used when the melt-pool aspect
-ratio is less than `aspectRatioSwitch`.
+Minimum effective absorption. It is used below `aspectRatioSwitch` and as a
+lower bound on the Kelly multiple-reflection curve above the switch.
 
 `aspectRatioSwitch`
 
-Optional aspect-ratio cutoff for switching between `etaMin` and the Kelly
-multiple-reflection model. If omitted, the cutoff is `1.0`.
+Optional aspect-ratio cutoff for evaluating the Kelly multiple-reflection
+model. If omitted, the cutoff is `1.0`.
 
 `dimensions`
 

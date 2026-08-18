@@ -13,6 +13,13 @@
 - Expanded the AMB2018, multi-beam, multi-layer, nLight AFX, and tabulated
   tutorials.
 
+## Bug fixes
+
+- Made the projected Gaussian, nLight AFX, and tabulated heat sources
+  one-sided, consistent with their analytic normalization.
+- Preserved an explicitly configured Kelly `aspectRatioSwitch` value and
+  applied `etaMin` as a lower bound on the Kelly absorption curve.
+
 ## Upgrade notes
 
 - AdditiveFOAM 2.0 requires OpenFOAM-14. Source the OpenFOAM-14 environment

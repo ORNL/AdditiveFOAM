@@ -140,7 +140,7 @@ public:
         //- Return const-access to the absorption
         virtual scalar eta
         (
-            const scalar& aspectRatio
+            scalar aspectRatio
         ) const = 0;
 
         //- Read the absorption properties

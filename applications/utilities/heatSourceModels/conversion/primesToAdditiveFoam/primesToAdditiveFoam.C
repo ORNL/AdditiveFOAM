@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     mkDir(outputFile.path());
     {
         OFstream os(outputFile);
-        os.precision(16);
+        os.precision(12);
 
         os << nx << " " << ny << nl
            << x0 << " " << y0 << nl

@@ -96,8 +96,8 @@ Foam::heatSourceModel::heatSourceModel
     staticDimensions_(vector::zero),
     isoDepth_(0),
     nPoints_(vector::one),
-    sourceLowerBound_(vector::zero),
-    sourceUpperBound_(vector::zero),
+    sourceMin_(vector::zero),
+    sourceMax_(vector::zero),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
 {
@@ -114,8 +114,8 @@ Foam::heatSourceModel::heatSourceModel
     }
 
     staticDimensions_ = dimensions_;
-    sourceLowerBound_ = -1.5*dimensions_;
-    sourceUpperBound_ = 1.5*dimensions_;
+    sourceMin_ = -1.5*dimensions_;
+    sourceMax_ = 1.5*dimensions_;
 
     transient_ =
         heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
@@ -151,8 +151,8 @@ void Foam::heatSourceModel::updateDimensions()
     if (!transient_ )
     {
         isoDepth_ = dimensions_.z();
-        sourceLowerBound_ = -1.5*dimensions_;
-        sourceUpperBound_ = 1.5*dimensions_;
+        sourceMin_ = -1.5*dimensions_;
+        sourceMax_ = 1.5*dimensions_;
         Info << "maxDepth: " << dimensions_.z() << endl;
         return;
     }
@@ -252,8 +252,8 @@ void Foam::heatSourceModel::updateDimensions()
     dimensions_ =
         vector(staticDimensions_.x(), staticDimensions_.y(), effectiveDepth);
 
-    sourceLowerBound_ = -1.5*dimensions_;
-    sourceUpperBound_ = 1.5*dimensions_;
+    sourceMin_ = -1.5*dimensions_;
+    sourceMax_ = 1.5*dimensions_;
 
     Info<< "isoDepth: " << isoDepth_
         << ", effectiveDepth: " << dimensions_.z() << endl;
@@ -320,8 +320,8 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
 
         treeBoundBox beamBb
         (
-            position_ + sourceLowerBound_,
-            position_ + sourceUpperBound_
+            position_ + sourceMin_,
+            position_ + sourceMax_
         );
 
         hexMatcher hex;

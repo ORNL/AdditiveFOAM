@@ -136,10 +136,10 @@ void Foam::heatSourceModels::tabulated::updateAxialState()
             1.0/k_
         );
 
-    sourceLowerBound_ =
+    sourceMin_ =
         vector(profile_.x0(), profile_.y0(), -cutoffDepth);
 
-    sourceUpperBound_ =
+    sourceMax_ =
         vector(profile_.x1(), profile_.y1(), 0);
 }
 
@@ -149,7 +149,7 @@ void Foam::heatSourceModels::tabulated::updateAxialState()
 inline Foam::scalar
 Foam::heatSourceModels::tabulated::weight(const vector& d)
 {
-    if (d.z() > small)
+    if (d.z() > 0)
     {
         return 0;
     }
@@ -160,7 +160,7 @@ Foam::heatSourceModels::tabulated::weight(const vector& d)
         std::exp
         (
             -3.0
-           *std::pow(max(-d.z(), scalar(0))/dimensions_.z(), k_)
+           *std::pow(-d.z()/dimensions_.z(), k_)
         );
 
     return planarWeight*axialWeight;

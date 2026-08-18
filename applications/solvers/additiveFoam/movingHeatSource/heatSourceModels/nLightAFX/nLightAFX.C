@@ -97,12 +97,12 @@ Foam::heatSourceModels::nLightAFX::nLightAFX
 inline Foam::scalar
 Foam::heatSourceModels::nLightAFX::weight(const vector& x)
 {
-    if (x.z() > small)
+    if (x.z() > 0)
     {
         return 0;
     }
 
-    const scalar z = max(-x.z(), scalar(0));
+    const scalar z = -x.z();
 
     const scalar r = Foam::sqrt(x.x()*x.x() + x.y()*x.y());
 
@@ -172,6 +172,9 @@ Foam::heatSourceModels::nLightAFX::V0()
 
     a0_ = ai(r0_, sigma0_, d, k_);
     a1_ = ai(r1_, sigma1_, d, k_);
+
+    sourceMin_.z() = -1.5*d;
+    sourceMax_.z() = 0;
 
     return dimensionedScalar("V0", dimVolume, a0_);
 }

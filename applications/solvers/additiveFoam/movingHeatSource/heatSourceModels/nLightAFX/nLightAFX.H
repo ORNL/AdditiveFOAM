@@ -28,7 +28,8 @@ Class
 
 Description
     Two-component nLight AFX heat source model with a shared projected axial
-    distribution
+    distribution applied in the negative z direction from the beam plane. The
+    beam plane is expected to coincide with the material surface.
 
 SourceFiles
     nLightAFX.C
