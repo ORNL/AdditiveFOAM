@@ -29,8 +29,8 @@
 - The tabulated model now derives its lateral dimensions and D4sigma metrics
   from the beam-profile table. Replace the old `dimensions` entry with
   `minimumDepth`; no user-supplied lateral dimensions are required.
-- Python 3.10 or newer and the packages in `requirements.txt` are required only
-  for the calibration and plotting utilities.
+- Python 3.10 through 3.12 and the packages in `requirements.txt` are required
+  only for the calibration and plotting utilities.
 
 ## Full Changelog
 

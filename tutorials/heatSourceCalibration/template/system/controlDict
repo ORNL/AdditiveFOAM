@@ -58,10 +58,10 @@ functions
     meltPoolDimensions
     {
         libs ("libadditiveFoamFunctionObjects.so");
-        
+
         type            meltPoolDimensions;
         enabled         true;
-        
+
         scanPathAngle   0.0;
     }
 }

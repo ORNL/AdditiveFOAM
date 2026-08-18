@@ -47,7 +47,7 @@ beam
 refinementModel
 {
     refinementModel         targetCellLoad;
-    
+
     refinementTemperature   1000;
 
     buffers

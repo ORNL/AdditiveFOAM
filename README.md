@@ -44,9 +44,9 @@ script from the repository root:
 ./Allwmake
 ```
 
-The Python utilities require Python 3.10 or newer. To use a dedicated virtual
-environment, create it and install the pinned dependencies from the repository
-root:
+The Python utilities require Python 3.10 through 3.12. To use a dedicated
+virtual environment, create it and install the pinned dependencies from the
+repository root:
 
 ```sh
 python3 -m venv .venv
