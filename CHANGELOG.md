@@ -12,8 +12,8 @@
 - Added model-specific heat-source bounds that retain at least
   `1-tolerance` of the analytical source power.
 - Added support-based heat-source quadrature.
-- Added an adaptive Bayesian workflow for calibrating the projected
-  heat-source depth distribution.
+- Added an adaptive Bayesian workflow with deterministic posterior quadrature
+  for calibrating the projected heat-source depth distribution.
 - Expanded the AMB2018, multi-beam, multi-layer, nLight AFX, and tabulated
   tutorials.
 

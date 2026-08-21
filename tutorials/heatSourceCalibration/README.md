@@ -40,7 +40,8 @@ cases and reports beneath the tutorial directory.
 
 Review `system/decomposeParDict` in the template before starting. The supplied
 configuration uses 8 MPI ranks for each AdditiveFOAM case, evaluates ten trial
-values for each of five experiments, and uses 2,000 posterior draws.
+values for each of five experiments, and evaluates each local posterior on a
+10,000-point quadrature grid.
 
 ```bash
 calibrateHeatSource --config config.yml
@@ -48,6 +49,10 @@ calibrateHeatSource --config config.yml
 
 The configuration resolves relative paths from the location of `config.yml`.
 Environment variables and `~` are supported in the three `paths` entries.
+Local inference evaluates the one-dimensional posterior deterministically.
+`bayesian.quadrature_points` controls the integration grid, while
+`bayesian.posterior_samples` controls the stratified samples retained for
+propagating local uncertainty through the global fit.
 
 Generated output is contained in `campaign/`:
 

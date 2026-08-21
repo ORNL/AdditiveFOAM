@@ -22,12 +22,8 @@ calibration:
   pchip_grid_points: 1000
 
 bayesian:
-  draws: 2000
-  tune: 1000
-  cores: 8
-  target_accept: 0.9
-  random_seed: 42
-  progressbar: true
+  quadrature_points: 10000
+  posterior_samples: 1000
 
 final_fit:
   bootstrap_samples: 1000

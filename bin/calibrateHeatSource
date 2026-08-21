@@ -10,7 +10,7 @@ results obtained with nSlope = 0 and trial nIntercept values. It
 infers a local n from the measured melt-pool depths, then fits the production
 relation
 
-    n = clip(nSlope * log2(depth / beam_radius) +
+    n = clip(nSlope * log2(2*depth / D4Sigma) +
              nIntercept, 0, 9)
 
 Local posterior uncertainty is used in both the global fit and its uncertainty
@@ -34,16 +34,14 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-import arviz as az
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pymc as pm
-import pytensor.tensor as pt
 import seaborn as sns
 import yaml
 
+from scipy.integrate import trapezoid
 from scipy.interpolate import PchipInterpolator
 from scipy.optimize import least_squares
 
@@ -971,95 +969,74 @@ def ensure_simulation_curve(
     return sim_df, raw_simulations
 
 
-def linear_interp_pt(n_val, n_data_pt, column_data_pt):
-    n_data_pt, column_data_pt, n_val = (
-        pt.cast(n_data_pt, "float64"),
-        pt.cast(column_data_pt, "float64"),
-        pt.cast(n_val, "float64"),
-    )
-    idx, data_len = pt.searchsorted(n_data_pt, n_val), pt.shape(n_data_pt)[0]
-    idx = pt.clip(idx, 1, data_len - 1)
-    idx_lower, idx_upper = idx - 1, idx
-    n_lower, n_upper = n_data_pt[idx_lower], n_data_pt[idx_upper]
-    val_lower, val_upper = column_data_pt[idx_lower], column_data_pt[idx_upper]
-    return val_lower + (val_upper - val_lower) * (n_val - n_lower) / (
-        n_upper - n_lower
-    )
-
-
-def perform_bayesian_calibration(
+def calculate_local_posterior(
     n_coords: np.ndarray,
     model_values: np.ndarray,
     observed_values: list[float],
     config: dict,
-) -> az.InferenceData:
+) -> dict:
 
     # Measurement scatter sets the likelihood width, with a 5% floor for
     # repeated measurements that are identical or nearly identical.
     sigma_est = max(0.05 * np.mean(observed_values), np.std(observed_values))
 
     bayes = config.get("bayesian", {})
-    with pm.Model() as model:
-        n = pm.Uniform("n", lower=n_coords.min(), upper=n_coords.max())
-        n_data_pt = pt.constant(n_coords)
-        model_values_pt = pt.constant(model_values)
+    observed_values = np.asarray(observed_values, dtype=float)
+    # The uniform prior makes the posterior proportional to this likelihood.
+    residual = (observed_values[:, None] - model_values[None, :])/sigma_est
+    log_density = -0.5*np.sum(np.square(residual), axis=0)
+    density = np.exp(log_density - np.max(log_density))
+    density /= trapezoid(density, n_coords)
 
-        predicted_value = pm.Deterministic(
-            "predicted_value", linear_interp_pt(n, n_data_pt, model_values_pt)
-        )
-        pm.Normal(
-            "likelihood",
-            mu=predicted_value,
-            sigma=sigma_est,
-            observed=observed_values,
-        )
-        print(
-            f"  Sampling posterior with {len(observed_values)} observations "
-            f"(sigma_est={sigma_est:.3f})..."
-        )
-        trace = pm.sample(
-            draws=int(bayes.get("draws", 2000)),
-            tune=int(bayes.get("tune", 1000)),
-            cores=int(bayes.get("cores", 4)),
-            progressbar=bool(bayes.get("progressbar", True)),
-            target_accept=float(bayes.get("target_accept", 0.9)),
-            random_seed=int(bayes.get("random_seed", 42)),
-        )
-    return trace
+    increments = 0.5*(density[1:] + density[:-1])*np.diff(n_coords)
+    cdf = np.concatenate(([0.0], np.cumsum(increments)))
+    cdf /= cdf[-1]
+
+    sample_count = int(bayes.get("posterior_samples", 1000))
+    probabilities = (np.arange(sample_count, dtype=float) + 0.5)/sample_count
+    # Stratified samples propagate the local posterior through the global fit.
+    samples = np.interp(probabilities, cdf, n_coords)
+
+    print(
+        f"  Integrating posterior with {len(n_coords)} points and "
+        f"{len(observed_values)} observations (sigma_est={sigma_est:.3f})..."
+    )
+    return {
+        "n": n_coords,
+        "density": density,
+        "cdf": cdf,
+        "samples": samples,
+    }
 
 
-def summarize_local_n_posterior(trace: az.InferenceData) -> dict:
-    n_samples = trace.posterior["n"].values.flatten()
+def summarize_local_n_posterior(posterior: dict) -> dict:
+    n_coords = posterior["n"]
+    density = posterior["density"]
+    cdf = posterior["cdf"]
 
-    # Use the sampled point with highest log density as the reported local
-    # value.
-    if "lp" in trace.sample_stats:
-        logp = trace.sample_stats["lp"].values.flatten()
-        n_mode = float(n_samples[np.argmax(logp)])
-    else:
-        counts, edges = np.histogram(n_samples, bins=100)
-        i = int(np.argmax(counts))
-        n_mode = float(0.5 * (edges[i] + edges[i + 1]))
-
-    q025, q975 = np.quantile(n_samples, [0.025, 0.975])
-    n_variance = float(np.var(n_samples))
+    n_mode = float(n_coords[np.argmax(density)])
+    n_mean = float(trapezoid(n_coords*density, n_coords))
+    n_variance = float(
+        trapezoid(np.square(n_coords - n_mean)*density, n_coords)
+    )
+    q025, n_median, q975 = np.interp([0.025, 0.5, 0.975], cdf, n_coords)
 
     return {
         "n_mode": n_mode,
-        "n_mean": float(np.mean(n_samples)),
-        "n_median": float(np.median(n_samples)),
+        "n_mean": n_mean,
+        "n_median": float(n_median),
         "n_variance": n_variance,
         "n_std": float(np.sqrt(n_variance)),
         "n_95_low": float(q025),
         "n_95_high": float(q975),
-        "samples": n_samples,
+        "samples": posterior["samples"],
     }
 
 
-def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
+def maybe_refine_curve(job_row, posterior, sim_df, raw_simulations, config):
     adaptive = config["adaptive_learning"]
     if not adaptive.get("enabled", True):
-        return trace, sim_df, raw_simulations
+        return posterior, sim_df, raw_simulations
 
     params = job_row["parameters"]
     model_subset = find_matching_simulation_subset(sim_df, params)
@@ -1069,8 +1046,7 @@ def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
 
     # Add CFD points only while both the posterior and depth match remain broad.
     while len(model_subset) < max_sims:
-        n_samples = trace.posterior["n"].values.flatten()
-        if np.std(n_samples) <= posterior_tol:
+        if summarize_local_n_posterior(posterior)["n_std"] <= posterior_tol:
             break
 
         target_depth = float(np.mean(job_row["depths_list"]))
@@ -1114,16 +1090,18 @@ def maybe_refine_curve(job_row, trace, sim_df, raw_simulations, config):
         n_surrogate, depth_surrogate = build_pchip_surrogate_grid(
             n_coords,
             model_normalized_depths,
-            n_grid=int(adaptive.get("pchip_grid_points", 1000)),
+            n_grid=int(
+                config.get("bayesian", {}).get("quadrature_points", 10000)
+            ),
         )
-        trace = perform_bayesian_calibration(
+        posterior = calculate_local_posterior(
             n_surrogate,
             depth_surrogate,
             job_row["normalized_depths_list"],
             config,
         )
 
-    return trace, sim_df, raw_simulations
+    return posterior, sim_df, raw_simulations
 
 
 # Global response fit, uncertainty propagation, and reporting
@@ -1401,7 +1379,7 @@ def plot_calibration_overview_pages(
             )
 
             ax.set_xlabel("nIntercept used with nSlope=0")
-            ax.set_ylabel("d / (D4Sigma / 2)")
+            ax.set_ylabel("2*Depth / D4Sigma")
             ax.margins(x=0.08, y=0.12)
 
             ax.legend(
@@ -1787,8 +1765,8 @@ def plot_final_fit(
     """
     Plot the fitted projected-source response and its uncertainty.
 
-    ``x_obs`` is measured depth divided by half the D4Sigma spot size. Values
-    below one are valid.
+    ``x_obs`` is twice the measured depth divided by D4Sigma. Values below one
+    are valid.
     The curve and interval use the clipped nSlope-nIntercept relation.
     """
     with report_plot_context():
@@ -1889,7 +1867,7 @@ def plot_final_fit(
 
         ax.set_xscale("log", base=2)
         ax.set_title("AdditiveFOAM Calibration Fit")
-        ax.set_xlabel("x = d / (D4Sigma / 2)")
+        ax.set_xlabel("x = 2*Depth / D4Sigma")
         ax.set_ylabel("Shape factor n")
         ax.margins(x=0.04, y=0.12)
 
@@ -1917,9 +1895,8 @@ def fit_and_plot_heteroskedastic_model(
 
         n = clip(nSlope * log2(x) + nIntercept, 0, 9)
 
-    where x is measured depth divided by half the D4Sigma spot size. The
-    reported 95% response interval is propagated from the local calibration
-    uncertainty.
+    where x is twice the measured depth divided by D4Sigma. The reported 95%
+    response interval is propagated from the local calibration uncertainty.
     """
     if calibrated_results_df.empty or len(calibrated_results_df) < 2:
         return None, None
@@ -2058,7 +2035,7 @@ def fit_and_plot_heteroskedastic_model(
         "x_min": x_min,
         "x_max": x_max,
         "x_log_floor": float(x_log_floor),
-        "x_definition": "d / (D4Sigma / 2)",
+        "x_definition": "2*Depth / D4Sigma",
         "n_raw_at_x_min": float(n_raw_at_x_min),
         "n_raw_at_x_max": float(n_raw_at_x_max),
         "n_applied_at_x_min": float(np.clip(n_raw_at_x_min, 0.0, 9.0)),
@@ -2117,8 +2094,10 @@ def fit_and_plot_heteroskedastic_model(
     return fit_summary, fit_fig
 
 
-def posterior_samples_for_state(trace, max_samples: int = 1000) -> list[float]:
-    samples = trace.posterior["n"].values.flatten()
+def posterior_samples_for_state(
+    posterior: dict, max_samples: int = 1000
+) -> list[float]:
+    samples = posterior["samples"]
 
     if len(samples) > max_samples:
         idx = np.linspace(0, len(samples) - 1, max_samples).astype(int)
@@ -2459,7 +2438,7 @@ def write_report(
         run_items.extend(
             [
                 (
-                    "Range x = d / (D4Sigma / 2)",
+                    "Range x = 2*Depth / D4Sigma",
                     f"[{results_df['mean_x'].min():.4f}, "
                     f"{results_df['mean_x'].max():.4f}]",
                 ),
@@ -2551,7 +2530,7 @@ def write_report(
 
         header_map = {
             "mean_depth_microns": "Target mean, microns",
-            "mean_x": "d / (D4Sigma / 2)",
+            "mean_x": "2*Depth / D4Sigma",
             "calibrated_n": "n estimate",
             "calibrated_n_95_low": "n, lower 95%",
             "calibrated_n_95_high": "n, upper 95%",
@@ -2691,7 +2670,7 @@ def write_report(
                 "Final AdditiveFOAM calibration fit. Symbols show local n "
                 "estimates with 95% intervals. The solid curve uses "
                 "nSlope and nIntercept, where "
-                "x = d / (D4Sigma / 2). The shaded "
+                "x = 2*Depth / D4Sigma. The shaded "
                 "region is the 95% interval propagated "
                 "from local calibration uncertainty.",
                 styles["Caption"],
@@ -2803,26 +2782,26 @@ def main():
                 n_coords,
                 model_normalized_depths,
                 n_grid=int(
-                    config.get("adaptive_learning", {}).get(
-                        "pchip_grid_points", 1000
+                    config.get("bayesian", {}).get(
+                        "quadrature_points", 10000
                     )
                 ),
             )
 
-            trace = perform_bayesian_calibration(
+            posterior = calculate_local_posterior(
                 n_surrogate,
                 depth_surrogate,
                 job_row["normalized_depths_list"],
                 config,
             )
-            trace, sim_df, raw_simulations = maybe_refine_curve(
+            posterior, sim_df, raw_simulations = maybe_refine_curve(
                 job_row,
-                trace,
+                posterior,
                 sim_df,
                 raw_simulations,
                 config,
             )
-            posterior_summary = summarize_local_n_posterior(trace)
+            posterior_summary = summarize_local_n_posterior(posterior)
 
             calibrated_n = posterior_summary["n_mode"]
             calibrated_n_std = posterior_summary["n_std"]
@@ -2841,7 +2820,7 @@ def main():
                 "simulation_fingerprint": config["simulation_fingerprint"],
             }
             newly_calibrated_states.append(new_state)
-            samples = posterior_samples_for_state(trace)
+            samples = posterior_samples_for_state(posterior)
             new_state["posterior_n_samples"] = samples
             posterior_samples[str(sorted(params.items()))] = samples
 
