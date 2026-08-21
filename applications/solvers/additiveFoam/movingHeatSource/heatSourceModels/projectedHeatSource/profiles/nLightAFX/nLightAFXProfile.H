@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,37 +24,29 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceModels::nLightAFX
+    Foam::heatSourceProfiles::nLightAFXProfile
 
 Description
-    Two-component nLight AFX heat source model with a shared projected axial
-    distribution applied in the negative z direction from the beam plane. The
-    beam plane is expected to coincide with the material surface.
+    Two-component nLight AFX planar heat source profile.
 
 SourceFiles
-    nLightAFX.C
+    nLightAFXProfile.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef nLightAFX_H
-#define nLightAFX_H
+#ifndef nLightAFXProfile_H
+#define nLightAFXProfile_H
 
-#include "heatSourceModel.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include "heatSourceProfile.H"
 
 namespace Foam
 {
-namespace heatSourceModels
+namespace heatSourceProfiles
 {
 
-/*---------------------------------------------------------------------------*\
-                          Class nLightAFX
-\*---------------------------------------------------------------------------*/
-
-class nLightAFX
+class nLightAFXProfile
 :
-    public heatSourceModel
+    public heatSourceProfile
 {
     // Private Data
 
@@ -64,23 +56,14 @@ class nLightAFX
         //- Radius of Gaussian component 0
         scalar r0_;
 
-        //- Radius of Gaussian component 1
-        scalar r1_;
-
         //- Standard deviation of Gaussian component 0
         scalar sigma0_;
 
+        //- Radius of Gaussian component 1
+        scalar r1_;
+
         //- Standard deviation of Gaussian component 1
         scalar sigma1_;
-
-        //- nSlope in n = nSlope*log2(a) + nIntercept
-        scalar nSlope_;
-
-        //- nIntercept in n = nSlope*log2(a) + nIntercept
-        scalar nIntercept_;
-
-        //- Axial decay exponent
-        scalar k_;
 
         //- J_0(0)
         scalar J0_;
@@ -88,16 +71,19 @@ class nLightAFX
         //- J_1(0)
         scalar J1_;
 
-        //- One-sided volume integral of Gaussian component 0
-        scalar A0_;
+        //- Planar integral
+        scalar integral_;
 
-        //- One-sided volume integral of Gaussian component 1
-        scalar A1_;
+        //- Area-equivalent second-moment diameter
+        scalar D4Sigma_;
+
+        //- Planar profile bounds
+        boundBox profileBb_;
 
 
     // Private Member Functions
 
-        //- Return J_i(R) = integral_R^infinity I_i(r)*r dr
+        //- Return J(R) = integral_R^infinity I(r)*r dr
         inline scalar J
         (
             const scalar R,
@@ -105,7 +91,10 @@ class nLightAFX
             const scalar sigma
         ) const;
 
-        //- Guaranteed upper bound for R such that J_i(R)/J_i(0) <= epsilon
+        //- Return K = integral_0^infinity I(r)*r^3 dr
+        inline scalar K(const scalar r, const scalar sigma) const;
+
+        //- Guaranteed upper bound where J(R)/J(0) <= epsilon
         inline scalar cutoff
         (
             const scalar r,
@@ -113,9 +102,6 @@ class nLightAFX
             const scalar J0,
             const scalar epsilon
         ) const;
-
-        //- Update the radial source bounds
-        void updateBounds();
 
 public:
 
@@ -125,37 +111,44 @@ public:
 
     // Constructors
 
-        //- Construct from components
-        nLightAFX
+        nLightAFXProfile
         (
-            const word& sourceName,
             const dictionary& dict,
-            const fvMesh& mesh
+            const fvMesh& mesh,
+            const scalar tolerance
         );
 
-
     //- Destructor
-    virtual ~nLightAFX()
+    virtual ~nLightAFXProfile()
     {}
-
 
     // Member Functions
 
-        virtual void update();
+        inline virtual scalar weight
+        (
+            const scalar x,
+            const scalar y
+        ) const;
 
-        inline virtual scalar weight(const vector& x) const;
+        inline virtual scalar integral() const
+        {
+            return integral_;
+        }
 
-        //- Read the heatSourceDict dictionary
-        virtual bool read();
+        inline virtual scalar D4Sigma() const
+        {
+            return D4Sigma_;
+        }
+
+        inline virtual const boundBox& profileBb() const
+        {
+            return profileBb_;
+        }
+
 };
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace heatSourceModels
+} // End namespace heatSourceProfiles
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

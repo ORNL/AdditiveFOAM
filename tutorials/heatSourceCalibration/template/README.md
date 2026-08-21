@@ -1,9 +1,9 @@
 # Calibration case template
 
 This is the OpenFOAM-14 AdditiveFOAM case copied for every trial value in the
-heat-source calibration campaign. It uses a `tabulated` heat source with SS316L
-and a circular Gaussian planar profile. The measured D4Sigma diameter is 109.69
-microns. AdditiveFOAM calculates this value directly from the finite table.
+heat-source calibration campaign. It uses a `projectedHeatSource` with a
+`tabulated` circular Gaussian profile, an `exponential` projection, and SS316L.
+The measured D4Sigma diameter is 109.69 microns.
 
 The calibration command expects this full case structure:
 
@@ -23,8 +23,7 @@ The required renderer placeholders are:
 
 The normalized 67-by-67 profile is provided directly in
 `constant/beam_profile.txt`. It uses 2.5-micron spacing and spans -82.5 through
-+82.5 microns in both lateral directions. The tabulated projected-depth closure
-reads `<<nIntercept>>` directly. The model calculates the profile
++82.5 microns in both lateral directions. The model calculates the profile
 integral and D4Sigma during initialization and uses `minimumDepth` as the
 initial projected source depth.
 

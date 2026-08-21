@@ -2,10 +2,10 @@
 
 ## Case description
 
-This tutorial demonstrates the `tabulated` heat source model in AdditiveFOAM
-using a measured nLight AFX Index 3 laser profile. The profile was exported from
-PRIMES LaserDiagnosticsSoftware and converted to the AdditiveFOAM tabulated
-heat-source format with `primesToAdditiveFoam`.
+This tutorial demonstrates a `projectedHeatSource` with a measured `tabulated`
+planar profile and an `exponential` axial projection. The nLight AFX Index 3
+profile was exported from PRIMES LaserDiagnosticsSoftware and converted to the
+AdditiveFOAM tabulated format with `primesToAdditiveFoam`.
 
 The purpose of this tutorial is to show how measured beam profiles can be used
 directly in AdditiveFOAM without adding a new analytic heat-source model for
@@ -29,7 +29,7 @@ then runs the mesh generation, decomposition, solver, and reconstruction steps.
 
 `constant/heatSourceDict`
 
-Defines the moving heat source and selects the `tabulated` heat-source model.
+Defines the moving heat source and selects its profile and projection.
 
 `constant/scanPath`
 
@@ -117,19 +117,31 @@ radii and azimuth with the corresponding PRIMES header values.
 The tutorial uses:
 
 ```foam
-heatSourceModel tabulated;
+heatSourceModel projectedHeatSource;
 ```
 
 The corresponding coefficient dictionary is:
 
 ```foam
-tabulatedCoeffs
+projectedHeatSourceCoeffs
 {
-    file            "beamProfile.txt";
+    profile         tabulated;
+    projection      exponential;
+
     minimumDepth    5.0e-5;
-    nSlope          0;
-    nIntercept      1;
-    profileTol      1.0e-3;
+
+    tabulatedCoeffs
+    {
+        file        "beamProfile.txt";
+    }
+
+    exponentialCoeffs
+    {
+        nSlope      0;
+        nIntercept  1;
+    }
+
+    tolerance       1.0e-3;
     nPoints         (10 10 10);
 }
 ```
@@ -175,12 +187,10 @@ where `a = 2*depth/D4Sigma`. Here `D4Sigma` is the area-equivalent diameter,
 plane with axial weight `exp(-3*(-z/depth)^k)`; its normalization uses the
 matching one-sided axial integral.
 
-`profileTol`
+`tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
-bounds. The default `1e-3` retains at least 99.9% of the source power. The
-profile limits provide exact lateral support, so this tolerance determines the
-axial bound for the tabulated model.
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 

@@ -61,6 +61,9 @@ class modifiedSuperGaussian
 {
     // Private Data
 
+        //- Heat source dimensions
+        vector dimensions_;
+
         //- Distribution shape coefficient of modifiedSuperGaussian distribution
         scalar k_;
 
@@ -69,6 +72,12 @@ class modifiedSuperGaussian
 
         //- Scaled heat source dimensions
         vector s_;
+
+
+    // Private Member Functions
+
+        //- Update the source dimensions, bounds and normalization
+        void updateSource();
 
 public:
 

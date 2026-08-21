@@ -39,12 +39,15 @@ SourceFiles
 #define tabulatedProfile_H
 
 #include "fileName.H"
+#include "heatSourceProfile.H"
 #include "scalarField.H"
 
 namespace Foam
 {
 
 class tabulatedProfile
+:
+    public heatSourceProfile
 {
     // Private Data
 
@@ -70,12 +73,16 @@ class tabulatedProfile
         scalar D4Sigma_;
         scalar azimuth_;
 
+        boundBox profileBb_;
+
     // Private Member Functions
 
         void integrate();
 
 
 public:
+    //- Runtime type information
+    TypeName("tabulated");
 
     // Constructors
 
@@ -83,9 +90,25 @@ public:
 
         explicit tabulatedProfile(const fileName& profileFile);
 
+        tabulatedProfile
+        (
+            const dictionary& dict,
+            const fvMesh& mesh,
+            const scalar tolerance
+        );
+
     // Member Functions
 
         void read(const fileName& profileFile);
+
+        inline virtual scalar weight
+        (
+            const scalar x,
+            const scalar y
+        ) const
+        {
+            return interpolate(x, y);
+        }
 
         inline scalar interpolate(const scalar x, const scalar y) const
         {
@@ -150,7 +173,7 @@ public:
             return dy_;
         }
 
-        inline scalar integral() const
+        inline virtual scalar integral() const
         {
             return integral_;
         }
@@ -177,7 +200,7 @@ public:
 
         //- Area-equivalent D4Sigma diameter
         //- sqrt(D4SigmaMajor()*D4SigmaMinor())
-        inline scalar D4Sigma() const
+        inline virtual scalar D4Sigma() const
         {
             return D4Sigma_;
         }
@@ -186,6 +209,12 @@ public:
         {
             return azimuth_;
         }
+
+        inline virtual const boundBox& profileBb() const
+        {
+            return profileBb_;
+        }
+
 };
 
 } // End namespace Foam

@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "superGaussian.H"
+#include "superGaussianProfile.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -51,30 +52,49 @@ Foam::heatSourceModels::superGaussian::superGaussian
 )
 :
     heatSourceModel(typeName, sourceName, dict, mesh),
+    dimensions_(vector::zero),
+    k_(1),
     s_(vector::zero)
 {
+    dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
     k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
+
+    minimumDepth_ = dimensions_.z();
+    depth_ = minimumDepth_;
+
+    D4Sigma_ =
+        heatSourceProfiles::superGaussianProfile::D4Sigma
+        (
+            dimensions_.x(),
+            dimensions_.y(),
+            k_
+        );
+
+    updateSource();
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::heatSourceModels::superGaussian::update()
+void Foam::heatSourceModels::superGaussian::updateSource()
 {
-    updateDimensions();
+    dimensions_.z() = depth_;
 
     s_ = dimensions_/Foam::pow(2.0, 1.0/k_);
 
     const scalar fMax =
         Foam::pow
         (
-            invIncGammaRatio_P(3.0/k_, 1.0 - profileTol_),
+            invIncGammaRatio_P(3.0/k_, 1.0 - tolerance_),
             1.0/k_
         );
 
-    sourceMin_ = vector(-fMax*s_.x(), -fMax*s_.y(), -fMax*s_.z());
-
-    sourceMax_ = vector(fMax*s_.x(), fMax*s_.y(), 0.0);
+    sourceBb_ =
+        boundBox
+        (
+            point(-fMax*s_.x(), -fMax*s_.y(), -fMax*s_.z()),
+            point(fMax*s_.x(), fMax*s_.y(), 0)
+        );
 
     V0_ =
         dimensionedScalar
@@ -84,6 +104,13 @@ void Foam::heatSourceModels::superGaussian::update()
             (2.0/3.0)*s_.x()*s_.y()*s_.z()*pi
            *Foam::tgamma(1.0 + 3.0/k_)
         );
+}
+
+
+void Foam::heatSourceModels::superGaussian::update()
+{
+    updateDepth();
+    updateSource();
 }
 
 
@@ -102,8 +129,21 @@ bool Foam::heatSourceModels::superGaussian::read()
 {
     if (heatSourceModel::read())
     {
-        //- Mandatory entries
+        heatSourceModelCoeffs_.lookup("dimensions") >> dimensions_;
         heatSourceModelCoeffs_.lookup("k") >> k_;
+
+        minimumDepth_ = dimensions_.z();
+        depth_ = max(minimumDepth_, isoDepth_);
+
+        D4Sigma_ =
+            heatSourceProfiles::superGaussianProfile::D4Sigma
+            (
+                dimensions_.x(),
+                dimensions_.y(),
+                k_
+            );
+
+        updateSource();
 
         return true;
     }

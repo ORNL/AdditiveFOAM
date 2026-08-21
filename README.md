@@ -11,7 +11,7 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 ### Repository Features
 | Link                                                | Description                              |
 |-----------------------------------------------------------|------------------------------------------|
-| [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
+| [solver](applications/solvers/additiveFoam)               | AdditiveFOAM solver source                |
 | [tutorials](tutorials)                                     | Tutorial cases |
 | [calibration utility](bin/calibrateHeatSource)             | Heat-source calibration command |
 | [calibration tutorial](tutorials/heatSourceCalibration)    | Projected heat-source calibration workflow |

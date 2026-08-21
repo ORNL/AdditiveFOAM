@@ -2,10 +2,9 @@
 
 ## Case description
 
-This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM.
-The model represents an nLight AFX beam as a linear combination of two
-Gaussian-ring components with the same projected axial distribution used by
-the `projectedGaussian` heat source.
+This tutorial demonstrates a `projectedHeatSource` with an `nLightAFX` planar
+profile and an `exponential` axial projection. The profile represents an
+nLight AFX beam as a linear combination of two Gaussian-ring components.
 
 The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs.
 
@@ -52,7 +51,7 @@ Defines the laser path, laser power, and scan speed or dwell time.
 The tutorial uses:
 
 ```foam
-heatSourceModel nLightAFX;
+heatSourceModel projectedHeatSource;
 ```
 
 The corresponding coefficient dictionary is:
@@ -60,19 +59,28 @@ The corresponding coefficient dictionary is:
 ```foam
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
-nLightAFXCoeffs
+projectedHeatSourceCoeffs
 {
-    $Index6;
+    profile         nLightAFX;
+    projection      exponential;
 
-    nSlope      0.0;
-    nIntercept  1.0;
+    minimumDepth    20.0e-6;
+
+    nLightAFXCoeffs
+    {
+        $Index6;
+    }
+
+    exponentialCoeffs
+    {
+        nSlope      0.0;
+        nIntercept  1.0;
+    }
 
     transient   true;
     nPoints     (10 10 10);
 }
 ```
-
-The shared configuration sets the initial heat-source depth to 20 microns.
 
 The selected mode can be changed by replacing:
 
@@ -98,7 +106,6 @@ The shared `nLightAFX-1000.cfg` file contains the ORNL-characterized AFX beam
 parameters for modes 0 through 6. Each mode defines:
 
 ```foam
-dimensions
 alpha
 r0
 sigma0
@@ -116,11 +123,9 @@ the outer ring in the characterized AFX modes.
 Define the radial beam-shape parameters for Gaussian components 0 and 1. The
 values are specified in meters.
 
-`dimensions`
-
-Sets the lateral heat source dimensions to half of D4Sigma. The third component
-is the initial projected depth and is updated by the transient heat source
-logic when `transient` is enabled.
+The profile calculates its radial D4Sigma from these coefficients. The
+reported D4Sigma values in the shared configuration provide reference values
+for the characterized modes.
 
 `nSlope` and `nIntercept`
 
@@ -132,14 +137,12 @@ k = 2^n
 ```
 
 where `a` is the ratio between the current heat source depth and lateral heat
-source size, and `k` is the exponent in the axial decay. This is the same
-notation and closure used by the `projectedGaussian` model.
+source radius, `D4Sigma/2`, and `k` is the exponent in the axial decay.
 
-`profileTol`
+`tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
-bounds. The default `1e-3` retains at least 99.9% of the combined radial and
-axial source power.
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 
@@ -163,8 +166,6 @@ A typical mode block from `nLightAFX-1000.cfg` looks like:
 ```foam
 Index3
 {
-    dimensions  (1.09290e-4 1.09290e-4 20.0e-6);
-
     alpha       0.483;
 
     r0          14.39e-6;
@@ -174,13 +175,11 @@ Index3
 }
 ```
 
-The selected mode is combined with the shared projection coefficients:
+The selected profile is combined with the projection coefficients:
 
 ```foam
-nLightAFXCoeffs
+exponentialCoeffs
 {
-    $Index3;
-
     nSlope      0.0;
     nIntercept  1.0;
 }
@@ -190,24 +189,23 @@ This mode has approximately half of the power in component 1. Lower modes are
 more center-weighted, while higher modes place more power in the outer ring.
 
 The component integrals are accounted for independently so `alpha` remains the
-integrated power fraction in component 1. If `A0` and `A1` are the one-sided
-volume integrals of the two Gaussian components with their shared axial
-distribution, the implemented weight and normalization are
+integrated power fraction in component 1. If `J0` and `J1` are the planar
+component integrals without the common factor of `2*pi`, the implemented
+weight and normalization are
 
 ```text
 Ii(r) = exp(-0.5*((r - ri)/sigmai)^2)
       + exp(-0.5*((r + ri)/sigmai)^2)
 p(z) = exp(-3*(-z/d)^k), z <= 0
-w = p(z)*((1 - alpha)*I0(r) + alpha*I1(r)*A0/A1)
-V0 = A0
+w = p(z)*((1 - alpha)*I0(r) + alpha*I1(r)*J0/J1)
+V0 = 2*pi*J0*d*Gamma(1/k)/(k*3^(1/k))
 ```
 
-The analytic component integral is
+where
 
 ```text
-Ai = 2*pi*sigmai*d*Gamma(1/k)/(k*3^(1/k))
-   * (2*sigmai*exp(-0.5*(ri/sigmai)^2)
-      + sqrt(2*pi)*ri*erf(ri/(sqrt(2)*sigmai)))
+Ji = 2*sigmai^2*exp(-0.5*(ri/sigmai)^2)
+   + sqrt(2*pi)*ri*sigmai*erf(ri/(sqrt(2)*sigmai))
 ```
 
 Therefore, the normalized component contributions integrate to `1 - alpha`

@@ -28,16 +28,28 @@ beam
         eta             0.2;
     }
     
-    heatSourceModel     tabulated;
+    heatSourceModel     projectedHeatSource;
         
-    tabulatedCoeffs
+    projectedHeatSourceCoeffs
     {
-        file        "beamProfile.txt";
-        minimumDepth        5.0e-5;
-        nSlope       0;
-        nIntercept   1;
-        profileTol      1.0e-3;
-        nPoints     (10 10 10);
+        profile         tabulated;
+        projection      exponential;
+
+        minimumDepth    5.0e-5;
+
+        tabulatedCoeffs
+        {
+            file        "beamProfile.txt";
+        }
+
+        exponentialCoeffs
+        {
+            nSlope      0;
+            nIntercept  1;
+        }
+
+        tolerance       1.0e-3;
+        nPoints         (10 10 10);
     }
 }
 

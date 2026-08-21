@@ -159,9 +159,9 @@ Gaussian-like source.
 `dimensions`
 
 Sets the heat source dimensions used by the moving heat source integration,
-taken as `2sigma`.
+with lateral components equal to `D4Sigma/2` when `k = 2`.
 
-`profileTol`
+`tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
 bounds. The default `1e-3` retains at least 99.9% of each source's power.

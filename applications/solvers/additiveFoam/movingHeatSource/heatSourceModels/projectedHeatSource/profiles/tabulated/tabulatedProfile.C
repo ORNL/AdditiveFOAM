@@ -26,7 +26,20 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "tabulatedProfile.H"
+#include "addToRunTimeSelectionTable.H"
+#include "fvMesh.H"
 #include "IFstream.H"
+
+namespace Foam
+{
+    defineTypeNameAndDebug(tabulatedProfile, 0);
+    addToRunTimeSelectionTable
+    (
+        heatSourceProfile,
+        tabulatedProfile,
+        dictionary
+    );
+}
 
 // * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -49,7 +62,8 @@ Foam::tabulatedProfile::tabulatedProfile()
     D4SigmaMajor_(0),
     D4SigmaMinor_(0),
     D4Sigma_(0),
-    azimuth_(0)
+    azimuth_(0),
+    profileBb_(point::zero, point::zero)
 {}
 
 Foam::tabulatedProfile::tabulatedProfile(const fileName& profileFile)
@@ -57,6 +71,37 @@ Foam::tabulatedProfile::tabulatedProfile(const fileName& profileFile)
     tabulatedProfile()
 {
     read(profileFile);
+}
+
+
+Foam::tabulatedProfile::tabulatedProfile
+(
+    const dictionary& dict,
+    const fvMesh& mesh,
+    const scalar
+)
+:
+    tabulatedProfile()
+{
+    const dictionary& coeffs = dict.subDict(typeName + "Coeffs");
+
+    const fileName fName(coeffs.lookup("file"));
+
+    const fileName tableFile
+    (
+        mesh.time().rootPath()
+       /mesh.time().globalCaseName()
+       /mesh.time().constant()
+       /fName
+    );
+
+    read(tableFile);
+
+    Info<< "Tabulated profile: integral=" << integral_
+        << ", centroid=(" << centroidX_ << ' ' << centroidY_ << ") m"
+        << ", D4Sigma/major/minor=" << D4Sigma_ << '/'
+        << D4SigmaMajor_ << '/' << D4SigmaMinor_ << " m"
+        << ", azimuth=" << azimuth_ << " rad" << endl;
 }
 
 // * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * //
@@ -159,6 +204,13 @@ void Foam::tabulatedProfile::read(const fileName& profileFile)
     }
 
     integrate();
+
+    profileBb_ =
+        boundBox
+        (
+            point(x0_, y0_, 0),
+            point(x1_, y1_, 0)
+        );
 }
 
 // ************************************************************************* //

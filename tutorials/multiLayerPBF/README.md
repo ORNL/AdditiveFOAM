@@ -114,7 +114,9 @@ model. If omitted, the cutoff is `1.0`.
 
 `dimensions`
 
-Sets the heat source dimensions. The third component is the initial projected depth.
+Sets the modified super-Gaussian scale dimensions. The third component is the
+minimum source depth. AdditiveFOAM calculates the transverse D4Sigma from the
+first two components and `k`; Kelly uses `D4Sigma/2` as its lateral scale.
 
 `m` and `k`
 
@@ -125,12 +127,10 @@ Shape parameters for the `modifiedSuperGaussian` heat source.
 When `true`, AdditiveFOAM updates the heat source depth using the material
 liquidus from `constant/transportProperties`.
 
-`profileTol`
+`tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
-bounds. The default `1e-3` retains at least 99.9% of the source power. The
-modified super-Gaussian depth is bounded exactly; the tolerance controls its
-lateral bound.
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 

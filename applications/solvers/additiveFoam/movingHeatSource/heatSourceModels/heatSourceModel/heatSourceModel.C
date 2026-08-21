@@ -92,13 +92,13 @@ Foam::heatSourceModel::heatSourceModel
     mesh_(mesh),
     transient_(false),
     isoValue_(great),
-    dimensions_(vector::zero),
-    staticDimensions_(vector::zero),
+    D4Sigma_(0),
+    minimumDepth_(0),
+    depth_(0),
     isoDepth_(0),
     nPoints_(vector::one),
-    profileTol_(1.0e-3),
-    sourceMin_(vector::zero),
-    sourceMax_(vector::zero),
+    tolerance_(1.0e-3),
+    sourceBb_(point::zero, point::zero),
     V0_("V0", dimVolume, 0),
     absorptionModel_(nullptr),
     movingBeam_(nullptr)
@@ -108,14 +108,6 @@ Foam::heatSourceModel::heatSourceModel
 
     movingBeam_ =
         movingBeam::New(sourceName_, heatSourceDict_, mesh_.time());
-
-    if (type != "tabulated")
-    {
-        dimensions_ =
-            heatSourceModelCoeffs_.lookup<vector>("dimensions");
-    }
-
-    staticDimensions_ = dimensions_;
 
     transient_ =
         heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
@@ -137,10 +129,10 @@ Foam::heatSourceModel::heatSourceModel
             vector::one
         );
 
-    profileTol_ =
+    tolerance_ =
         heatSourceModelCoeffs_.lookupOrDefault<scalar>
         (
-            "profileTol",
+            "tolerance",
             1.0e-3
         );
 }
@@ -148,25 +140,19 @@ Foam::heatSourceModel::heatSourceModel
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::heatSourceModel::updateDimensions()
+void Foam::heatSourceModel::updateDepth()
 {
     if (!transient_)
     {
         isoDepth_ = 0;
-        dimensions_ = staticDimensions_;
-        Info << "maxDepth: " << dimensions_.z() << endl;
+        depth_ = minimumDepth_;
+        Info << "depth: " << depth_ << endl;
         return;
     }
 
-    const vector position_ = movingBeam_->position();
+    const vector position = movingBeam_->position();
 
-    const scalar searchRadius
-    (
-        max(staticDimensions_.x(), staticDimensions_.y())
-    );
-
-    // find maximum isotherm depth within supplied beam radius
-    // depth is defined as the z-distance from the heat source centre
+    // Find the maximum isotherm depth within the planar source bounds
     const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
 
     const labelUList& owner = mesh_.owner();
@@ -191,11 +177,16 @@ void Foam::heatSourceModel::updateDimensions()
             const vector p =
                 cc[own]
               + d*(isoValue_ - T[own])/(T[nei] - T[own])
-              - position_;
+              - position;
 
-            scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
-
-            if ((pxy <= searchRadius) && (p.z() <= 0))
+            if
+            (
+                p.x() >= sourceBb_.min().x()
+             && p.x() <= sourceBb_.max().x()
+             && p.y() >= sourceBb_.min().y()
+             && p.y() <= sourceBb_.max().y()
+             && p.z() <= 0
+            )
             {
                 isoDepth = max(-p.z(), isoDepth);
             }
@@ -232,11 +223,16 @@ void Foam::heatSourceModel::updateDimensions()
                     const vector p =
                         cc[own]
                       + d*(isoValue_ - T[own])/(Tn[facei] - T[own])
-                      - position_;
+                      - position;
 
-                    scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
-
-                    if ((pxy <= searchRadius) && (p.z() <= 0))
+                    if
+                    (
+                        p.x() >= sourceBb_.min().x()
+                     && p.x() <= sourceBb_.max().x()
+                     && p.y() >= sourceBb_.min().y()
+                     && p.y() <= sourceBb_.max().y()
+                     && p.z() <= 0
+                    )
                     {
                         isoDepth = max(-p.z(), isoDepth);
                     }
@@ -249,16 +245,10 @@ void Foam::heatSourceModel::updateDimensions()
 
     isoDepth_ = isoDepth;
 
-    dimensions_ =
-        vector
-        (
-            staticDimensions_.x(),
-            staticDimensions_.y(),
-            max(staticDimensions_.z(), isoDepth_)
-        );
+    depth_ = max(minimumDepth_, isoDepth_);
 
     Info<< "isoDepth: " << isoDepth_
-        << ", effectiveDepth: " << dimensions_.z() << endl;
+        << ", depth: " << depth_ << endl;
 }
 
 Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
@@ -288,8 +278,7 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
         const vector position_ = movingBeam_->position();
 
         const scalar a =
-            (transient_ ? isoDepth_ : dimensions_.z())
-           /min(dimensions_.x(), dimensions_.y());
+            (transient_ ? isoDepth_ : depth_)/(0.5*D4Sigma_);
 
         const dimensionedScalar absorbedPower
         (
@@ -315,10 +304,10 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
             dimensionedScalar("Zero", dimless, 0.0)
         );
 
-        treeBoundBox beamBb
+        treeBoundBox currentSourceBb
         (
-            position_ + sourceMin_,
-            position_ + sourceMax_
+            position_ + sourceBb_.min(),
+            position_ + sourceBb_.max()
         );
 
         const pointField& points = mesh_.points();
@@ -337,14 +326,14 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
                 cellBb.max() = max(cellBb.max(), points[vertices[i]]);
             }
 
-            if (cellBb.overlaps(beamBb))
+            if (cellBb.overlaps(currentSourceBb))
             {
                 if (hex.isA(mesh_, celli))
                 {
                     vector dx_ =
                         cmptDivide
                         (
-                            sourceMax_ - sourceMin_,
+                            sourceBb_.span(),
                             vector(nPoints_)
                         );
 
@@ -388,7 +377,7 @@ Foam::tmp<Foam::volScalarField>Foam::heatSourceModel::qDot()
                                 );
 
                                 // calculate weight for point in beam bound box
-                                if (beamBb.overlaps(ptBb))
+                                if (currentSourceBb.overlaps(ptBb))
                                 {
                                     wi += weight(pt - position_)*dVi;
                                 }
@@ -432,6 +421,37 @@ bool Foam::heatSourceModel::read()
 
         heatSourceModelCoeffs_ =
             sourceDict_.optionalSubDict(type() + "Coeffs");
+
+        transient_ =
+            heatSourceModelCoeffs_.lookupOrDefault<Switch>
+            (
+                "transient",
+                false
+            );
+
+        if (transient_)
+        {
+            isoValue_ =
+                heatSourceModelCoeffs_.lookupOrDefault<scalar>
+                (
+                    "isoValue",
+                    thermoPath(mesh_).liquidus()
+                );
+        }
+
+        nPoints_ =
+            heatSourceModelCoeffs_.lookupOrDefault<labelVector>
+            (
+                "nPoints",
+                vector::one
+            );
+
+        tolerance_ =
+            heatSourceModelCoeffs_.lookupOrDefault<scalar>
+            (
+                "tolerance",
+                1.0e-3
+            );
 
         return true;
     }

@@ -110,9 +110,10 @@ Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a Gaussian-li
 
 `dimensions`
 
-Sets the heat source dimensions used by the moving heat source integration, taken as `2sigma`
+Sets the heat source scale dimensions used by the moving heat source
+integration. For `k = 2`, the lateral components are `D4Sigma/2`.
 
-`profileTol`
+`tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
 bounds. The default `1e-3` retains at least 99.9% of the source power.

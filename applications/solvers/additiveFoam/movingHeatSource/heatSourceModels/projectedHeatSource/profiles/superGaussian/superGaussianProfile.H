@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,88 +24,105 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceModels::projectedGaussian
+    Foam::heatSourceProfiles::superGaussianProfile
 
 Description
-    One-sided projected Gaussian heat source model applied in the negative z
-    direction from the beam plane. The beam plane is expected to coincide with
-    the material surface.
+    Planar super-Gaussian heat source profile.
 
 SourceFiles
-    projectedGaussian.C
+    superGaussianProfile.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef projectedGaussian_H
-#define projectedGaussian_H
+#ifndef superGaussianProfile_H
+#define superGaussianProfile_H
 
-#include "heatSourceModel.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include "heatSourceProfile.H"
+#include "vector2D.H"
 
 namespace Foam
 {
-namespace heatSourceModels
+namespace heatSourceProfiles
 {
 
-/*---------------------------------------------------------------------------*\
-                       Class projectedGaussian
-\*---------------------------------------------------------------------------*/
-
-class projectedGaussian
+class superGaussianProfile
 :
-    public heatSourceModel
+    public heatSourceProfile
 {
     // Private Data
 
-        //- nSlope in n = nSlope*log2(a) + nIntercept
-        scalar nSlope_;
+        //- Heat source dimensions
+        vector2D dimensions_;
 
-        //- nIntercept in n = nSlope*log2(a) + nIntercept
-        scalar nIntercept_;
-
-        //- Axial decay exponent
+        //- Shape coefficient
         scalar k_;
+
+        //- Scaled heat source dimensions
+        vector2D s_;
+
+        //- Planar integral
+        scalar integral_;
+
+        //- Area-equivalent second-moment diameter
+        scalar D4Sigma_;
+
+        //- Planar profile bounds
+        boundBox profileBb_;
 
 public:
 
     //- Runtime type information
-    TypeName("projectedGaussian");
+    TypeName("superGaussian");
 
 
     // Constructors
 
-        //- Construct from components
-        projectedGaussian
+        superGaussianProfile
         (
-            const word& sourceName,
             const dictionary& dict,
-            const fvMesh& mesh
+            const fvMesh& mesh,
+            const scalar tolerance
         );
 
-
     //- Destructor
-    virtual ~projectedGaussian()
+    virtual ~superGaussianProfile()
     {}
-
 
     // Member Functions
 
-        virtual void update();
+        //- Return the area-equivalent second-moment diameter
+        static scalar D4Sigma
+        (
+            const scalar x,
+            const scalar y,
+            const scalar k
+        );
 
-        inline virtual scalar weight(const vector& r) const;
+        virtual scalar weight
+        (
+            const scalar x,
+            const scalar y
+        ) const;
 
-        //- Read the heatSourceDict dictionary
-        virtual bool read();
+        inline virtual scalar integral() const
+        {
+            return integral_;
+        }
+
+        inline virtual scalar D4Sigma() const
+        {
+            return D4Sigma_;
+        }
+
+        inline virtual const boundBox& profileBb() const
+        {
+            return profileBb_;
+        }
+
 };
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace heatSourceModels
+} // End namespace heatSourceProfiles
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

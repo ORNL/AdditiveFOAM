@@ -9,12 +9,17 @@ movingBeam/movingBeam.C
 
 heatSourceModels/heatSourceModel/heatSourceModel.C
 heatSourceModels/heatSourceModel/heatSourceModelNew.C
+heatSourceModels/projectedHeatSource/profiles/heatSourceProfile/heatSourceProfile.C
+heatSourceModels/projectedHeatSource/profiles/heatSourceProfile/heatSourceProfileNew.C
+heatSourceModels/projectedHeatSource/profiles/superGaussian/superGaussianProfile.C
+heatSourceModels/projectedHeatSource/profiles/nLightAFX/nLightAFXProfile.C
+heatSourceModels/projectedHeatSource/profiles/tabulated/tabulatedProfile.C
+heatSourceModels/projectedHeatSource/projections/heatSourceProjection/heatSourceProjection.C
+heatSourceModels/projectedHeatSource/projections/heatSourceProjection/heatSourceProjectionNew.C
+heatSourceModels/projectedHeatSource/projections/exponential/exponential.C
 heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
-heatSourceModels/projectedGaussian/projectedGaussian.C
-heatSourceModels/nLightAFX/nLightAFX.C
-heatSourceModels/tabulated/tabulatedProfile.C
-heatSourceModels/tabulated/tabulated.C
+heatSourceModels/projectedHeatSource/projectedHeatSource.C
 
 refinementModels/refinementModel/refinementModel.C
 refinementModels/refinementModel/refinementModelNew.C

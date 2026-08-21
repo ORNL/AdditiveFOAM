@@ -3,8 +3,7 @@
 This tutorial calibrates the projected depth-distribution closure used by
 AdditiveFOAM heat sources. The supplied worked example uses a `tabulated`
 source with SS316L and a circular Gaussian planar profile. The measured
-D4Sigma diameter is 109.69 microns. The finite tabulated profile is constructed
-so its bilinear interpolant has that D4Sigma exactly.
+D4Sigma diameter is 109.69 microns.
 
 ## Installation and setup
 
@@ -104,22 +103,32 @@ parameters:
   Profile: measured_beam
 ```
 
-The tabulated coefficients require the profile, a minimum projected depth, and
-the two closure coefficients. No lateral `dimensions` input is required:
+The projected source requires a profile, a projection, a minimum depth, and
+the two projection coefficients. No lateral `dimensions` input is required:
 
 ```foam
-tabulatedCoeffs
+projectedHeatSourceCoeffs
 {
-    file            "beam_profile.txt";
+    profile         tabulated;
+    projection      exponential;
+
     minimumDepth    20.0e-6;
-    nSlope          0.0;
-    nIntercept      <<nIntercept>>;
+
+    tabulatedCoeffs
+    {
+        file        "beam_profile.txt";
+    }
+
+    exponentialCoeffs
+    {
+        nSlope      0.0;
+        nIntercept  <<nIntercept>>;
+    }
 }
 ```
 
-The optional `profileTol` defaults to `1e-3`, retaining at least 99.9% of
-the analytical source power inside the exact profile limits and calculated
-axial bound.
+The optional `tolerance` defaults to `1e-3`, retaining at least 99.9% of the
+analytical source power inside the integration bounds.
 
 The closure uses
 

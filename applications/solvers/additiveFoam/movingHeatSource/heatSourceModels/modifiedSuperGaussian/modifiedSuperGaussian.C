@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "modifiedSuperGaussian.H"
+#include "superGaussianProfile.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -56,18 +57,35 @@ Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
 )
 :
     heatSourceModel(typeName, sourceName, dict, mesh),
+    dimensions_(vector::zero),
+    k_(1),
+    m_(1),
     s_(vector::zero)
 {
+    dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
     k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
     m_ = heatSourceModelCoeffs_.lookup<scalar>("m");
+
+    minimumDepth_ = dimensions_.z();
+    depth_ = minimumDepth_;
+
+    D4Sigma_ =
+        heatSourceProfiles::superGaussianProfile::D4Sigma
+        (
+            dimensions_.x(),
+            dimensions_.y(),
+            k_
+        );
+
+    updateSource();
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::heatSourceModels::modifiedSuperGaussian::update()
+void Foam::heatSourceModels::modifiedSuperGaussian::updateSource()
 {
-    updateDimensions();
+    dimensions_.z() = depth_;
 
     s_ = dimensions_/Foam::pow(2.0, 1.0/k_);
     s_.z() = dimensions_.z();
@@ -75,13 +93,16 @@ void Foam::heatSourceModels::modifiedSuperGaussian::update()
     const scalar fMax =
         Foam::pow
         (
-            invIncGammaRatio_P(2.0/k_, 1.0 - profileTol_),
+            invIncGammaRatio_P(2.0/k_, 1.0 - tolerance_),
             1.0/k_
         );
 
-    sourceMin_ = vector(-fMax*s_.x(), -fMax*s_.y(), -s_.z());
-
-    sourceMax_ = vector(fMax*s_.x(), fMax*s_.y(), 0.0);
+    sourceBb_ =
+        boundBox
+        (
+            point(-fMax*s_.x(), -fMax*s_.y(), -s_.z()),
+            point(fMax*s_.x(), fMax*s_.y(), 0)
+        );
 
     V0_ =
         dimensionedScalar
@@ -92,6 +113,13 @@ void Foam::heatSourceModels::modifiedSuperGaussian::update()
            *Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
            /Foam::tgamma(1.0 + 3.0/m_)
         );
+}
+
+
+void Foam::heatSourceModels::modifiedSuperGaussian::update()
+{
+    updateDepth();
+    updateSource();
 }
 
 
@@ -125,9 +153,22 @@ bool Foam::heatSourceModels::modifiedSuperGaussian::read()
 {
     if (heatSourceModel::read())
     {
-        //- Mandatory entries
+        heatSourceModelCoeffs_.lookup("dimensions") >> dimensions_;
         heatSourceModelCoeffs_.lookup("k") >> k_;
         heatSourceModelCoeffs_.lookup("m") >> m_;
+
+        minimumDepth_ = dimensions_.z();
+        depth_ = max(minimumDepth_, isoDepth_);
+
+        D4Sigma_ =
+            heatSourceProfiles::superGaussianProfile::D4Sigma
+            (
+                dimensions_.x(),
+                dimensions_.y(),
+                k_
+            );
+
+        updateSource();
 
         return true;
     }

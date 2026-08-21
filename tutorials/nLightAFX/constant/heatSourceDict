@@ -30,17 +30,28 @@ beam
         eta             0.33;
     }
     
-    heatSourceModel     nLightAFX;
+    heatSourceModel     projectedHeatSource;
         
-    nLightAFXCoeffs
+    projectedHeatSourceCoeffs
     {
-        $Index6;
+        profile         nLightAFX;
+        projection      exponential;
 
-        nSlope         0.0;
-        nIntercept     1.0;
+        minimumDepth    20.0e-6;
+
+        nLightAFXCoeffs
+        {
+            $Index6;
+        }
+
+        exponentialCoeffs
+        {
+            nSlope      0.0;
+            nIntercept  1.0;
+        }
         
-        transient   true;
-        nPoints     (10 10 10);
+        transient       true;
+        nPoints         (10 10 10);
     }
 }
 

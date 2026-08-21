@@ -30,14 +30,25 @@ beam
         geometry            cylinder;
     }
 
-    heatSourceModel     tabulated;
+    heatSourceModel     projectedHeatSource;
 
-    tabulatedCoeffs
+    projectedHeatSourceCoeffs
     {
-        file            "beam_profile.txt";
-        minimumDepth        20.0e-6;
-        nSlope       0.0;
-        nIntercept   <<nIntercept>>;
+        profile         tabulated;
+        projection      exponential;
+
+        minimumDepth    20.0e-6;
+
+        tabulatedCoeffs
+        {
+            file        "beam_profile.txt";
+        }
+
+        exponentialCoeffs
+        {
+            nSlope      0.0;
+            nIntercept  <<nIntercept>>;
+        }
 
         transient       true;
         nPoints         (10 10 10);

@@ -27,7 +27,7 @@ Class
     Foam::heatSourceModels::heatSourceModel
 
 Description
-    Abstract base class for heatSource models. The optional profileTol
+    Abstract base class for heatSource models. The optional tolerance
     coefficient controls the maximum fraction of analytical source power
     outside the integration bounds and defaults to 1e-3.
 
@@ -44,6 +44,7 @@ SourceFiles
 #include "movingBeam.H"
 #include "absorptionModel.H"
 #include "labelVector.H"
+#include "boundBox.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -71,8 +72,8 @@ protected:
 
     // Protected Member Functions
 
-        //- Update the transient heat source dimensions
-        void updateDimensions();
+        //- Update the transient heat source depth
+        void updateDepth();
 
 
     // Protected data
@@ -98,11 +99,14 @@ protected:
         //- Temperature isovalue used to calculate the transient source depth
         scalar isoValue_;
 
-        //- Dimensions of the heat source (dynamic)
-        vector dimensions_;
+        //- Area-equivalent second-moment beam diameter
+        scalar D4Sigma_;
 
-        //- Dimensions of the heat source (static)
-        vector staticDimensions_;
+        //- Minimum heat source depth
+        scalar minimumDepth_;
+
+        //- Current heat source depth
+        scalar depth_;
 
         //- Calculated isotherm depth, zero when no isotherm is detected
         scalar isoDepth_;
@@ -111,11 +115,10 @@ protected:
         labelVector nPoints_;
 
         //- Maximum fraction of analytical power outside the source bounds
-        scalar profileTol_;
+        scalar tolerance_;
 
-        //- Source minimum and maximum relative to the beam position
-        vector sourceMin_;
-        vector sourceMax_;
+        //- Source bounds relative to the beam position
+        boundBox sourceBb_;
 
         //- Analytical normalization volume
         dimensionedScalar V0_;
@@ -208,16 +211,16 @@ public:
             return isoValue_;
         }
 
-        //- Return vector of current heat source dimensions
-        inline vector dimensions() const
+        //- Return the area-equivalent second-moment beam diameter
+        inline scalar D4Sigma() const
         {
-            return dimensions_;
+            return D4Sigma_;
         }
 
-        //- Return vector of original heat source dimensions
-        inline vector staticDimensions() const
+        //- Return the source bounds relative to the beam position
+        inline const boundBox& sourceBb() const
         {
-            return staticDimensions_;
+            return sourceBb_;
         }
 
         //- Update the heat source state

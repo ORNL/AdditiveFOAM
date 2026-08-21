@@ -5,11 +5,12 @@
 - Ported AdditiveFOAM to OpenFOAM-14.
 - Added dynamic refinement models and reusable material and heat-source
   configuration files.
-- Added `nLightAFX` and tabulated heat-source models, including conversion of
-  PRIMES beam measurements with `primesToAdditiveFoam`.
+- Added a general projected heat source with super-Gaussian, nLight AFX, and
+  tabulated planar profiles and an exponential axial projection.
+- Added conversion of PRIMES beam measurements with `primesToAdditiveFoam`.
 - Added tabulated-profile inspection and automatic D4Sigma calculation.
 - Added model-specific heat-source bounds that retain at least
-  `1-profileTol` of the analytical source power.
+  `1-tolerance` of the analytical source power.
 - Added support-based heat-source quadrature.
 - Added an adaptive Bayesian workflow for calibrating the projected
   heat-source depth distribution.
@@ -20,12 +21,13 @@
 
 - Made all heat sources one-sided, consistent with their analytic
   normalization.
-- Synchronized heat-source dimensions, shape parameters, normalization, and
-  bounds once before beam subcycling.
+- Synchronized heat-source depth, shape parameters, normalization, and bounds
+  once before beam subcycling.
 - Preserved the active-power fraction when a solver time step crosses the end
   of a scan path.
-- Restricted transient source-depth measurements to the one-sided source
-  support and removed a modified super-Gaussian endpoint singularity.
+- Restricted transient source-depth measurements to the planar source support
+  below the beam plane and removed a modified super-Gaussian endpoint
+  singularity.
 - Added calculation-ROI reconstruction, coordinate-preserving support cropping,
   and beam-statistics reporting to `primesToAdditiveFoam`.
 - Preserved an explicitly configured Kelly `aspectRatioSwitch` value and
@@ -35,11 +37,16 @@
 
 - AdditiveFOAM 2.0 requires OpenFOAM-14. Source the OpenFOAM-14 environment
   before sourcing `etc/bashrc` and rebuild AdditiveFOAM with `./Allwmake`.
+- The former projected Gaussian, nLight AFX, and tabulated heat-source models
+  are now profiles selected by `projectedHeatSource`. Their shared axial model
+  is selected as the `exponential` projection.
+- `superGaussian` remains a volumetric `heatSourceModel` and can also be
+  selected as the planar `profile` of a `projectedHeatSource`. Volumetric
+  `dimensions` have three components; profile `dimensions` have two.
+- The tabulated profile derives its D4Sigma metrics from the beam-profile
+  table. No user-supplied lateral dimensions are required.
 - The `A` and `B` projected-depth coefficients are now named `nSlope` and
-  `nIntercept` in `projectedGaussian`, `tabulated`, and `nLightAFX`.
-- The tabulated model now derives its lateral dimensions and D4Sigma metrics
-  from the beam-profile table. Replace the old `dimensions` entry with
-  `minimumDepth`; no user-supplied lateral dimensions are required.
+  `nIntercept` in `exponentialCoeffs`.
 - Python 3.10 through 3.12 and the packages in `requirements.txt` are required
   only for the calibration and plotting utilities.
 
