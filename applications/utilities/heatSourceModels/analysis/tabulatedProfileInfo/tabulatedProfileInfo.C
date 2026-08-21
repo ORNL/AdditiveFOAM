@@ -44,9 +44,9 @@ int main(int argc, char* argv[])
         << "integral: " << profile.integral() << nl
         << "centroidX: " << profile.centroidX() << nl
         << "centroidY: " << profile.centroidY() << nl
-        << "D4sigmaMajor: " << profile.D4SigmaMajor() << nl
-        << "D4sigmaMinor: " << profile.D4SigmaMinor() << nl
-        << "D4sigma: " << profile.D4Sigma() << nl
+        << "D4SigmaMajor: " << profile.D4SigmaMajor() << nl
+        << "D4SigmaMinor: " << profile.D4SigmaMinor() << nl
+        << "D4Sigma: " << profile.D4Sigma() << nl
         << "azimuthRadians: " << profile.azimuth() << endl;
 
     return 0;

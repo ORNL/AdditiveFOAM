@@ -118,7 +118,7 @@ values are specified in meters.
 
 `dimensions`
 
-Sets the lateral heat source dimensions to half of D4sigma. The third component
+Sets the lateral heat source dimensions to half of D4Sigma. The third component
 is the initial projected depth and is updated by the transient heat source
 logic when `transient` is enabled.
 
@@ -127,13 +127,24 @@ logic when `transient` is enabled.
 Define the projected axial shape closure shared by both components:
 
 ```text
-n = clip(nSlope*log2(x) + nIntercept, 0, 9)
+n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `x` is the ratio between the current heat source depth and lateral heat
+where `a` is the ratio between the current heat source depth and lateral heat
 source size, and `k` is the exponent in the axial decay. This is the same
 notation and closure used by the `projectedGaussian` model.
+
+`profileTol`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the combined radial and
+axial source power.
+
+`nPoints`
+
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 `transient`
 
@@ -179,22 +190,22 @@ This mode has approximately half of the power in component 1. Lower modes are
 more center-weighted, while higher modes place more power in the outer ring.
 
 The component integrals are accounted for independently so `alpha` remains the
-integrated power fraction in component 1. If `a0` and `a1` are the one-sided
+integrated power fraction in component 1. If `A0` and `A1` are the one-sided
 volume integrals of the two Gaussian components with their shared axial
 distribution, the implemented weight and normalization are
 
 ```text
-gi(r) = exp(-0.5*((r - ri)/sigmai)^2)
+Ii(r) = exp(-0.5*((r - ri)/sigmai)^2)
       + exp(-0.5*((r + ri)/sigmai)^2)
-s(z) = exp(-3*(-z/d)^k), z <= 0
-w = s(z)*((1 - alpha)*g0(r) + alpha*g1(r)*a0/a1)
-V0 = a0
+p(z) = exp(-3*(-z/d)^k), z <= 0
+w = p(z)*((1 - alpha)*I0(r) + alpha*I1(r)*A0/A1)
+V0 = A0
 ```
 
 The analytic component integral is
 
 ```text
-ai = 2*pi*sigmai*d*Gamma(1/k)/(k*3^(1/k))
+Ai = 2*pi*sigmai*d*Gamma(1/k)/(k*3^(1/k))
    * (2*sigmai*exp(-0.5*(ri/sigmai)^2)
       + sqrt(2*pi)*ri*erf(ri/(sqrt(2)*sigmai)))
 ```

@@ -27,7 +27,8 @@ Class
     Foam::heatSourceModels::superGaussian
 
 Description
-    superGaussian heat source model for additive manufacturing
+    One-sided super-Gaussian heat source model applied in the negative z
+    direction from the beam plane.
 
 SourceFiles
     superGaussian.C
@@ -56,11 +57,11 @@ class superGaussian
 {
     // Private Data
 
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-
         //- Shape coefficient of supergaussian distribution
         scalar k_;
+
+        //- Scaled heat source dimensions
+        vector s_;
 
 public:
 
@@ -86,9 +87,9 @@ public:
 
     // Member Functions
 
-        inline virtual scalar weight(const vector& d);
+        virtual void update();
 
-        inline virtual dimensionedScalar V0();
+        inline virtual scalar weight(const vector& r) const;
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

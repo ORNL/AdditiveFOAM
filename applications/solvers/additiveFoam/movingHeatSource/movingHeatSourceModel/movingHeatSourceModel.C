@@ -109,12 +109,15 @@ void Foam::movingHeatSourceModel::update()
     {
         if (sources_[i].beam().activePath())
         {
-            sources_[i].updateDimensions();
+            sources_[i].update();
 
             // integrate volumetric heat source over desired time step
             scalar pathTime = mesh_.time().value();
 
-            const scalar nextTime = pathTime + mesh_.time().deltaTValue();
+            const scalar deltaT = mesh_.time().deltaTValue();
+
+            const scalar nextTime =
+                min(pathTime + deltaT, sources_[i].beam().endTime());
 
             const scalar beam_dt = sources_[i].beam().deltaT();
 
@@ -130,8 +133,6 @@ void Foam::movingHeatSourceModel::update()
                 dimensionedScalar("Zero", qDot_.dimensions(), 0.0)
             );
 
-            scalar sumWeights = 0.0;
-
             while ((nextTime - pathTime) > small)
             {
                 scalar dt = min(beam_dt, max(0, nextTime - pathTime));
@@ -141,11 +142,10 @@ void Foam::movingHeatSourceModel::update()
                 sources_[i].beam().move(pathTime);
 
                 qDoti += dt*sources_[i].qDot();
-
-                sumWeights += dt;
             }
 
-            qDoti /= sumWeights;
+            // Preserve the active fraction of a time step ending after the path
+            qDoti /= deltaT;
 
             qDot_ += qDoti;
         }

@@ -97,6 +97,21 @@ and writes the AdditiveFOAM tabulated heat-source profile:
 constant/beamProfile.txt
 ```
 
+The supported input is an LDS table export with the calculation Region of
+Interest (ROI) enabled at a fill factor of 0.5. A rotated-moments export provides
+the `Radius a`, `Radius b`, and `Azimuth angle φ` values used for the
+beam-statistics comparison.
+
+`primesToAdditiveFoam` subtracts `Nullvalue`, sets samples below the resulting
+zero level to zero, and updates the rectangular calculation ROI from the pixel
+centroid and x/y second moments until the pixel mask converges. `SNR` is
+diagnostic metadata and is not an intensity threshold.
+
+The normalized output retains one zero-valued point outside each cropped edge.
+This boundary preserves the bilinear profile, its coordinate system, centroid,
+asymmetry, and beam statistics. The conversion report compares the profile
+radii and azimuth with the corresponding PRIMES header values.
+
 ## Heat source model
 
 The tutorial uses:
@@ -114,6 +129,7 @@ tabulatedCoeffs
     minimumDepth    5.0e-5;
     nSlope          0;
     nIntercept      1;
+    profileTol      1.0e-3;
     nPoints         (10 10 10);
 }
 ```
@@ -127,10 +143,12 @@ relative to the `constant/` directory.
 
 `minimumDepth`
 
-Sets the minimum projected heat-source depth. The tabulated model derives its
-lateral characteristic size, interpolation bounds, normalization, and D4sigma
-metrics directly from the profile file; the user does not supply lateral
-dimensions.
+Sets the minimum projected heat-source depth. The profile file determines the
+lateral characteristic size, interpolation bounds, normalization, and D4Sigma
+metrics.
+
+The profile integral and D4Sigma metrics use the exact raw moments of the
+bilinear interpolant, `Mpq = integral(x^p*y^q*I(x,y) dx dy)`.
 
 `transient`
 
@@ -148,19 +166,26 @@ is used.
 Define the projected axial shape closure:
 
 ```text
-n = clip(nSlope*log2(x) + nIntercept, 0, 9)
+n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `x = 2*depth/D4sigma`. Here `D4sigma` is the area-equivalent diameter,
-`sqrt(D4sigmaMajor*D4sigmaMinor)`. The source is applied below the beam
+where `a = 2*depth/D4Sigma`. Here `D4Sigma` is the area-equivalent diameter,
+`sqrt(D4SigmaMajor*D4SigmaMinor)`. The source is applied below the beam
 plane with axial weight `exp(-3*(-z/depth)^k)`; its normalization uses the
 matching one-sided axial integral.
 
+`profileTol`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power. The
+profile limits provide exact lateral support, so this tolerance determines the
+axial bound for the tabulated model.
+
 `nPoints`
 
-Controls the sub-cell sampling resolution used when integrating the heat source
-over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 ## Tabulated beam file format
 

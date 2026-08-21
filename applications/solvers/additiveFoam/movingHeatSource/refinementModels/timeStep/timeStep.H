@@ -24,12 +24,12 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementModel::timeStep
+    Foam::refinementModels::timeStep
 
 Description
-    This refinement model marks refinementField at every time step, including
-    cells which overlap the current beam positions and are above the target
-    temperature.
+    This refinement model marks refinementField at every time step with the
+    union of cells above the target temperature and cells overlapping the
+    projected scan paths over the next time step.
 
 SourceFiles
     timeStep.C
@@ -82,7 +82,7 @@ public:
     // Member Functions
 
         //- Update every time step
-        virtual bool update();
+        virtual void update();
 
         //- Read the heatSourceDict dictionary
         virtual bool read();
@@ -91,7 +91,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace refinementModel
+} // End namespace refinementModels
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

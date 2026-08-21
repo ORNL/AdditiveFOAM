@@ -78,7 +78,10 @@ mixedTemperatureFvPatchScalarField
     valueFraction() = 0.0;
 
     refValue() = scalarField("Tinf", dict, p.size());
-    fvPatchScalarField::operator=(refValue());
+    fvPatchScalarField::operator=
+    (
+        scalarField("value", iF.dimensions(), dict, p.size())
+    );
 }
 
 

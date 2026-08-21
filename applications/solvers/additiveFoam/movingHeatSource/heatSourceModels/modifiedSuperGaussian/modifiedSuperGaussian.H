@@ -27,7 +27,8 @@ Class
     Foam::heatSourceModels::modifiedSuperGaussian
 
 Description
-    modifiedSuperGaussian model.
+    One-sided modified super-Gaussian heat source model applied in the
+    negative z direction from the beam plane.
 
     Reference:
     \verbatim
@@ -60,14 +61,14 @@ class modifiedSuperGaussian
 {
     // Private Data
 
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-
         //- Distribution shape coefficient of modifiedSuperGaussian distribution
         scalar k_;
 
         //- Geometric shape coefficient of modifiedSuperGaussian distribution
         scalar m_;
+
+        //- Scaled heat source dimensions
+        vector s_;
 
 public:
 
@@ -93,9 +94,9 @@ public:
 
     // Member Functions
 
-        inline virtual scalar weight(const vector& d);
+        virtual void update();
 
-        inline virtual dimensionedScalar V0();
+        inline virtual scalar weight(const vector& r) const;
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

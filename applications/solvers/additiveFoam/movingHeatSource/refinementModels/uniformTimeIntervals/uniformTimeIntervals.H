@@ -32,6 +32,8 @@ Description
     marker field is updated using the current temperature field and the
     projected scan path over the next interval.
 
+    The required intervals coefficient must be greater than zero.
+
 SourceFiles
     uniformTimeIntervals.C
 
@@ -102,7 +104,7 @@ public:
     // Member Functions
 
         //- Update the refinement marker field
-        virtual bool update();
+        virtual void update();
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

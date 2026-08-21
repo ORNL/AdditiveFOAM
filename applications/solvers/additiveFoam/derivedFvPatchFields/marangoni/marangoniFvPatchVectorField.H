@@ -36,8 +36,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef BC_H
-#define BC_H
+#ifndef marangoniFvPatchVectorField_H
+#define marangoniFvPatchVectorField_H
 
 #include "fvPatchFields.H"
 #include "transformFvPatchFields.H"

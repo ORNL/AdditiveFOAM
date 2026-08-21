@@ -60,6 +60,13 @@ Foam::refinementModels::uniformTimeIntervals::uniformTimeIntervals
     intervalLength_(Zero),
     updateTime_(Zero)
 {
+    if (nIntervals_ <= 0)
+    {
+        FatalIOErrorInFunction(coeffs_)
+            << "Number of uniform scan-path intervals must be greater than "
+            << "zero" << exit(FatalIOError);
+    }
+
     //- Set interval length from the active scan-path duration
     intervalLength_ =
         max(scalar(0), scanEndTime_ - mesh.time().startTime().value())
@@ -72,7 +79,7 @@ Foam::refinementModels::uniformTimeIntervals::uniformTimeIntervals
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModels::uniformTimeIntervals::update()
+void Foam::refinementModels::uniformTimeIntervals::update()
 {
     if ((updateTime_ - mesh_.time().value()) < small)
     {
@@ -92,7 +99,7 @@ bool Foam::refinementModels::uniformTimeIntervals::update()
 
             updateTime_ = mesh_.time().value() + intervalLength_;
 
-            return true;
+            return;
         }
 
         Info<< typeName << ": Updating AMR marker field." << endl;
@@ -100,8 +107,6 @@ bool Foam::refinementModels::uniformTimeIntervals::update()
         //- Predictive refinement along scan path over the next interval
         Foam::refinementModel::markScanPathTime(updateTime_);
     }
-
-    return true;
 }
 
 
@@ -112,6 +117,13 @@ bool Foam::refinementModels::uniformTimeIntervals::read()
         coeffs_ = refinementDict_.optionalSubDict(typeName + "Coeffs");
 
         coeffs_.lookup("intervals") >> nIntervals_;
+
+        if (nIntervals_ <= 0)
+        {
+            FatalIOErrorInFunction(coeffs_)
+                << "Number of uniform scan-path intervals must be greater "
+                << "than zero" << exit(FatalIOError);
+        }
 
         intervalLength_ =
             max(scalar(0), scanEndTime_ - mesh_.time().startTime().value())

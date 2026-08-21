@@ -175,7 +175,7 @@ public:
             return D4SigmaMinor_;
         }
 
-        //- Area-equivalent D4sigma diameter
+        //- Area-equivalent D4Sigma diameter
         //- sqrt(D4SigmaMajor()*D4SigmaMinor())
         inline scalar D4Sigma() const
         {

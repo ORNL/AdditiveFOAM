@@ -51,105 +51,86 @@ Foam::heatSourceModels::projectedGaussian::projectedGaussian
 )
 :
     heatSourceModel(typeName, sourceName, dict, mesh),
-    mesh_(mesh)
+    k_(scalar(1))
 {
     nSlope_ = heatSourceModelCoeffs_.lookup<scalar>("nSlope");
+
     nIntercept_ =
         heatSourceModelCoeffs_.lookup<scalar>("nIntercept");
-
-    // set initial shape function
-    const scalar x_ =
-        max
-        (
-            dimensions_.z()
-          / min(staticDimensions_.x(), staticDimensions_.y()),
-            0.001
-        );
-    const scalar n_ =
-        min
-        (
-            max
-            (
-                nSlope_*std::log2(x_) + nIntercept_,
-                0.0
-            ),
-            9.0
-        );
-    k_ = std::pow(2.0, n_);
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-inline Foam::scalar
-Foam::heatSourceModels::projectedGaussian::weight(const vector& d)
+void Foam::heatSourceModels::projectedGaussian::update()
 {
-    if (d.z() > 0)
+    updateDimensions();
+
+    const scalar a =
+        dimensions_.z()
+       /min(staticDimensions_.x(), staticDimensions_.y());
+
+    const scalar n =
+        min(max(nSlope_*std::log2(a) + nIntercept_, 0.0), 9.0);
+
+    k_ = std::pow(2.0, n);
+
+    // (1 - epsilon)^2 = (1 - profileTol_)
+    const scalar epsilon =
+        profileTol_/(1.0 + Foam::sqrt(1.0 - profileTol_));
+
+    const scalar fMax = Foam::sqrt(-0.5*std::log(epsilon));
+
+    const scalar zMax =
+        dimensions_.z()
+       *Foam::pow
+        (
+            invIncGammaRatio_P(1.0/k_, 1.0 - epsilon)/3.0,
+            1.0/k_
+        );
+
+    sourceMin_ =
+        vector(-fMax*dimensions_.x(), -fMax*dimensions_.y(), -zMax);
+
+    sourceMax_ =
+        vector(fMax*dimensions_.x(), fMax*dimensions_.y(), 0);
+
+    V0_ =
+        dimensionedScalar
+        (
+            "V0",
+            dimVolume,
+            0.5*pi*dimensions_.x()*dimensions_.y()*dimensions_.z()
+           *Foam::tgamma(1.0/k_)
+           /(k_*std::pow(3.0, 1.0/k_))
+        );
+}
+
+inline Foam::scalar
+Foam::heatSourceModels::projectedGaussian::weight(const vector& r) const
+{
+    if (r.z() > 0)
     {
         return 0;
     }
 
-    const scalar f_ =
+    const scalar I =
         std::exp
         (
             -2.0
           * (
-                Foam::sqr(d.x() / dimensions_.x())
-              + Foam::sqr(d.y() / dimensions_.y())
+                Foam::sqr(r.x()/dimensions_.x())
+              + Foam::sqr(r.y()/dimensions_.y())
             )
         );
 
-    const scalar s_ =
-        std::exp(-3.0 * std::pow(-d.z() / dimensions_.z(), k_));
-
-    return f_ * s_;
-}
-
-inline Foam::dimensionedScalar
-Foam::heatSourceModels::projectedGaussian::V0()
-{
-    const scalar x_ =
-        max
-        (
-            dimensions_.z()
-          / min(staticDimensions_.x(), staticDimensions_.y()),
-            0.001
-        );
-
-    const scalar n_ =
-        min
-        (
-            max
-            (
-                nSlope_*std::log2(x_) + nIntercept_,
-                0.0
-            ),
-            9.0
-        );
-
-    k_ = std::pow(2.0, n_);
-
-    sourceMin_.z() = -1.5*dimensions_.z();
-    sourceMax_.z() = 0;
-
-    const dimensionedScalar V0
-    (
-        "V0",
-        dimVolume,
-        0.5 * pi * dimensions_.x() * dimensions_.y() * dimensions_.z()
-      * Foam::tgamma(1.0 / k_)
-      / ( k_ * std::pow(3.0, 1.0 / k_) )
-    );
-
-    return V0;
+    return I*std::exp(-3.0*std::pow(-r.z()/dimensions_.z(), k_));
 }
 
 bool Foam::heatSourceModels::projectedGaussian::read()
 {
     if (heatSourceModel::read())
     {
-        heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
-
         //- Mandatory entries
         heatSourceModelCoeffs_.lookup("nSlope") >> nSlope_;
         heatSourceModelCoeffs_.lookup("nIntercept")

@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of the the GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
@@ -218,17 +218,8 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModels::targetCellLoad::update()
+void Foam::refinementModels::targetCellLoad::update()
 {
-    label nCellsTotal = mesh_.nCells();
-    reduce(nCellsTotal, sumOp<label>());
-
-    const scalar currentCellsPerProc =
-        scalar(nCellsTotal)/Pstream::nProcs();
-
-    targetToCurrentCellRatio_ =
-        targetCellsPerProc_/currentCellsPerProc;
-
     if ((updateTime_.value() - mesh_.time().value()) < small)
     {
         Foam::refinementModel::markTemperature();
@@ -244,8 +235,17 @@ bool Foam::refinementModels::targetCellLoad::update()
                 mesh_.time()
               + postScanUpdateInterval_*mesh_.time().deltaT();
 
-            return true;
+            return;
         }
+
+        label nCellsTotal = mesh_.nCells();
+        reduce(nCellsTotal, sumOp<label>());
+
+        const scalar currentCellsPerProc =
+            scalar(nCellsTotal)/Pstream::nProcs();
+
+        targetToCurrentCellRatio_ =
+            targetCellsPerProc_/currentCellsPerProc;
 
         const scalar targetVolumeRatio =
             min
@@ -285,8 +285,6 @@ bool Foam::refinementModels::targetCellLoad::update()
             << "    Target/current cell ratio: "
             << targetToCurrentCellRatio_ << endl;
     }
-
-    return true;
 }
 
 

@@ -59,29 +59,17 @@ class tabulated
 {
     // Private Data
 
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-
-        //- nSlope in n = nSlope*log2(x) + nIntercept
+        //- nSlope in n = nSlope*log2(a) + nIntercept
         scalar nSlope_;
 
-        //- nIntercept in n = nSlope*log2(x) + nIntercept
+        //- nIntercept in n = nSlope*log2(a) + nIntercept
         scalar nIntercept_;
 
         //- Axial decay exponent
         scalar k_;
 
-        //- Minimum effective axial source depth
-        scalar minimumDepth_;
-
         //- Planar profile and derived beam metrics
         tabulatedProfile profile_;
-
-
-    // Private Member Functions
-
-        //- Update the depth-dependent axial state
-        void updateAxialState();
 
 
 public:
@@ -108,9 +96,9 @@ public:
 
     // Member Functions
 
-        inline virtual scalar weight(const vector& d);
+        virtual void update();
 
-        inline virtual dimensionedScalar V0();
+        inline virtual scalar weight(const vector& r) const;
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

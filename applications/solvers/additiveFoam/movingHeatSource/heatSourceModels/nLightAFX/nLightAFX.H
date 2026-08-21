@@ -58,9 +58,6 @@ class nLightAFX
 {
     // Private Data
 
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-
         //- Fraction of power applied to Gaussian component 1
         scalar alpha_;
 
@@ -76,20 +73,49 @@ class nLightAFX
         //- Standard deviation of Gaussian component 1
         scalar sigma1_;
 
-        //- nSlope in n = nSlope*log2(x) + nIntercept
+        //- nSlope in n = nSlope*log2(a) + nIntercept
         scalar nSlope_;
 
-        //- nIntercept in n = nSlope*log2(x) + nIntercept
+        //- nIntercept in n = nSlope*log2(a) + nIntercept
         scalar nIntercept_;
 
         //- Axial decay exponent
         scalar k_;
 
+        //- J_0(0)
+        scalar J0_;
+
+        //- J_1(0)
+        scalar J1_;
+
         //- One-sided volume integral of Gaussian component 0
-        scalar a0_;
+        scalar A0_;
 
         //- One-sided volume integral of Gaussian component 1
-        scalar a1_;
+        scalar A1_;
+
+
+    // Private Member Functions
+
+        //- Return J_i(R) = integral_R^infinity I_i(r)*r dr
+        inline scalar J
+        (
+            const scalar R,
+            const scalar r,
+            const scalar sigma
+        ) const;
+
+        //- Guaranteed upper bound for R such that J_i(R)/J_i(0) <= epsilon
+        inline scalar cutoff
+        (
+            const scalar r,
+            const scalar sigma,
+            const scalar J0,
+            const scalar epsilon
+        ) const;
+
+        //- Update the radial source bounds
+        void updateBounds();
 
 public:
 
@@ -115,12 +141,9 @@ public:
 
     // Member Functions
 
-        inline virtual scalar weight(const vector& d);
+        virtual void update();
 
-        //- One-sided volume integral of a projected Gaussian ring
-        inline scalar ai(scalar x, scalar s, scalar d, scalar k);
-
-        inline virtual dimensionedScalar V0();
+        inline virtual scalar weight(const vector& x) const;
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

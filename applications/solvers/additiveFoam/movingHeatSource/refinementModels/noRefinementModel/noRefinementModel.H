@@ -24,13 +24,13 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementModel::none
+    Foam::refinementModels::noRefinementModel
 
 Description
     No refinement.
 
 SourceFiles
-    none.C
+    noRefinementModel.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -79,11 +79,9 @@ public:
 
     // Member Functions
 
-        //- Return true
-        virtual bool update()
-        {
-            return true;
-        }
+        //- Do nothing
+        virtual void update()
+        {}
 
         //- Return true
         virtual bool read()
@@ -95,7 +93,7 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace refinementModel
+} // End namespace refinementModels
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

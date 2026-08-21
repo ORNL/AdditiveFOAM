@@ -7,7 +7,10 @@
   configuration files.
 - Added `nLightAFX` and tabulated heat-source models, including conversion of
   PRIMES beam measurements with `primesToAdditiveFoam`.
-- Added tabulated-profile inspection and automatic D4sigma calculation.
+- Added tabulated-profile inspection and automatic D4Sigma calculation.
+- Added model-specific heat-source bounds that retain at least
+  `1-profileTol` of the analytical source power.
+- Added support-based heat-source quadrature.
 - Added an adaptive Bayesian workflow for calibrating the projected
   heat-source depth distribution.
 - Expanded the AMB2018, multi-beam, multi-layer, nLight AFX, and tabulated
@@ -15,8 +18,16 @@
 
 ## Bug fixes
 
-- Made the projected Gaussian, nLight AFX, and tabulated heat sources
-  one-sided, consistent with their analytic normalization.
+- Made all heat sources one-sided, consistent with their analytic
+  normalization.
+- Synchronized heat-source dimensions, shape parameters, normalization, and
+  bounds once before beam subcycling.
+- Preserved the active-power fraction when a solver time step crosses the end
+  of a scan path.
+- Restricted transient source-depth measurements to the one-sided source
+  support and removed a modified super-Gaussian endpoint singularity.
+- Added calculation-ROI reconstruction, coordinate-preserving support cropping,
+  and beam-statistics reporting to `primesToAdditiveFoam`.
 - Preserved an explicitly configured Kelly `aspectRatioSwitch` value and
   applied `etaMin` as a lower bound on the Kelly absorption curve.
 
@@ -26,7 +37,7 @@
   before sourcing `etc/bashrc` and rebuild AdditiveFOAM with `./Allwmake`.
 - The `A` and `B` projected-depth coefficients are now named `nSlope` and
   `nIntercept` in `projectedGaussian`, `tabulated`, and `nLightAFX`.
-- The tabulated model now derives its lateral dimensions and D4sigma metrics
+- The tabulated model now derives its lateral dimensions and D4Sigma metrics
   from the beam-profile table. Replace the old `dimensions` entry with
   `minimumDepth`; no user-supplied lateral dimensions are required.
 - Python 3.10 through 3.12 and the packages in `requirements.txt` are required

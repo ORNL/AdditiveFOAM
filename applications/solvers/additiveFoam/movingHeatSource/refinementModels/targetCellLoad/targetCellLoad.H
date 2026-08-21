@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of the the GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
@@ -28,10 +28,14 @@ Class
 
 Description
     This refinement model estimates a target scan-path refine volume from a
-    target cell count per processor. The scan path is projected until the
-    global union of marked refinement cells reaches that target volume.
+    target average cell count per processor. The scan path is projected until
+    the global union of marked refinement cells reaches that target volume.
 
     The target volume is adjusted over time based on the current cell load.
+    The target cell count is raised when required by the initial mesh and
+    minimum scan-path refinement volume. The minimum volume takes precedence
+    over further target-volume reduction. The dynamic-mesh maxCells entry
+    limits global refinement independently.
 
     Example dictionary:
 
@@ -94,7 +98,7 @@ protected:
 
     // Protected Data
 
-        //- Target cells per processor
+        //- Soft target for the average cells per processor
         label targetCellsPerProc_;
 
         //- Minimum projected scan-path volume in source-buffer volumes
@@ -115,7 +119,7 @@ protected:
         //- Max shrink factor for target refine volume per AMR update
         scalar maxTargetVolumeShrink_;
 
-        //- AMR check interval after scan path completion, in time-step units
+        //- Current time-step multiplier for post-scan AMR checks
         scalar postScanUpdateInterval_;
 
         //- Target global refine volume
@@ -156,7 +160,7 @@ public:
     // Member Functions
 
         //- Update the refinement marker field
-        virtual bool update();
+        virtual void update();
 
         //- Read the heatSourceDict dictionary
         virtual bool read();

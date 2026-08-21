@@ -125,9 +125,17 @@ Shape parameters for the `modifiedSuperGaussian` heat source.
 When `true`, AdditiveFOAM updates the heat source depth using the material
 liquidus from `constant/transportProperties`.
 
+`profileTol`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power. The
+modified super-Gaussian depth is bounded exactly; the tolerance controls its
+lateral bound.
+
 `nPoints`
 
-Controls sub-cell sampling resolution used when integrating the heat source over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 ## Post-processing
 

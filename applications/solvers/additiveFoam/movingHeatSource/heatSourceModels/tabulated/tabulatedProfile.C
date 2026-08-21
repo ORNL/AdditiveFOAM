@@ -63,123 +63,68 @@ Foam::tabulatedProfile::tabulatedProfile(const fileName& profileFile)
 
 void Foam::tabulatedProfile::integrate()
 {
-    integral_ = 0;
-
-    scalar firstMomentX = 0;
-    scalar firstMomentY = 0;
-    scalar secondMomentX = 0;
-    scalar secondMomentY = 0;
-    scalar crossMoment = 0;
+    // Raw moments M_pq = integral x^p*y^q*I(x,y) dx dy
+    scalar M00 = 0;
+    scalar M10 = 0;
+    scalar M01 = 0;
+    scalar M20 = 0;
+    scalar M02 = 0;
+    scalar M11 = 0;
 
     for (label j=0; j<ny_ - 1; ++j)
     {
         for (label i=0; i<nx_ - 1; ++i)
         {
-            const label index = i + nx_*j;
-            const scalar cellX = x0_ + i*dx_;
-            const scalar cellY = y0_ + j*dy_;
+            const label id = i + nx_*j;
 
-            const scalar xWeights[3][2] =
-            {
-                {0.5*dx_, 0.5*dx_},
-                {
-                    dx_*(0.5*cellX + dx_/6.0),
-                    dx_*(0.5*cellX + dx_/3.0)
-                },
-                {
-                    dx_*
-                    (
-                        0.5*sqr(cellX) + cellX*dx_/3.0 + sqr(dx_)/12.0
-                    ),
-                    dx_*
-                    (
-                        0.5*sqr(cellX)
-                      + 2.0*cellX*dx_/3.0
-                      + sqr(dx_)/4.0
-                    )
-                }
-            };
+            const scalar f00 = values_[id];
+            const scalar f10 = values_[id + 1];
+            const scalar f01 = values_[id + nx_];
+            const scalar f11 = values_[id + nx_ + 1];
 
-            const scalar yWeights[3][2] =
-            {
-                {0.5*dy_, 0.5*dy_},
-                {
-                    dy_*(0.5*cellY + dy_/6.0),
-                    dy_*(0.5*cellY + dy_/3.0)
-                },
-                {
-                    dy_*
-                    (
-                        0.5*sqr(cellY) + cellY*dy_/3.0 + sqr(dy_)/12.0
-                    ),
-                    dy_*
-                    (
-                        0.5*sqr(cellY)
-                      + 2.0*cellY*dy_/3.0
-                      + sqr(dy_)/4.0
-                    )
-                }
-            };
+            const scalar m00 = 0.25*(f00 + f10 + f01 + f11);
+            const scalar m10 = (f00 + 2.0*f10 + f01 + 2.0*f11)/12.0;
+            const scalar m01 = (f00 + f10 + 2.0*f01 + 2.0*f11)/12.0;
+            const scalar m20 = (f00 + 3.0*f10 + f01 + 3.0*f11)/24.0;
+            const scalar m02 = (f00 + f10 + 3.0*f01 + 3.0*f11)/24.0;
+            const scalar m11 = (f00 + 2.0*f10 + 2.0*f01 + 4.0*f11)/36.0;
 
-            const scalar cellValues[2][2] =
-            {
-                {values_[index], values_[index + nx_]},
-                {values_[index + 1], values_[index + nx_ + 1]}
-            };
+            const scalar x = x0_ + i*dx_;
+            const scalar y = y0_ + j*dy_;
+            const scalar dA = dx_*dy_;
 
-            for (label xNode=0; xNode<2; ++xNode)
-            {
-                for (label yNode=0; yNode<2; ++yNode)
-                {
-                    const scalar value = cellValues[xNode][yNode];
-
-                    integral_ +=
-                        value*xWeights[0][xNode]*yWeights[0][yNode];
-
-                    firstMomentX +=
-                        value*xWeights[1][xNode]*yWeights[0][yNode];
-
-                    firstMomentY +=
-                        value*xWeights[0][xNode]*yWeights[1][yNode];
-
-                    secondMomentX +=
-                        value*xWeights[2][xNode]*yWeights[0][yNode];
-
-                    secondMomentY +=
-                        value*xWeights[0][xNode]*yWeights[2][yNode];
-
-                    crossMoment +=
-                        value*xWeights[1][xNode]*yWeights[1][yNode];
-                }
-            }
+            M00 += dA*m00;
+            M10 += dA*(x*m00 + dx_*m10);
+            M01 += dA*(y*m00 + dy_*m01);
+            M20 += dA*(sqr(x)*m00 + 2.0*x*dx_*m10 + sqr(dx_)*m20);
+            M02 += dA*(sqr(y)*m00 + 2.0*y*dy_*m01 + sqr(dy_)*m02);
+            M11 += dA*(x*y*m00 + x*dy_*m01 + y*dx_*m10 + dx_*dy_*m11);
         }
     }
 
-    centroidX_ = firstMomentX/integral_;
-    centroidY_ = firstMomentY/integral_;
+    integral_ = M00;
+    centroidX_ = M10/M00;
+    centroidY_ = M01/M00;
 
-    const scalar varianceX =
-        secondMomentX/integral_ - sqr(centroidX_);
+    const scalar varianceX = M20/M00 - sqr(centroidX_);
 
-    const scalar varianceY =
-        secondMomentY/integral_ - sqr(centroidY_);
+    const scalar varianceY = M02/M00 - sqr(centroidY_);
 
-    const scalar covariance =
-        crossMoment/integral_ - centroidX_*centroidY_;
+    const scalar covariance = M11/M00 - centroidX_*centroidY_;
 
     const scalar meanVariance = 0.5*(varianceX + varianceY);
-    const scalar varianceRadius =
+    const scalar delta =
         Foam::sqrt(0.25*sqr(varianceX - varianceY) + sqr(covariance));
 
-    const scalar majorVariance = meanVariance + varianceRadius;
-    const scalar minorVariance = meanVariance - varianceRadius;
+    const scalar majorVariance = meanVariance + delta;
+    const scalar minorVariance = meanVariance - delta;
 
     D4SigmaMajor_ = 4.0*Foam::sqrt(majorVariance);
     D4SigmaMinor_ = 4.0*Foam::sqrt(minorVariance);
     D4Sigma_ = Foam::sqrt(D4SigmaMajor_*D4SigmaMinor_);
 
     azimuth_ =
-        varianceRadius > small
+        delta > small
       ? 0.5*Foam::atan2(2.0*covariance, varianceX - varianceY)
       : 0.0;
 }

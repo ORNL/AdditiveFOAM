@@ -27,7 +27,9 @@ Class
     Foam::heatSourceModels::heatSourceModel
 
 Description
-    Abstract base class for heatSource models
+    Abstract base class for heatSource models. The optional profileTol
+    coefficient controls the maximum fraction of analytical source power
+    outside the integration bounds and defaults to 1e-3.
 
 SourceFiles
     heatSourceModel.C
@@ -67,6 +69,12 @@ class heatSourceModel
 
 protected:
 
+    // Protected Member Functions
+
+        //- Update the transient heat source dimensions
+        void updateDimensions();
+
+
     // Protected data
 
         //- Name of heat source
@@ -99,12 +107,18 @@ protected:
         //- Calculated isotherm depth, zero when no isotherm is detected
         scalar isoDepth_;
 
-        //- Number of points along heat source dimensions resolved by sampling
+        //- Number of points across the source bounds resolved by sampling
         labelVector nPoints_;
+
+        //- Maximum fraction of analytical power outside the source bounds
+        scalar profileTol_;
 
         //- Source minimum and maximum relative to the beam position
         vector sourceMin_;
         vector sourceMax_;
+
+        //- Analytical normalization volume
+        dimensionedScalar V0_;
 
         //- AutoPtrs to absorption model and moving beam instances
         autoPtr<absorptionModel> absorptionModel_;
@@ -206,17 +220,20 @@ public:
             return staticDimensions_;
         }
 
-        //- Update the transient heat source dimensions
-        void updateDimensions();
+        //- Update the heat source state
+        virtual void update() = 0;
 
         //- Return the volumetric heating field
         virtual tmp<volScalarField> qDot();
 
         //- Return the weight of the heat source distribution at a given point
-        virtual scalar weight(const vector& d) = 0;
+        virtual scalar weight(const vector& r) const = 0;
 
         //- Return the normalization volume for the integrated distribution
-        virtual dimensionedScalar V0() = 0;
+        inline const dimensionedScalar& V0() const
+        {
+            return V0_;
+        }
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

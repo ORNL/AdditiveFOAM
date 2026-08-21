@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -51,7 +51,7 @@ Foam::heatSourceModels::superGaussian::superGaussian
 )
 :
     heatSourceModel(typeName, sourceName, dict, mesh),
-    mesh_(mesh)
+    s_(vector::zero)
 {
     k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
 }
@@ -59,37 +59,49 @@ Foam::heatSourceModels::superGaussian::superGaussian
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-inline Foam::scalar
-Foam::heatSourceModels::superGaussian::weight(const vector& d)
+void Foam::heatSourceModels::superGaussian::update()
 {
-    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+    updateDimensions();
 
-    scalar x = Foam::pow(magSqr(cmptDivide(d, s)), k_/2.0);
+    s_ = dimensions_/Foam::pow(2.0, 1.0/k_);
 
-    return Foam::exp(-x);
+    const scalar fMax =
+        Foam::pow
+        (
+            invIncGammaRatio_P(3.0/k_, 1.0 - profileTol_),
+            1.0/k_
+        );
+
+    sourceMin_ = vector(-fMax*s_.x(), -fMax*s_.y(), -fMax*s_.z());
+
+    sourceMax_ = vector(fMax*s_.x(), fMax*s_.y(), 0.0);
+
+    V0_ =
+        dimensionedScalar
+        (
+            "V0",
+            dimVolume,
+            (2.0/3.0)*s_.x()*s_.y()*s_.z()*pi
+           *Foam::tgamma(1.0 + 3.0/k_)
+        );
 }
 
-inline Foam::dimensionedScalar
-Foam::heatSourceModels::superGaussian::V0()
+
+inline Foam::scalar
+Foam::heatSourceModels::superGaussian::weight(const vector& r) const
 {
-    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+    if (r.z() > 0)
+    {
+        return 0;
+    }
 
-    const dimensionedScalar V0
-    (
-        "V0",
-        dimVolume,
-        (2.0 / 3.0)*s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 3.0/k_)
-    );
-
-    return V0;
+    return Foam::exp(-Foam::pow(magSqr(cmptDivide(r, s_)), k_/2.0));
 }
 
 bool Foam::heatSourceModels::superGaussian::read()
 {
     if (heatSourceModel::read())
     {
-        heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
-
         //- Mandatory entries
         heatSourceModelCoeffs_.lookup("k") >> k_;
 

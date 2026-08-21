@@ -3,8 +3,8 @@
 This tutorial calibrates the projected depth-distribution closure used by
 AdditiveFOAM heat sources. The supplied worked example uses a `tabulated`
 source with SS316L and a circular Gaussian planar profile. The measured
-D4sigma diameter is 109.69 microns. The finite tabulated profile is constructed
-so its bilinear interpolant has that D4sigma exactly.
+D4Sigma diameter is 109.69 microns. The finite tabulated profile is constructed
+so its bilinear interpolant has that D4Sigma exactly.
 
 ## Installation and setup
 
@@ -117,14 +117,18 @@ tabulatedCoeffs
 }
 ```
 
+The optional `profileTol` defaults to `1e-3`, retaining at least 99.9% of
+the analytical source power inside the exact profile limits and calculated
+axial bound.
+
 The closure uses
 
 ```text
-n = clip(nSlope*log2(x) + nIntercept, 0, 9)
+n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `x = 2*depth/D4sigma` and `k` is the exponent in the axial
+where `a = 2*depth/D4Sigma` and `k` is the exponent in the axial
 decay. Calibration trials set `nSlope` to zero, so each trial `nIntercept` is
 also its applied `n` value.
 
@@ -138,18 +142,17 @@ I(x,y) proportional to exp(-(x^2 + y^2)/(2 sigma^2))
 
 The 67-by-67 grid uses 2.5-micron spacing and spans -82.5 through +82.5
 microns in both directions. Its bilinear planar integral is normalized to one.
-The sampled Gaussian width differs slightly from `109.69/4` because D4sigma is
+The sampled Gaussian width differs slightly from `109.69/4` because D4Sigma is
 calculated from the finite table and its bilinear interpolation, rather than an
 infinite analytic Gaussian.
 
-At startup, the calibration uses `tabulatedProfileInfo` to inspect each
-configured profile and report its integral, centroid, principal D4sigma
-values, area-equivalent D4sigma, and azimuth. The reported `D4sigma` is
-`sqrt(D4sigmaMajor*D4sigmaMinor)`, the diameter of the circular beam with the
-same second-moment area. The calibration uses half this value to normalize
-measured and simulated depths. The profile file and measured melt-pool depths
-are therefore the only beam-size and calibration measurements supplied by the
-user; there is no separate expected-D4sigma or tolerance input.
+At startup, `calibrateHeatSource` evaluates every configured profile with
+`tabulatedProfileInfo`. The profile data provide the integral, centroid,
+principal D4Sigma values, area-equivalent D4Sigma, and azimuth. The
+area-equivalent diameter is
+`sqrt(D4SigmaMajor*D4SigmaMinor)`. The calibration normalizes measured and
+simulated depths by half this value. Calibration inputs consist of the beam
+profile and the measured melt-pool depths.
 
 ## Resuming a campaign
 
@@ -162,6 +165,6 @@ inputs marks the affected results as stale. Stale simulation entries remain in
 `simulations.yml` for provenance but are ignored; stale posterior entries are
 replaced after recalibration.
 
-The calibration consumes melt-pool depth only. Power, speed, end time, and
-write interval are rendered for each case. Width is left available for a later
-workflow extension and length is not included in the calibration output.
+Melt-pool depth is the calibration objective. Power, speed, end time, and write
+interval are rendered for each case. Melt-pool length is not included in the
+calibration output.

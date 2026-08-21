@@ -19,9 +19,12 @@ Description
 #include "scalarField.H"
 #include "stringList.H"
 #include "HashTable.H"
+#include "mathematicalConstants.H"
 #include "tabulatedProfile.H"
+#include "vector.H"
 
 using namespace Foam;
+using Foam::constant::mathematical::pi;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -197,6 +200,52 @@ scalar calculateIntegral(const List<scalarField>& table, scalar dx, scalar dy)
     return sum * dx * dy;
 }
 
+// Calculate the centroid and x/y second-moment radii of the camera pixels
+void calculatePixelMoments
+(
+    const List<scalarField>& table,
+    const scalar x0,
+    const scalar y0,
+    const scalar dx,
+    const scalar dy,
+    vector& centroid,
+    vector& radii
+)
+{
+    scalar M00 = 0;
+    scalar M10 = 0;
+    scalar M01 = 0;
+    scalar M20 = 0;
+    scalar M02 = 0;
+
+    forAll(table, j)
+    {
+        const scalar y = y0 + j*dy;
+
+        forAll(table[j], i)
+        {
+            const scalar x = x0 + i*dx;
+            const scalar f = table[j][i];
+
+            M00 += f;
+            M10 += x*f;
+            M01 += y*f;
+            M20 += sqr(x)*f;
+            M02 += sqr(y)*f;
+        }
+    }
+
+    centroid = vector(M10/M00, M01/M00, 0);
+    radii =
+        2.0
+       *vector
+        (
+            Foam::sqrt(M20/M00 - sqr(centroid.x())),
+            Foam::sqrt(M02/M00 - sqr(centroid.y())),
+            0
+        );
+}
+
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -227,8 +276,8 @@ int main(int argc, char *argv[])
 
     const scalar dx = parseScalarValue(metadata["Pixel pitch x"]) * 1e-6;
     const scalar dy = parseScalarValue(metadata["Pixel pitch y"]) * 1e-6;
-    const scalar x0 = -0.5 * scalar(nx - 1) * dx;
-    const scalar y0 = -0.5 * scalar(ny - 1) * dy;
+    scalar x0 = -0.5 * scalar(nx - 1) * dx;
+    scalar y0 = -0.5 * scalar(ny - 1) * dy;
 
     if (metadata.found("Nullvalue"))
     {
@@ -241,6 +290,94 @@ int main(int argc, char *argv[])
             }
         }
     }
+
+    // ROI fill factor = beam diameter/ROI width
+    const scalar roiFillFactor = 0.5;
+    const List<scalarField> unmaskedTable(table);
+    vector centroid;
+    vector radii;
+
+    calculatePixelMoments(table, x0, y0, dx, dy, centroid, radii);
+
+    for (label iteration=0; iteration<max(nx, ny); ++iteration)
+    {
+        const scalar xMin = centroid.x() - radii.x()/roiFillFactor;
+        const scalar xMax = centroid.x() + radii.x()/roiFillFactor;
+        const scalar yMin = centroid.y() - radii.y()/roiFillFactor;
+        const scalar yMax = centroid.y() + radii.y()/roiFillFactor;
+
+        bool changed = false;
+
+        forAll(table, j)
+        {
+            const scalar y = y0 + j*dy;
+
+            forAll(table[j], i)
+            {
+                const scalar x = x0 + i*dx;
+                const scalar f =
+                    x >= xMin && x <= xMax && y >= yMin && y <= yMax
+                  ? unmaskedTable[j][i]
+                  : 0;
+
+                changed = changed || f != table[j][i];
+                table[j][i] = f;
+            }
+        }
+
+        if (!changed)
+        {
+            break;
+        }
+
+        calculatePixelMoments(table, x0, y0, dx, dy, centroid, radii);
+    }
+
+    label minColumn = nx - 1;
+    label maxColumn = 0;
+    label minRow = ny - 1;
+    label maxRow = 0;
+
+    forAll(table, j)
+    {
+        forAll(table[j], i)
+        {
+            if (table[j][i] > 0)
+            {
+                minColumn = min(minColumn, i);
+                maxColumn = max(maxColumn, i);
+                minRow = min(minRow, j);
+                maxRow = max(maxRow, j);
+            }
+        }
+    }
+
+    // Retain one zero-valued point around the profile so cropping does not
+    // change its bilinear interpolation or moments.
+    minColumn = max(minColumn - 1, 0);
+    maxColumn = min(maxColumn + 1, nx - 1);
+    minRow = max(minRow - 1, 0);
+    maxRow = min(maxRow + 1, ny - 1);
+
+    const label croppedNx = maxColumn - minColumn + 1;
+    const label croppedNy = maxRow - minRow + 1;
+    List<scalarField> croppedTable(croppedNy);
+
+    forAll(croppedTable, j)
+    {
+        croppedTable[j].setSize(croppedNx);
+
+        forAll(croppedTable[j], i)
+        {
+            croppedTable[j][i] = table[minRow + j][minColumn + i];
+        }
+    }
+
+    table.transfer(croppedTable);
+    nx = croppedNx;
+    ny = croppedNy;
+    x0 += minColumn*dx;
+    y0 += minRow*dy;
 
     scalar integral = calculateIntegral(table, dx, dy);
 
@@ -272,17 +409,130 @@ int main(int argc, char *argv[])
     }
 
     const tabulatedProfile profile(outputFile);
+    const scalar micronsToMetres = 1e-6;
 
     Info<< "Input: " << inputFile << nl
         << "Output: " << outputFile << nl
         << "Grid: " << nx << " x " << ny << nl
         << "Spacing: " << dx << " x " << dy << " m" << nl
-        << "Input integral: " << integral << nl
+        << "ROI fill factor: " << roiFillFactor << nl
+        << "ROI integral: " << integral << nl
         << "Normalized integral: " << profile.integral() << nl
-        << "D4sigma: " << profile.D4Sigma() << " m" << nl
-        << "D4sigma major: " << profile.D4SigmaMajor() << " m" << nl
-        << "D4sigma minor: " << profile.D4SigmaMinor() << " m" << nl
+        << "Centroid: (" << profile.centroidX() << ' '
+        << profile.centroidY() << ") m" << nl
+        << "D4Sigma: " << profile.D4Sigma() << " m" << nl
+        << "D4Sigma major: " << profile.D4SigmaMajor() << " m" << nl
+        << "D4Sigma minor: " << profile.D4SigmaMinor() << " m" << nl
         << "Azimuth: " << profile.azimuth() << " rad" << endl;
+
+    if
+    (
+        metadata.found("Radius a")
+     && metadata.found("Radius b")
+     && metadata.found("Azimuth angle φ")
+    )
+    {
+        const scalar degreesToRadians = pi/180.0;
+
+        const scalar primesRadiusA =
+            parseScalarValue(metadata["Radius a"])*micronsToMetres;
+
+        const scalar primesRadiusB =
+            parseScalarValue(metadata["Radius b"])*micronsToMetres;
+
+        const scalar primesPhi =
+            parseScalarValue(metadata["Azimuth angle φ"])*degreesToRadians;
+
+        const scalar primesRadiusX =
+            Foam::sqrt
+            (
+                sqr(primesRadiusA*std::cos(primesPhi))
+              + sqr(primesRadiusB*std::sin(primesPhi))
+            );
+
+        const scalar primesRadiusY =
+            Foam::sqrt
+            (
+                sqr(primesRadiusA*std::sin(primesPhi))
+              + sqr(primesRadiusB*std::cos(primesPhi))
+            );
+
+        const scalar primesD4Sigma =
+            2.0*Foam::sqrt(primesRadiusA*primesRadiusB);
+
+        const scalar majorRadius = 0.5*profile.D4SigmaMajor();
+        const scalar minorRadius = 0.5*profile.D4SigmaMinor();
+        const scalar theta = profile.azimuth();
+
+        const scalar radiusX =
+            Foam::sqrt
+            (
+                sqr(majorRadius*std::cos(theta))
+              + sqr(minorRadius*std::sin(theta))
+            );
+
+        const scalar radiusY =
+            Foam::sqrt
+            (
+                sqr(majorRadius*std::sin(theta))
+              + sqr(minorRadius*std::cos(theta))
+            );
+
+        scalar radiusA = majorRadius;
+        scalar radiusB = minorRadius;
+        scalar phi = theta;
+
+        // PRIMES labels the principal axis closest to x as the a-axis.
+        if (mag(phi) > 0.25*pi)
+        {
+            radiusA = minorRadius;
+            radiusB = majorRadius;
+            phi +=
+                phi > 0
+              ? -0.5*pi
+              : 0.5*pi;
+        }
+
+        Info<< nl
+            << "Beam statistics: PRIMES / converted / difference" << nl
+            << "Radius a: " << primesRadiusA/micronsToMetres << " / "
+            << radiusA/micronsToMetres << " / "
+            << (radiusA - primesRadiusA)/micronsToMetres << " um" << nl
+            << "Radius b: " << primesRadiusB/micronsToMetres << " / "
+            << radiusB/micronsToMetres << " / "
+            << (radiusB - primesRadiusB)/micronsToMetres << " um" << nl
+            << "Radius x: " << primesRadiusX/micronsToMetres << " / "
+            << radiusX/micronsToMetres << " / "
+            << (radiusX - primesRadiusX)/micronsToMetres << " um" << nl
+            << "Radius y: " << primesRadiusY/micronsToMetres << " / "
+            << radiusY/micronsToMetres << " / "
+            << (radiusY - primesRadiusY)/micronsToMetres << " um" << nl
+            << "D4Sigma: " << primesD4Sigma/micronsToMetres << " / "
+            << profile.D4Sigma()/micronsToMetres << " / "
+            << (profile.D4Sigma() - primesD4Sigma)/micronsToMetres
+            << " um" << nl
+            << "Azimuth: " << primesPhi/degreesToRadians << " / "
+            << phi/degreesToRadians << " / "
+            << (phi - primesPhi)/degreesToRadians << " deg" << endl;
+    }
+
+    if
+    (
+        metadata.found("Window center position x")
+     && metadata.found("Window center position y")
+    )
+    {
+        const scalar windowCenterX =
+            parseScalarValue(metadata["Window center position x"]);
+
+        const scalar windowCenterY =
+            parseScalarValue(metadata["Window center position y"]);
+
+        Info<< "Centroid in PRIMES coordinates: ("
+            << windowCenterX + profile.centroidX()/micronsToMetres << ' '
+            << windowCenterY + profile.centroidY()/micronsToMetres
+            << ") um" << endl;
+    }
 
     return 0;
 }

@@ -46,7 +46,7 @@ beam
 
 refinementModel
 {
-    refinementModel         targetCellLoad;
+    refinementModel         none;
 
     refinementTemperature   1000;
 
