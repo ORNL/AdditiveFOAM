@@ -34,6 +34,9 @@ License
 #include "OSspecific.H"
 #include "labelVector.H"
 #include "pointMVCWeight.H"
+#include <mpi.h>
+#include <array>
+#include <adios2.h>
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -313,16 +316,26 @@ void Foam::functionObjects::ExaCA::mapPoints()
 
 void Foam::functionObjects::ExaCA::interpolate()
 {    
-    if (events.size() == 0)
-    {
-        return;
-    }
+    // Initialize ADIOS
+    //adios2::ADIOS adios(MPI_COMM_WORLD);//Pstream::worldComm);
+
+    // Get number of processes
+    // Test print
+    //const std::string greeting = "Hello World from MPI rank" + std::to_string(Pstream::myProcNo()); //mpi_rank);
+    //std::cout << "Writing ADIOS2 data to file(s)" << std::endl;
+    //writer(adios, greeting);
+
+    // All MPI ranks must call ADIOS routines even if there are no local events
+    // if (events.size() == 0)
+    // {
+    //     return;
+    // }
     
     // format events in ExaCA reduced data format
     DynamicList<List<scalar>> data;
-
     List<scalar> tm;
-    tm.setSize(pointsInCell[events[0][0]].size(), events[0][1]);
+    if (events.size() > 0)
+        tm.setSize(pointsInCell[events[0][0]].size(), events[0][1]);
 
     for (label i = 1; i < events.size(); i++)
     {
@@ -393,13 +406,152 @@ void Foam::functionObjects::ExaCA::interpolate()
             p++;
         }
     }
+    MPI_Barrier(MPI_COMM_WORLD);
 
+    // Number of events to write on the local MPI rank
+    unsigned long num_events_local = data.size();
+
+    // Local min/max for x, y, z and number of cells per direction
+    std::vector<double> min_bounds(3), max_bounds(3);
+    unsigned long nx, ny, nz;
+    if (num_events_local > 0)
+    {
+	std::vector<double> x_values_arr(num_events_local), y_values_arr(num_events_local), z_values_arr(num_events_local);   
+        for(unsigned long i=0; i<num_events_local; i++)
+ 	{
+           x_values_arr[i] = data[i][0];
+           y_values_arr[i] = data[i][1];
+	   z_values_arr[i] = data[i][2];
+	}
+        min_bounds[0] = *std::min_element(x_values_arr.begin(), x_values_arr.end());
+        min_bounds[1] = *std::min_element(y_values_arr.begin(), y_values_arr.end());
+        min_bounds[2] = *std::min_element(z_values_arr.begin(), z_values_arr.end());
+        max_bounds[0] = *std::max_element(x_values_arr.begin(), x_values_arr.end());
+        max_bounds[1] = *std::max_element(y_values_arr.begin(), y_values_arr.end());
+        max_bounds[2] = *std::max_element(z_values_arr.begin(), z_values_arr.end());
+	nx = std::lround((max_bounds[0] - min_bounds[0]) / dx_) + 1;
+    	ny = std::lround((max_bounds[1] - min_bounds[1]) / dx_) + 1;
+   	nz = std::lround((max_bounds[2] - min_bounds[2]) / dx_) + 1;
+    }
+    else
+    {
+        for (int k=0; k<3; k++)
+        {
+           min_bounds[k] = std::numeric_limits<double>::max();
+           max_bounds[k] = std::numeric_limits<double>::lowest();
+        }
+	nx = 0;
+	ny = 0;
+	nz = 0;
+    }
+    // Number of cells on this local MPI rank
+    unsigned long num_cells = nx * ny * nz;
+    std::cout << "Num cells " << num_cells << std::endl;
+    // Assign each melting/solidification event to a remelt_event_num, and store the total events per cell
+    std::vector<unsigned long> remelt_count(num_cells, 0), remelt_event_num(num_cells);
+    // Store the x, y, and z location (in cell units) of each event
+    std::vector<int> x_cell(num_cells), y_cell(num_cells), z_cell(num_cells);
+    for(unsigned long i=0; i<num_events_local; i++)
+    {
+        double x_position = data[i][0];
+	x_cell[i] = std::lround((x_position - min_bounds[0]) / dx_);
+	double y_position = data[i][1];
+        y_cell[i] = std::lround((y_position - min_bounds[1]) / dx_);
+        double z_position = data[i][2];
+        z_cell[i] = std::lround((z_position - min_bounds[2]) / dx_);
+	unsigned long index1d = z_cell[i] * nx * ny + y_cell[i] * nx + x_cell[i];
+	remelt_event_num[index1d] = remelt_count[index1d];
+	remelt_count[index1d]++;
+    }
+    // Max number of times a location undergoes remelting
+    unsigned long max_remelt_count;
+    if (num_events_local > 0) 
+    	max_remelt_count = *std::max_element(remelt_count.begin(), remelt_count.end());
+    else
+	max_remelt_count = 0;
+    // Need the global max for the total array size
+    unsigned long max_remelt_count_global;
+    MPI_Reduce(&max_remelt_count, &max_remelt_count_global, 1, MPI_UNSIGNED_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    // Array size for writing
+    unsigned long arr_size = num_cells * max_remelt_count_global;
+    std::cout << "Arr size " << arr_size << std::endl;
+    // tm, tl, cr are the vectors to be writen to the file
+    std::vector<double> tm_write(arr_size, 0.0), tl_write(arr_size, 0.0), cr_write(arr_size, 0.0);
+    for(unsigned long i=0; i<num_events_local; i++)
+    {
+	unsigned long index1d = z_cell[i] * nx * ny + y_cell[i] * nx + x_cell[i];    
+        unsigned long remelt_event_num_cell = remelt_event_num[index1d];
+	// 1D index of the 4D array (max_num_remelt_events * size z * size y * size x)
+	unsigned long index1d_full = remelt_event_num_cell * nx * ny * nz + z_cell[i] * nx * ny + y_cell[i] * nx + x_cell[i];
+	tm_write[index1d_full] = data[i][3];
+        tl_write[index1d_full] = data[i][4];
+        cr_write[index1d_full] = data[i][5];
+    }
+
+    // Global min/max for x, y, z
+    std::vector<double> min_bounds_global(3), max_bounds_global(3);
+    MPI_Allreduce(min_bounds.data(), min_bounds_global.data(), 3, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(max_bounds.data(), max_bounds_global.data(), 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    std::cout << "Global origin: " << min_bounds_global[0] << ", " << min_bounds_global[1] << ", " << min_bounds_global[2] << std::endl;
+    // Init adios writer
+    adios2::ADIOS adios(MPI_COMM_WORLD);
+    adios2::IO io = adios.DeclareIO("WriteArrays");
+
+    // Global domain size
+    unsigned long nx_global = std::lround((max_bounds_global[0] - min_bounds_global[0]) / dx_) + 1;
+    unsigned long ny_global = std::lround((max_bounds_global[1] - min_bounds_global[1]) / dx_) + 1;
+    unsigned long nz_global = std::lround((max_bounds_global[2] - min_bounds_global[2]) / dx_) + 1;
+    // Integer offset from global origin
+    unsigned long x_offset = std::lround((min_bounds[0] - min_bounds_global[0]) / dx_);
+    unsigned long y_offset = std::lround((min_bounds[1] - min_bounds_global[1]) / dx_);
+    unsigned long z_offset = std::lround((min_bounds[2] - min_bounds_global[2]) / dx_);
+
+    std::cout << "Min/max bounds for x are " << min_bounds[0] << " and " << max_bounds[0] << " x off " << x_offset << " y off " << y_offset << std::endl;
+
+    std::cout << "X = " << min_bounds[0] << " through " << max_bounds[0] << ", Y = " << min_bounds[1] << " through " << max_bounds[1] << ", Z = " << min_bounds[2] << " through " << max_bounds[2] << " offsets are " << x_offset << "," << y_offset << "," << z_offset << std::endl;
+
+    // Store attributes of data in adios structs - shape is global, start and count are local
+    const adios2::Dims shape{max_remelt_count_global, nz_global, ny_global, nx_global};
+    const adios2::Dims start{0, z_offset, y_offset, x_offset};
+    const adios2::Dims count{max_remelt_count_global, nz, ny, nx};
+    // Data attributes are global - defined the same on all ranks
+    std::array<size_t, 4> extents = {max_remelt_count_global, nz_global, ny_global, nx_global};
+    std::array<double, 4> spacing = {1.0, dx_, dx_, dx_};
+    std::array<double, 4> origin  = {0.0, min_bounds_global[2], min_bounds_global[1], min_bounds_global[0]};
+    io.DefineAttribute<size_t>("extents", extents.data(), extents.size());
+    io.DefineAttribute<double>("spacing", spacing.data(), spacing.size());
+    io.DefineAttribute<double>("origin", origin.data(), origin.size());
+    io.DefineAttribute<std::string>("axis_order", "N,Z,Y,X");
+
+    // Compression
+    //auto zfpOp = io.DefineOperator("ZFPCompressor", adios2::ops::ZFP);
+
+    // Define arrays for writing
+    auto tm_var = io.DefineVariable<double>("tm", shape, start, count);
+    auto tl_var = io.DefineVariable<double>("tl", shape, start, count);
+    auto cr_var = io.DefineVariable<double>("cr", shape, start, count);
+
+    // Compress arrays
+    //tm_var.AddOperation(zfpOp, {{"accuracy", "0.00001"}});
+    //tl_var.AddOperation(zfpOp, {{"accuracy", "0.00001"}});
+    //cr_var.AddOperation(zfpOp, {{"accuracy", "0.00001"}});
+
+    // Write arrays
+    adios2::Engine writer = io.Open("adios_output.bp", adios2::Mode::Write);
+    writer.BeginStep();
+    writer.Put(tm_var, tm_write.data());
+    writer.Put(tl_var, tl_write.data());
+    writer.Put(cr_var, cr_write.data());
+    writer.EndStep();
+    writer.Close();
+ 
+    // Old writer to double check results
     // write the events for each processor to their own file
     const fileName exacaPath
     (
         mesh_.time().rootPath()/mesh_.time().globalCaseName()/"ExaCA"
     );
-
     OFstream os
     (
         exacaPath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
@@ -423,7 +575,6 @@ bool Foam::functionObjects::ExaCA::end()
 {
     //- sort events by cell and in time
     events.shrink();
-
     sort(events);
 
     Info<< "Number of solidification events: "

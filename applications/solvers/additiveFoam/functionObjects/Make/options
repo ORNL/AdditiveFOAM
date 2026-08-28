@@ -1,7 +1,9 @@
 EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
-    -I$(LIB_SRC)/meshTools/lnInclude
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -DADIOS2_USE_MPI -isystem /autofs/nccs-svm1_sw/frontier/spack-envs/cpe24.11-cpu/opt/cce-18.0.1/adios2-2.10.2-ssnfnmbbyipk7jo25xhfg457x5kl5hke/include 
 
 LIB_LIBS = \
+    -L -Wl,-rpath,/autofs/nccs-svm1_sw/frontier/spack-envs/cpe24.11-cpu/opt/cce-18.0.1/adios2-2.10.2-ssnfnmbbyipk7jo25xhfg457x5kl5hke/lib64 /autofs/nccs-svm1_sw/frontier/spack-envs/cpe24.11-cpu/opt/cce-18.0.1/adios2-2.10.2-ssnfnmbbyipk7jo25xhfg457x5kl5hke/lib64/libadios2_cxx11_mpi.so.2.10.2 /autofs/nccs-svm1_sw/frontier/spack-envs/cpe24.11-cpu/opt/cce-18.0.1/adios2-2.10.2-ssnfnmbbyipk7jo25xhfg457x5kl5hke/lib64/libadios2_cxx11.so.2.10.2 -Wl,-rpath-link,/autofs/nccs-svm1_sw/frontier/spack-envs/cpe24.11-cpu/opt/cce-18.0.1/admpios2-2.10.2-ssnfnmbbyipk7jo25xhfg457x5kl5hke/lib64 \
     -lfiniteVolume \
     -lmeshTools
