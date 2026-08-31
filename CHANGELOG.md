@@ -8,14 +8,16 @@
 - Added a general projected heat source with super-Gaussian, nLight AFX, and
   tabulated planar profiles and an exponential axial projection.
 - Added conversion of PRIMES beam measurements with `primesToAdditiveFoam`.
-- Added tabulated-profile inspection and automatic D4Sigma calculation.
+- Added general planar-profile moment metrics, tabulated-profile inspection,
+  and automatic `D4Sigma` calculation.
 - Added rotated elliptical analytic profiles, `e2` and `secondMoment` radius
-  definitions, and selectable area-equivalent, major, or minor diameters.
+  definitions, and selectable area-equivalent, major, or minor `D4Sigma`
+  reference widths.
 - Added model-specific heat-source bounds that retain at least
   `1-tolerance` of the analytical source power.
 - Added support-based heat-source quadrature.
 - Added an adaptive Bayesian workflow with deterministic posterior quadrature
-  for calibrating the projected heat-source depth distribution.
+  for calibrating the projected heat-source axial closure.
 - Expanded the AMB2018, multi-beam, multi-layer, nLight AFX, and tabulated
   tutorials.
 
@@ -52,8 +54,9 @@
 - Profile metrics expose `D4Sigma` as `(major minor)`. Reference dimensions
   select the scalar width and constant or isotherm depth used by aspect-ratio
   closures.
-- `widthReference` and `depthReference` independently select the reference
-  dimension definitions. The current width reference is `D4Sigma`.
+- Aspect-ratio closures use a `D4Sigma` width reference, with selectable
+  `areaEquivalent`, `major`, or `minor` component, and a `constant` or
+  `isotherm` depth reference.
 - The `A` and `B` projected-depth coefficients are named `nSlope` and
   `nIntercept` in the `projection` dictionary.
 - Python 3.10 through 3.12 and the packages in `requirements.txt` are required
