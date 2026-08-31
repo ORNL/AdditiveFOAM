@@ -1,11 +1,9 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2026 Oak Ridge National Laboratory
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,13 +20,10 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "KellyAbsorption.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
@@ -39,104 +34,64 @@ namespace absorptionModels
 }
 }
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
 Foam::absorptionModels::Kelly::Kelly
 (
-    const word& sourceName,
     const dictionary& dict,
-    const fvMesh& mesh
+    const fvMesh&
 )
 :
-    absorptionModel(typeName, sourceName, dict, mesh),
-    geometry_(absorptionModelCoeffs_.lookup<word>("geometry")),
-    eta0_("eta0", dimless, absorptionModelCoeffs_),
-    etaMin_("etaMin", dimless, absorptionModelCoeffs_),
+    geometry_(dict.lookup<word>("geometry")),
+    eta0_("eta0", dimless, dict),
+    etaMin_("etaMin", dimless, dict),
     aspectRatioSwitch_
     (
-        absorptionModelCoeffs_.lookupOrDefault<scalar>
-        (
-            "aspectRatioSwitch",
-            1.0
-        )
+        dict.lookupOrDefault<scalar>("aspectRatioSwitch", 1.0)
     )
 {
-    if ((geometry_ != "cone") && (geometry_ != "cylinder"))
+    if (geometry_ != "cone" && geometry_ != "cylinder")
     {
-        FatalErrorInFunction
-        << "Kelly absorption model geometry type " << geometry_
-        << " not recognized. Choose either cylinder or cone."
-        << abort(FatalError);
+        FatalIOErrorInFunction(dict)
+            << "Kelly geometry must be cone or cylinder, found " << geometry_
+            << exit(FatalIOError);
     }
 }
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-Foam::scalar
-Foam::absorptionModels::Kelly::eta
+Foam::scalar Foam::absorptionModels::Kelly::eta
 (
-    scalar aspectRatio
+    const scalar aspectRatio
 ) const
 {
-    aspectRatio = max(aspectRatio, small);
-
-    if (aspectRatio > aspectRatioSwitch_)
+    if (aspectRatio <= aspectRatioSwitch_)
     {
-        const scalar theta = Foam::atan(1.0 / aspectRatio);
+        return etaMin_.value();
+    }
 
-        scalar F = 0.0;
-        scalar G = 0.0;
+    const scalar theta = Foam::atan(1.0/aspectRatio);
 
-        if (geometry_ == "cone")
-        {
-            F = 0.25 * (3.0 * Foam::sin(theta) - Foam::sin(3.0 * theta));
-            G = 1.0 / (1.0 + Foam::sqrt(1.0 + pow(aspectRatio, 2)));
-        }
+    scalar F = 0;
+    scalar G = 0;
 
-        else if (geometry_ == "cylinder")
-        {
-            F = 0.5 * (1.0 - Foam::cos(2.0 * theta));
-            G = 0.5 / (1.0 + aspectRatio);
-        }
+    if (geometry_ == "cone")
+    {
+        F = 0.25*(3.0*Foam::sin(theta) - Foam::sin(3.0*theta));
+        G = 1.0/(1.0 + Foam::sqrt(1.0 + sqr(aspectRatio)));
+    }
 
-        return max
+    if (geometry_ == "cylinder")
+    {
+        F = 0.5*(1.0 - Foam::cos(2.0*theta));
+        G = 0.5/(1.0 + aspectRatio);
+    }
+
+    return
+        max
         (
             etaMin_.value(),
             (
                 eta0_*(1.0 + (1.0 - eta0_)*(G - F))
-               /(1.0 - (1.0 - eta0_)*(1.0 - G))
+              / (1.0 - (1.0 - eta0_)*(1.0 - G))
             ).value()
         );
-    }
-    else
-    {
-        return etaMin_.value();
-    }
-};
-
-bool Foam::absorptionModels::Kelly::read()
-{
-    if (absorptionModel::read())
-    {
-        absorptionModelCoeffs_ = optionalSubDict(type() + "Coeffs");
-
-        //- Mandatory entries
-        absorptionModelCoeffs_.lookup("geometry") >> geometry_;
-        absorptionModelCoeffs_.lookup("eta0") >> eta0_;
-        absorptionModelCoeffs_.lookup("etaMin") >> etaMin_;
-        aspectRatioSwitch_ =
-            absorptionModelCoeffs_.lookupOrDefault<scalar>
-            (
-                "aspectRatioSwitch",
-                1.0
-            );
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 // ************************************************************************* //

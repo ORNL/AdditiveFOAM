@@ -27,12 +27,7 @@ Class
     Foam::heatSourceModels::modifiedSuperGaussian
 
 Description
-    One-sided modified super-Gaussian heat source model applied in the
-    negative z direction from the beam plane.
-
-    Reference:
-    \verbatim
-   \endverbatim
+    One-sided modified super-Gaussian heat source with finite depth.
 
 SourceFiles
     modifiedSuperGaussian.C
@@ -44,80 +39,52 @@ SourceFiles
 
 #include "heatSourceModel.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 namespace Foam
 {
 namespace heatSourceModels
 {
 
-/*---------------------------------------------------------------------------*\
-                       Class modifiedSuperGaussian
-\*---------------------------------------------------------------------------*/
-
 class modifiedSuperGaussian
 :
     public heatSourceModel
 {
-    // Private Data
-
-        //- Heat source dimensions
-        vector dimensions_;
-
-        //- Distribution shape coefficient of modifiedSuperGaussian distribution
-        scalar k_;
-
-        //- Geometric shape coefficient of modifiedSuperGaussian distribution
-        scalar m_;
-
-        //- Scaled heat source dimensions
-        vector s_;
-
-
-    // Private Member Functions
-
-        //- Update the source dimensions, bounds and normalization
-        void updateSource();
+    vector2D radius_;
+    scalar k_;
+    scalar m_;
+    scalar coefficient_;
+    scalar cosTheta_;
+    scalar sinTheta_;
+    profileMetrics metrics_;
 
 public:
 
-    //- Runtime type information
     TypeName("modifiedSuperGaussian");
 
+    modifiedSuperGaussian
+    (
+        const dictionary& dict,
+        const fvMesh& mesh
+    );
 
-    // Constructors
-
-        //- Construct from components
-        modifiedSuperGaussian
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
-
-    //- Destructor
     virtual ~modifiedSuperGaussian()
     {}
 
+    virtual void update
+    (
+        const scalar depth,
+        const scalar aspectRatio
+    );
 
-    // Member Functions
+    virtual scalar weight(const vector& r) const;
 
-        virtual void update();
-
-        inline virtual scalar weight(const vector& r) const;
-
-        //- Read the heatSourceDict dictionary
-        virtual bool read();
+    inline virtual const profileMetrics& metrics() const
+    {
+        return metrics_;
+    }
 };
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace heatSourceModels
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

@@ -24,80 +24,88 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceModels::projectedHeatSource
+    Foam::heatSourceProjections::exponential
 
 Description
-    Separable heat source constructed from a planar profile and a one-sided
-    axial projection.
+    One-sided generalized exponential projection applied in the negative z
+    direction from the beam plane.
 
 SourceFiles
-    projectedHeatSource.C
+    exponential.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef projectedHeatSource_H
-#define projectedHeatSource_H
+#ifndef exponential_H
+#define exponential_H
 
-#include "heatSourceModel.H"
-#include "heatSourceProfile.H"
 #include "heatSourceProjection.H"
 
 namespace Foam
 {
-namespace heatSourceModels
+namespace heatSourceProjections
 {
 
-class projectedHeatSource
+class exponential
 :
-    public heatSourceModel
+    public heatSourceProjection
 {
     // Private Data
 
-        //- Planar heat source profile
-        autoPtr<heatSourceProfile> profile_;
+        //- nSlope in n = nSlope*log2(a) + nIntercept
+        scalar nSlope_;
 
-        //- Axial heat source projection
-        autoPtr<heatSourceProjection> projection_;
+        //- nIntercept in n = nSlope*log2(a) + nIntercept
+        scalar nIntercept_;
 
-        //- Maximum power fraction outside each separable component bound
-        scalar componentTolerance_;
+        //- Projection depth
+        scalar depth_;
 
+        //- Axial decay exponent
+        scalar k_;
 
-    // Private Member Functions
+        //- Projection integral
+        scalar integral_;
 
-        //- Update the projection, source bounds and normalization
-        void updateSource();
+        //- Lower projection bound
+        scalar zMin_;
 
 public:
 
     //- Runtime type information
-    TypeName("projectedHeatSource");
+    TypeName("exponential");
 
 
     // Constructors
 
-        projectedHeatSource
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+        explicit exponential(const dictionary& dict);
 
     //- Destructor
-    virtual ~projectedHeatSource()
+    virtual ~exponential()
     {}
 
     // Member Functions
 
-        virtual void update();
+        virtual void update
+        (
+            const scalar depth,
+            const scalar aspectRatio,
+            const scalar tolerance
+        );
 
-        inline virtual scalar weight(const vector& r) const;
+        inline virtual scalar weight(const scalar z) const;
 
-        //- Read the heatSourceDict dictionary
-        virtual bool read();
+        inline virtual scalar integral() const
+        {
+            return integral_;
+        }
+
+        inline virtual scalar zMin() const
+        {
+            return zMin_;
+        }
 };
 
-} // End namespace heatSourceModels
+} // End namespace heatSourceProjections
 } // End namespace Foam
 
 #endif

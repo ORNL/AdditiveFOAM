@@ -22,38 +22,73 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-#ifndef constantAbsorption_H
-#define constantAbsorption_H
+#ifndef referenceDimensions_H
+#define referenceDimensions_H
 
-#include "absorptionModel.H"
+#include "boundBox.H"
+#include "dictionary.H"
+#include "fvMesh.H"
+#include "profileMetrics.H"
 
 namespace Foam
 {
-namespace absorptionModels
-{
 
-class constant
-:
-    public absorptionModel
+class referenceDimensions
 {
-    dimensionedScalar eta_;
+    enum D4SigmaComponent
+    {
+        areaEquivalent,
+        major,
+        minor
+    };
+
+    const fvMesh& mesh_;
+
+    word widthReference_;
+
+    word depthReference_;
+
+    D4SigmaComponent component_;
+
+    scalar isotherm_;
+
+    scalar width_;
+
+    scalar depth_;
 
 public:
 
-    TypeName("constant");
+    referenceDimensions(const dictionary& dict, const fvMesh& mesh);
 
-    constant(const dictionary& dict, const fvMesh& mesh);
+    void update
+    (
+        const profileMetrics& metrics,
+        const scalar depth,
+        const vector& position,
+        const boundBox& bounds
+    );
 
-    virtual ~constant()
-    {}
-
-    inline virtual scalar eta(const scalar) const
+    inline scalar width() const
     {
-        return eta_.value();
+        return width_;
+    }
+
+    inline scalar depth() const
+    {
+        return depth_;
+    }
+
+    inline scalar aspectRatio() const
+    {
+        return 2.0*depth_/width_;
+    }
+
+    inline bool isothermDepth() const
+    {
+        return depthReference_ == "isotherm";
     }
 };
 
-} // End namespace absorptionModels
 } // End namespace Foam
 
 #endif

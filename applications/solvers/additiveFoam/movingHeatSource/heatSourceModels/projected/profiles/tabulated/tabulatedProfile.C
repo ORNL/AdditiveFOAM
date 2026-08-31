@@ -32,18 +32,21 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(tabulatedProfile, 0);
+namespace heatSourceProfiles
+{
+    defineTypeNameAndDebug(tabulated, 0);
     addToRunTimeSelectionTable
     (
         heatSourceProfile,
-        tabulatedProfile,
+        tabulated,
         dictionary
     );
+}
 }
 
 // * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::tabulatedProfile::tabulatedProfile()
+Foam::heatSourceProfiles::tabulated::tabulated()
 :
     nx_(0),
     ny_(0),
@@ -56,36 +59,28 @@ Foam::tabulatedProfile::tabulatedProfile()
     invDx_(0),
     invDy_(0),
     values_(0),
-    integral_(0),
-    centroidX_(0),
-    centroidY_(0),
-    D4SigmaMajor_(0),
-    D4SigmaMinor_(0),
-    D4Sigma_(0),
-    azimuth_(0),
-    profileBb_(point::zero, point::zero)
+    metrics_(),
+    bounds_(point::zero, point::zero)
 {}
 
-Foam::tabulatedProfile::tabulatedProfile(const fileName& profileFile)
+Foam::heatSourceProfiles::tabulated::tabulated(const fileName& profileFile)
 :
-    tabulatedProfile()
+    tabulated()
 {
     read(profileFile);
 }
 
 
-Foam::tabulatedProfile::tabulatedProfile
+Foam::heatSourceProfiles::tabulated::tabulated
 (
     const dictionary& dict,
     const fvMesh& mesh,
     const scalar
 )
 :
-    tabulatedProfile()
+    tabulated()
 {
-    const dictionary& coeffs = dict.subDict(typeName + "Coeffs");
-
-    const fileName fName(coeffs.lookup("file"));
+    const fileName fName(dict.lookup("file"));
 
     const fileName tableFile
     (
@@ -97,16 +92,15 @@ Foam::tabulatedProfile::tabulatedProfile
 
     read(tableFile);
 
-    Info<< "Tabulated profile: integral=" << integral_
-        << ", centroid=(" << centroidX_ << ' ' << centroidY_ << ") m"
-        << ", D4Sigma/major/minor=" << D4Sigma_ << '/'
-        << D4SigmaMajor_ << '/' << D4SigmaMinor_ << " m"
-        << ", azimuth=" << azimuth_ << " rad" << endl;
+    Info<< "Tabulated profile: integral=" << metrics_.integral()
+        << ", centroid=" << metrics_.centroid() << " m"
+        << ", D4Sigma (major minor)=" << metrics_.D4Sigma() << " m"
+        << ", azimuth=" << metrics_.azimuth() << " rad" << endl;
 }
 
 // * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * //
 
-void Foam::tabulatedProfile::integrate()
+void Foam::heatSourceProfiles::tabulated::integrate()
 {
     // Raw moments M_pq = integral x^p*y^q*I(x,y) dx dy
     scalar M00 = 0;
@@ -141,42 +135,25 @@ void Foam::tabulatedProfile::integrate()
             M00 += dA*m00;
             M10 += dA*(x*m00 + dx_*m10);
             M01 += dA*(y*m00 + dy_*m01);
-            M20 += dA*(sqr(x)*m00 + 2.0*x*dx_*m10 + sqr(dx_)*m20);
-            M02 += dA*(sqr(y)*m00 + 2.0*y*dy_*m01 + sqr(dy_)*m02);
-            M11 += dA*(x*y*m00 + x*dy_*m01 + y*dx_*m10 + dx_*dy_*m11);
+            M20 +=
+                dA*(sqr(x)*m00 + 2.0*x*dx_*m10 + sqr(dx_)*m20);
+            M02 +=
+                dA*(sqr(y)*m00 + 2.0*y*dy_*m01 + sqr(dy_)*m02);
+            M11 +=
+                dA
+               *(
+                    x*y*m00 + x*dy_*m01 + y*dx_*m10
+                  + dx_*dy_*m11
+                );
         }
     }
 
-    integral_ = M00;
-    centroidX_ = M10/M00;
-    centroidY_ = M01/M00;
-
-    const scalar varianceX = M20/M00 - sqr(centroidX_);
-
-    const scalar varianceY = M02/M00 - sqr(centroidY_);
-
-    const scalar covariance = M11/M00 - centroidX_*centroidY_;
-
-    const scalar meanVariance = 0.5*(varianceX + varianceY);
-    const scalar delta =
-        Foam::sqrt(0.25*sqr(varianceX - varianceY) + sqr(covariance));
-
-    const scalar majorVariance = meanVariance + delta;
-    const scalar minorVariance = meanVariance - delta;
-
-    D4SigmaMajor_ = 4.0*Foam::sqrt(majorVariance);
-    D4SigmaMinor_ = 4.0*Foam::sqrt(minorVariance);
-    D4Sigma_ = Foam::sqrt(D4SigmaMajor_*D4SigmaMinor_);
-
-    azimuth_ =
-        delta > small
-      ? 0.5*Foam::atan2(2.0*covariance, varianceX - varianceY)
-      : 0.0;
+    metrics_.reset(M00, M10, M01, M20, M02, M11);
 }
 
 // * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::tabulatedProfile::read(const fileName& profileFile)
+void Foam::heatSourceProfiles::tabulated::read(const fileName& profileFile)
 {
     IFstream is(profileFile);
 
@@ -191,6 +168,14 @@ void Foam::tabulatedProfile::read(const fileName& profileFile)
     is >> x0_ >> y0_;
     is >> dx_ >> dy_;
 
+    if (nx_ < 2 || ny_ < 2 || dx_ <= 0 || dy_ <= 0)
+    {
+        FatalErrorInFunction
+            << "Tabulated profile requires nx, ny >= 2 and positive spacing; "
+            << "found nx=" << nx_ << ", ny=" << ny_ << ", dx=" << dx_
+            << ", dy=" << dy_ << exit(FatalError);
+    }
+
     x1_ = x0_ + (nx_ - 1)*dx_;
     y1_ = y0_ + (ny_ - 1)*dy_;
     invDx_ = 1.0/dx_;
@@ -201,11 +186,19 @@ void Foam::tabulatedProfile::read(const fileName& profileFile)
     forAll(values_, i)
     {
         is >> values_[i];
+
+        if (!is.good() || values_[i] < 0)
+        {
+            FatalErrorInFunction
+                << "Tabulated profile values must be present and nonnegative; "
+                << "invalid value at index " << i << " in " << profileFile
+                << exit(FatalError);
+        }
     }
 
     integrate();
 
-    profileBb_ =
+    bounds_ =
         boundBox
         (
             point(x0_, y0_, 0),

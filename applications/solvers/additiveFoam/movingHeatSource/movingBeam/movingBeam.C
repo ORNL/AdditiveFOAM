@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "movingBeam.H"
+#include <fstream>
 #include <sstream>
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -35,22 +36,17 @@ const Foam::scalar Foam::movingBeam::eps = 1e-10;
 namespace Foam
 {
     defineTypeNameAndDebug(movingBeam, 0);
-    defineRunTimeSelectionTable(movingBeam, dictionary);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::movingBeam::movingBeam
 (
-    const word& sourceName,
-    const dictionary& dict,
+    const dictionary& sourceDict,
     const Time& runTime
 )
 :
-    sourceName_(sourceName),
-    dict_(dict),
     runTime_(runTime),
-    beamDict_(dict_.optionalSubDict(sourceName_)),
     path_(0),
     index_(0),
     position_(Zero),
@@ -60,16 +56,16 @@ Foam::movingBeam::movingBeam
     hitPathIntervals_(true)
 {
     //- Get beam parameters
-    deltaT_ = beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
+    deltaT_ = sourceDict.lookupOrDefault<scalar>("deltaT", GREAT);
 
-    hitPathIntervals_ = beamDict_.lookupOrDefault<bool>
+    hitPathIntervals_ = sourceDict.lookupOrDefault<bool>
     (
         "hitPathIntervals",
         true
     );
 
     //- Read scan path file
-    readPath();
+    readPath(sourceDict.lookup<word>("path"));
 
     //- Initialize path index
     if (path_.size())
@@ -99,27 +95,28 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::movingBeam::readPath()
+void Foam::movingBeam::readPath(const fileName& pathName)
 {
-    const word pName_(beamDict_.lookup("pathName"));
-
-    const fileName pFile_
+    const fileName pathFile
     (
-        runTime_.rootPath()/runTime_.globalCaseName()/runTime_.constant()/pName_
+        runTime_.rootPath()
+       /runTime_.globalCaseName()
+       /runTime_.constant()
+       /pathName
     );
 
-    std::ifstream is(pFile_);
+    std::ifstream is(pathFile);
 
     if (!is.good())
     {
         FatalErrorInFunction
-            << "Cannot find file " << pFile_
+            << "Cannot find file " << pathFile
             << nl
             << exit(FatalError);
     }
     else
     {
-        Info << "Reading scan path from: " << pFile_ << endl;
+        Info << "Reading scan path from: " << pathFile << endl;
     }
 
     std::string line;

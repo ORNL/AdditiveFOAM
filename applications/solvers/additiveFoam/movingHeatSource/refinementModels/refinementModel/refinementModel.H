@@ -30,7 +30,7 @@ Description
     Base class for models that populate the refinementField used by the
     OpenFOAM dynamic mesh refiner.
 
-    If no refinementModel dictionary is present in heatSourceDict, the
+    If no refinement dictionary is present in heatSourceDict, the
     no-refinement model is selected and no AdditiveFOAM refinement controls
     are required.
 
@@ -52,7 +52,7 @@ SourceFiles
 #include "volFields.H"
 #include "movingBeam.H"
 #include "treeBoundBox.H"
-#include "heatSourceModel.H"
+#include "movingHeatSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -124,15 +124,12 @@ protected:
     // Protected Data
 
         //- PtrList to heatSourceModels
-        const PtrList<heatSourceModel>& sources_;
+        const PtrList<movingHeatSource>& sources_;
 
         //- Pointer to mesh information
         const fvMesh& mesh_;
 
-        //- Main heat source dictionary
-        const dictionary& heatSourceDict_;
-
-        //- Sub-dictionary for refinementModel entries
+        //- Refinement controls
         dictionary refinementDict_;
 
         //- Maximum dynamic-mesh refinement level
@@ -180,9 +177,6 @@ public:
     //- Runtime type information
     TypeName("refinementModel");
 
-    //- Default refinement model dictionary name
-    static const word refinementModelDictName;
-
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
@@ -190,7 +184,7 @@ public:
         refinementModel,
         dictionary,
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         ),
@@ -203,7 +197,7 @@ public:
         //- Construct inactive refinement model
         refinementModel
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
@@ -212,7 +206,7 @@ public:
         refinementModel
         (
             const word& type,
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
@@ -226,7 +220,7 @@ public:
         //- Return a reference to the selected refinement model
         static autoPtr<refinementModel> New
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

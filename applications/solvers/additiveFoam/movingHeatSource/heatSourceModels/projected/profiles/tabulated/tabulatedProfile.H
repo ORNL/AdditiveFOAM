@@ -24,11 +24,11 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::tabulatedProfile
+    Foam::heatSourceProfiles::tabulated
 
 Description
-    Uniform two-dimensional profile with exact integral and second moments of
-    its bilinear interpolant.
+    Tabulated profile on a uniform two-dimensional grid, with exact integral
+    and second moments of its bilinear interpolant.
 
 SourceFiles
     tabulatedProfile.C
@@ -44,8 +44,10 @@ SourceFiles
 
 namespace Foam
 {
+namespace heatSourceProfiles
+{
 
-class tabulatedProfile
+class tabulated
 :
     public heatSourceProfile
 {
@@ -65,15 +67,9 @@ class tabulatedProfile
 
         scalarField values_;
 
-        scalar integral_;
-        scalar centroidX_;
-        scalar centroidY_;
-        scalar D4SigmaMajor_;
-        scalar D4SigmaMinor_;
-        scalar D4Sigma_;
-        scalar azimuth_;
+        profileMetrics metrics_;
 
-        boundBox profileBb_;
+        boundBox bounds_;
 
     // Private Member Functions
 
@@ -86,11 +82,11 @@ public:
 
     // Constructors
 
-        tabulatedProfile();
+        tabulated();
 
-        explicit tabulatedProfile(const fileName& profileFile);
+        explicit tabulated(const fileName& profileFile);
 
-        tabulatedProfile
+        tabulated
         (
             const dictionary& dict,
             const fvMesh& mesh,
@@ -173,50 +169,19 @@ public:
             return dy_;
         }
 
-        inline virtual scalar integral() const
+        inline virtual const profileMetrics& metrics() const
         {
-            return integral_;
+            return metrics_;
         }
 
-        inline scalar centroidX() const
+        inline virtual const boundBox& bounds() const
         {
-            return centroidX_;
-        }
-
-        inline scalar centroidY() const
-        {
-            return centroidY_;
-        }
-
-        inline scalar D4SigmaMajor() const
-        {
-            return D4SigmaMajor_;
-        }
-
-        inline scalar D4SigmaMinor() const
-        {
-            return D4SigmaMinor_;
-        }
-
-        //- Area-equivalent D4Sigma diameter
-        //- sqrt(D4SigmaMajor()*D4SigmaMinor())
-        inline virtual scalar D4Sigma() const
-        {
-            return D4Sigma_;
-        }
-
-        inline scalar azimuth() const
-        {
-            return azimuth_;
-        }
-
-        inline virtual const boundBox& profileBb() const
-        {
-            return profileBb_;
+            return bounds_;
         }
 
 };
 
+} // End namespace heatSourceProfiles
 } // End namespace Foam
 
 #endif

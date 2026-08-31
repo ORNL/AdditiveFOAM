@@ -10,31 +10,33 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      heatSourceProperties;
+    object      heatSourceDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam);
-
-beam
+sources
 {
-    pathName            scanPath;    
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
 
-    absorptionModel     constant;
-    
-    constantCoeffs
-    {
-        eta             0.3;
-    }
-    
-    heatSourceModel     superGaussian;
-    
-    superGaussianCoeffs
-    {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        absorption
+        {
+            model       constant;
+            eta         0.3;
+        }
+
+        heatSource
+        {
+            model       superGaussian;
+            radius      (85.0e-6 85.0e-6);
+            definition  secondMoment;
+            depth       30e-6;
+            k           2.0;
+            nPoints     (10 10 10);
+        }
     }
 }
 

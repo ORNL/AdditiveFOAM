@@ -23,34 +23,82 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    Foam::profileMetrics
+
+Description
+    Integral and second-moment metrics of an intensity distribution in the
+    beam plane. D4Sigma is ordered (major, minor).
+
+SourceFiles
+    profileMetrics.C
+
 \*---------------------------------------------------------------------------*/
 
-#include "heatSourceProfile.H"
+#ifndef profileMetrics_H
+#define profileMetrics_H
 
-Foam::autoPtr<Foam::heatSourceProfile> Foam::heatSourceProfile::New
-(
-    const dictionary& dict,
-    const fvMesh& mesh,
-    const scalar tolerance
-)
+#include "scalar.H"
+#include "symmTensor2D.H"
+#include "vector2D.H"
+
+namespace Foam
 {
-    const word profileType(dict.lookup("profile"));
 
-    Info<< "Selecting heatSourceProfile " << profileType << endl;
+class profileMetrics
+{
+    scalar integral_;
 
-    const auto cstrIter = dictionaryConstructorTablePtr_->find(profileType);
+    vector2D centroid_;
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    symmTensor2D covariance_;
+
+    vector2D D4Sigma_;
+
+    scalar azimuth_;
+
+public:
+
+    profileMetrics();
+
+    void reset
+    (
+        const scalar M00,
+        const scalar M10,
+        const scalar M01,
+        const scalar M20,
+        const scalar M02,
+        const scalar M11
+    );
+
+    inline scalar integral() const
     {
-        FatalErrorInFunction
-            << "Unknown " << heatSourceProfile::typeName << " type "
-            << profileType << nl << nl
-            << "Valid heatSourceProfiles are:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
-            << exit(FatalError);
+        return integral_;
     }
 
-    return autoPtr<heatSourceProfile>(cstrIter()(dict, mesh, tolerance));
-}
+    inline const vector2D& centroid() const
+    {
+        return centroid_;
+    }
+
+    inline const symmTensor2D& covariance() const
+    {
+        return covariance_;
+    }
+
+    inline const vector2D& D4Sigma() const
+    {
+        return D4Sigma_;
+    }
+
+    inline scalar azimuth() const
+    {
+        return azimuth_;
+    }
+};
+
+} // End namespace Foam
+
+#endif
 
 // ************************************************************************* //

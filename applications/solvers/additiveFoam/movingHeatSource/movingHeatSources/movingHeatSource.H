@@ -22,38 +22,64 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-#ifndef constantAbsorption_H
-#define constantAbsorption_H
+#ifndef movingHeatSource_H
+#define movingHeatSource_H
 
 #include "absorptionModel.H"
+#include "heatSourceModel.H"
+#include "movingBeam.H"
+#include "referenceDimensions.H"
+#include "volFields.H"
 
 namespace Foam
 {
-namespace absorptionModels
-{
 
-class constant
-:
-    public absorptionModel
+class movingHeatSource
 {
-    dimensionedScalar eta_;
-
+    word name_;
+    const fvMesh& mesh_;
+    movingBeam beam_;
+    autoPtr<absorptionModel> absorption_;
+    autoPtr<heatSourceModel> heatSource_;
+    referenceDimensions references_;
 public:
 
-    TypeName("constant");
+    movingHeatSource
+    (
+        const word& name,
+        const dictionary& sourceDict,
+        const fvMesh& mesh
+    );
 
-    constant(const dictionary& dict, const fvMesh& mesh);
+    movingHeatSource(const movingHeatSource&) = delete;
 
-    virtual ~constant()
-    {}
-
-    inline virtual scalar eta(const scalar) const
+    inline const word& name() const
     {
-        return eta_.value();
+        return name_;
     }
+
+    inline movingBeam& beam()
+    {
+        return beam_;
+    }
+
+    inline const movingBeam& beam() const
+    {
+        return beam_;
+    }
+
+    inline const heatSourceModel& heatSource() const
+    {
+        return heatSource_();
+    }
+
+    void update();
+
+    tmp<volScalarField> qDot() const;
+
+    void operator=(const movingHeatSource&) = delete;
 };
 
-} // End namespace absorptionModels
 } // End namespace Foam
 
 #endif

@@ -22,46 +22,32 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "heatSourceModel.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 Foam::autoPtr<Foam::heatSourceModel> Foam::heatSourceModel::New
 (
-    const word& sourceName,
     const dictionary& dict,
     const fvMesh& mesh
 )
 {
-    //- Initialize modelType to a non-model word
-    word modelType("unselected");
+    const word modelType(dict.lookup("model"));
 
-    //- Get model type from source subdict
-    dictionary sourceDict(dict.optionalSubDict(sourceName));
-    sourceDict.lookup("heatSourceModel") >> modelType;
+    Info<< "Selecting heat source model " << modelType << endl;
 
-    Info<< "Selecting heatSource model " << modelType << endl;
-
-    //- Look up model type from runtime selection table and throw error
-    //  if it doesn't exist
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    const auto cstrIter = dictionaryConstructorTablePtr_->find(modelType);
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
-        FatalErrorInFunction
-            << "Unknown " << heatSourceModel::typeName<< " type "
-            << modelType << nl << nl
-            << "Valid  heatSourceModels are : " << endl
+        FatalIOErrorInFunction(dict)
+            << "Unknown heat source model " << modelType << nl << nl
+            << "Valid models are:" << endl
             << dictionaryConstructorTablePtr_->sortedToc()
-            << exit(FatalError);
+            << exit(FatalIOError);
     }
 
-    return autoPtr<heatSourceModel>(cstrIter()(sourceName, dict, mesh));
+    return autoPtr<heatSourceModel>(cstrIter()(dict, mesh));
 }
-
 
 // ************************************************************************* //

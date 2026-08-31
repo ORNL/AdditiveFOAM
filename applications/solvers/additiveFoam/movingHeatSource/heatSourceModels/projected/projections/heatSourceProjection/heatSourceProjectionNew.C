@@ -25,89 +25,33 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "exponential.H"
-#include "addToRunTimeSelectionTable.H"
+#include "heatSourceProjection.H"
 
-namespace Foam
-{
-namespace heatSourceProjections
-{
-    defineTypeNameAndDebug(exponential, 0);
-    addToRunTimeSelectionTable
-    (
-        heatSourceProjection,
-        exponential,
-        dictionary
-    );
-}
-}
-
-Foam::heatSourceProjections::exponential::exponential
+Foam::autoPtr<Foam::heatSourceProjection> Foam::heatSourceProjection::New
 (
     const dictionary& dict
 )
-:
-    nSlope_(0),
-    nIntercept_(0),
-    d_(0),
-    k_(1),
-    integral_(0),
-    zMin_(0)
 {
-    const dictionary& coeffs = dict.subDict(typeName + "Coeffs");
+    const word projectionType(dict.lookup("model"));
 
-    nSlope_ = coeffs.lookup<scalar>("nSlope");
-    nIntercept_ = coeffs.lookup<scalar>("nIntercept");
-}
+    Info<< "Selecting heatSourceProjection " << projectionType << endl;
 
+    const auto cstrIter = dictionaryConstructorTablePtr_->find(projectionType);
 
-void Foam::heatSourceProjections::exponential::update
-(
-    const scalar depth,
-    const scalar aspectRatio,
-    const scalar tolerance
-)
-{
-    d_ = depth;
-
-    const scalar n =
-        min
-        (
-            max
-            (
-                nSlope_*std::log2(aspectRatio) + nIntercept_,
-                0.0
-            ),
-            9.0
-        );
-
-    k_ = Foam::pow(2.0, n);
-
-    integral_ =
-        d_*Foam::tgamma(1.0/k_)
-       /(k_*Foam::pow(3.0, 1.0/k_));
-
-    zMin_ =
-       -d_
-       *Foam::pow
-        (
-            invIncGammaRatio_P(1.0/k_, 1.0 - tolerance)/3.0,
-            1.0/k_
-        );
-}
-
-
-inline Foam::scalar Foam::heatSourceProjections::exponential::weight
-(
-    const scalar z
-) const
-{
-    if (z > 0)
+    if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
-        return 0;
+        FatalErrorInFunction
+            << "Unknown " << heatSourceProjection::typeName << " type "
+            << projectionType << nl << nl
+            << "Valid heatSourceProjections are:" << endl
+            << dictionaryConstructorTablePtr_->sortedToc()
+            << exit(FatalError);
     }
 
-    return Foam::exp(-3.0*Foam::pow(-z/d_, k_));
+    return autoPtr<heatSourceProjection>
+    (
+        cstrIter()(dict)
+    );
 }
 
 // ************************************************************************* //

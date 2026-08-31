@@ -7,19 +7,23 @@ pathVector/pathVector.C
 
 movingBeam/movingBeam.C
 
+heatSourceModels/profileMetrics/profileMetrics.C
 heatSourceModels/heatSourceModel/heatSourceModel.C
 heatSourceModels/heatSourceModel/heatSourceModelNew.C
-heatSourceModels/projectedHeatSource/profiles/heatSourceProfile/heatSourceProfile.C
-heatSourceModels/projectedHeatSource/profiles/heatSourceProfile/heatSourceProfileNew.C
-heatSourceModels/projectedHeatSource/profiles/superGaussian/superGaussianProfile.C
-heatSourceModels/projectedHeatSource/profiles/nLightAFX/nLightAFXProfile.C
-heatSourceModels/projectedHeatSource/profiles/tabulated/tabulatedProfile.C
-heatSourceModels/projectedHeatSource/projections/heatSourceProjection/heatSourceProjection.C
-heatSourceModels/projectedHeatSource/projections/heatSourceProjection/heatSourceProjectionNew.C
-heatSourceModels/projectedHeatSource/projections/exponential/exponential.C
+heatSourceModels/projected/profiles/heatSourceProfile/heatSourceProfile.C
+heatSourceModels/projected/profiles/heatSourceProfile/heatSourceProfileNew.C
+heatSourceModels/projected/profiles/superGaussian/superGaussianProfile.C
+heatSourceModels/projected/profiles/nLightAFX/nLightAFXProfile.C
+heatSourceModels/projected/profiles/tabulated/tabulatedProfile.C
+heatSourceModels/projected/projections/heatSourceProjection/heatSourceProjection.C
+heatSourceModels/projected/projections/heatSourceProjection/heatSourceProjectionNew.C
+heatSourceModels/projected/projections/exponential/exponential.C
 heatSourceModels/superGaussian/superGaussian.C
 heatSourceModels/modifiedSuperGaussian/modifiedSuperGaussian.C
-heatSourceModels/projectedHeatSource/projectedHeatSource.C
+heatSourceModels/projected/projected.C
+
+movingHeatSources/referenceDimensions.C
+movingHeatSources/movingHeatSource.C
 
 refinementModels/refinementModel/refinementModel.C
 refinementModels/refinementModel/refinementModelNew.C
@@ -28,6 +32,6 @@ refinementModels/timeStep/timeStep.C
 refinementModels/targetCellLoad/targetCellLoad.C
 refinementModels/uniformTimeIntervals/uniformTimeIntervals.C
 
-movingHeatSourceModel/movingHeatSourceModel.C
+movingHeatSources/movingHeatSources.C
 
 LIB = $(FOAM_USER_LIBBIN)/libmovingBeamModels

@@ -22,33 +22,76 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
-#include "heatSourceProjection.H"
+#include "profileMetrics.H"
 
-Foam::autoPtr<Foam::heatSourceProjection> Foam::heatSourceProjection::New
+Foam::profileMetrics::profileMetrics()
+:
+    integral_(0),
+    centroid_(vector2D::zero),
+    covariance_(symmTensor2D::zero),
+    D4Sigma_(vector2D::zero),
+    azimuth_(0)
+{}
+
+
+void Foam::profileMetrics::reset
 (
-    const dictionary& dict
+    const scalar M00,
+    const scalar M10,
+    const scalar M01,
+    const scalar M20,
+    const scalar M02,
+    const scalar M11
 )
 {
-    const word projectionType(dict.lookup("projection"));
-
-    Info<< "Selecting heatSourceProjection " << projectionType << endl;
-
-    const auto cstrIter = dictionaryConstructorTablePtr_->find(projectionType);
-
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!(M00 > 0))
     {
         FatalErrorInFunction
-            << "Unknown " << heatSourceProjection::typeName << " type "
-            << projectionType << nl << nl
-            << "Valid heatSourceProjections are:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+            << "Profile integral must be positive, found " << M00
             << exit(FatalError);
     }
 
-    return autoPtr<heatSourceProjection>(cstrIter()(dict));
+    integral_ = M00;
+
+    centroid_.x() = M10/M00;
+
+    centroid_.y() = M01/M00;
+
+    scalar varianceX = M20/M00 - sqr(centroid_.x());
+
+    scalar varianceY = M02/M00 - sqr(centroid_.y());
+
+    const scalar covariance = M11/M00 - centroid_.x()*centroid_.y();
+
+    varianceX = max(varianceX, 0.0);
+
+    varianceY = max(varianceY, 0.0);
+
+    covariance_ = symmTensor2D(varianceX, covariance, varianceY);
+
+    const scalar meanVariance = 0.5*(varianceX + varianceY);
+
+    const scalar delta =
+        Foam::sqrt(0.25*sqr(varianceX - varianceY) + sqr(covariance));
+
+    const scalar majorVariance = meanVariance + delta;
+
+    scalar minorVariance = meanVariance - delta;
+
+    minorVariance = max(minorVariance, 0.0);
+
+    D4Sigma_.x() = 4.0*Foam::sqrt(majorVariance);
+
+    D4Sigma_.y() = 4.0*Foam::sqrt(minorVariance);
+
+    const scalar circularTolerance = rootSmall*max(meanVariance, VSMALL);
+
+    azimuth_ =
+        delta > circularTolerance
+      ? 0.5*Foam::atan2(2.0*covariance, varianceX - varianceY)
+      : 0.0;
 }
 
 // ************************************************************************* //

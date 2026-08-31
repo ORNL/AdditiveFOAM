@@ -66,7 +66,7 @@ public:
         //- Default empty constructor
         noRefinementModel
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

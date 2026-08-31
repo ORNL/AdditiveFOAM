@@ -59,12 +59,6 @@ class uniformTimeIntervals
 :
     public Foam::refinementModel
 {
-    // Private Data
-
-        //- Coefficients dictionary
-        dictionary coeffs_;
-
-
 protected:
 
     // Protected Data
@@ -90,7 +84,7 @@ public:
         //- Construct from components
         uniformTimeIntervals
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

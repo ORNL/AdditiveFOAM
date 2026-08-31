@@ -24,34 +24,32 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::movingHeatSourceModel
+    Foam::movingHeatSources
 
 Description
-    Class for multiple moving beam heat sources
+    Aggregate of moving heat sources.
 
 SourceFiles
-    movingHeatSourceModel.C
-    calculateQDot.C
+    movingHeatSources.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef movingHeatSourceModel_H
-#define movingHeatSourceModel_H
+#ifndef movingHeatSources_H
+#define movingHeatSources_H
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "heatSourceModel.H"
-#include "movingBeam.H"
+#include "movingHeatSource.H"
 #include "refinementModel.H"
 
 namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class movingHeatSourceModel Declaration
+                          Class movingHeatSources Declaration
 \*---------------------------------------------------------------------------*/
 
-class movingHeatSourceModel
+class movingHeatSources
 {
 private:
 
@@ -63,30 +61,30 @@ private:
         //- Main movingHeatSourceDict
         IOdictionary dict_;
 
-        //- List of individual heat sources
-        wordList sourceNames_;
-
         //- Total volumetric power of all beams
         volScalarField qDot_;
 
         //- Pointer list to each beam instance
-        PtrList<heatSourceModel> sources_;
+        PtrList<movingHeatSource> sources_;
 
         //- Pointer to refinement model
-        autoPtr<refinementModel> refinementModel_;
+        autoPtr<refinementModel> refinement_;
+
+        //- Construct sources and refinement model from the dictionary
+        void readSources();
 
 public:
 
     // Constructors
 
         // Construct from time and dictionary
-        movingHeatSourceModel
+        movingHeatSources
         (
             const fvMesh& mesh
         );
 
     //- Destructor
-    ~movingHeatSourceModel();
+    ~movingHeatSources();
 
     // Member Functions
 

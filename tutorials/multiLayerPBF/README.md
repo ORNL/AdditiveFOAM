@@ -60,35 +60,37 @@ Defines the mesh extrusion behavior used by the multi-layer workflow.
 The tutorial uses one heat source:
 
 ```foam
-sources (beam);
+sources { beam { /* source definition */ } }
 ```
 
-The source uses the `Kelly` absorption model and a transient `modifiedSuperGaussian` heat source:
+The source uses the `Kelly` absorption model, an isotherm depth reference, and
+a `modifiedSuperGaussian` heat source:
 
 ```foam
-beam
+sources
 {
-    pathName            scanPath;
-
-    absorptionModel     Kelly;
-
-    KellyCoeffs
+  beam
+  {
+    path scanPath;
+    widthReference D4Sigma;
+    depthReference isotherm;
+    absorption
     {
-        geometry        cone;
-        eta0            0.28;
-        etaMin          0.35;
+        model    Kelly;
+        geometry cone;
+        eta0     0.28;
+        etaMin   0.35;
     }
-
-    heatSourceModel     modifiedSuperGaussian;
-
-    modifiedSuperGaussianCoeffs
+    heatSource
     {
-        dimensions      (40.0e-6 40.0e-6 20.0e-6);
-        m               2.72;
-        k               7.95;
-        transient       true;
-        nPoints         (10 10 10);
+        model     modifiedSuperGaussian;
+        radius    (40.0e-6 40.0e-6);
+        depth     20.0e-6;
+        m         2.72;
+        k         7.95;
+        nPoints   (10 10 10);
     }
+  }
 }
 ```
 
@@ -112,20 +114,25 @@ lower bound on the Kelly multiple-reflection curve above the switch.
 Optional aspect-ratio cutoff for evaluating the Kelly multiple-reflection
 model. If omitted, the cutoff is `1.0`.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the modified super-Gaussian scale dimensions. The third component is the
-minimum source depth. AdditiveFOAM calculates the transverse D4Sigma from the
-first two components and `k`; Kelly uses `D4Sigma/2` as its lateral scale.
+Set the lateral radius and configured source depth. AdditiveFOAM calculates
+D4Sigma from `radius`, `definition`, and `k`; the source-level `D4Sigma`
+selection defines the reference width used for the Kelly aspect ratio.
+
+`widthReference`
+
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
 
 `m` and `k`
 
 Shape parameters for the `modifiedSuperGaussian` heat source.
 
-`transient`
+`depthReference`
 
-When `true`, AdditiveFOAM updates the heat source depth using the material
-liquidus from `constant/transportProperties`.
+`isotherm` updates the heat-source depth using the material liquidus from
+`constant/transportProperties`; `constant` uses the configured depth.
 
 `tolerance`
 

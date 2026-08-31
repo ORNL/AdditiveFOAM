@@ -83,11 +83,10 @@ The case includes:
 #include "$ADDITIVEFOAM_ETC/materials/SS316L.cfg"
 ```
 
-The configuration selects `melt_pool_isovalue: liquidus`. The calibration
-command expands `constant/transportProperties` with `foamDictionary`, obtains
-the temperature paired with `alpha.solid = 0`, and reads the matching file from
-`postProcessing/meltPoolDimensions`. The SS316L liquidus is therefore not
-duplicated in `config.yml`, `heatSourceDict`, or `controlDict`.
+The configuration selects `isotherm: liquidus`. The calibration command
+expands `constant/transportProperties` with `foamDictionary`, obtains the
+temperature paired with `alpha.solid = 0`, and renders that same value into the
+source depth reference and `meltPoolDimensions` function object.
 
 ## Beam profiles and rendered parameters
 
@@ -108,24 +107,31 @@ parameters:
   Profile: measured_beam
 ```
 
-The projected source requires a profile, a projection, a minimum depth, and
-the two projection coefficients. No lateral `dimensions` input is required:
+`D4Sigma` selects the reference width and `depthReference` selects the
+reference depth. The projected heat source then requires a profile,
+projection, configured depth, and the two projection coefficients. No lateral
+`radius` input is required:
 
 ```foam
-projectedHeatSourceCoeffs
+widthReference  D4Sigma;
+D4Sigma         <<D4Sigma>>;
+depthReference  isotherm;
+isotherm        <<isotherm>>;
+
+heatSource
 {
-    profile         tabulated;
-    projection      exponential;
+    model               projected;
+    depth               20.0e-6;
 
-    minimumDepth    20.0e-6;
-
-    tabulatedCoeffs
+    profile
     {
+        model       tabulated;
         file        "beam_profile.txt";
     }
 
-    exponentialCoeffs
+    projection
     {
+        model       exponential;
         nSlope      0.0;
         nIntercept  <<nIntercept>>;
     }
@@ -142,9 +148,9 @@ n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `a = 2*depth/D4Sigma` and `k` is the exponent in the axial
-decay. Calibration trials set `nSlope` to zero, so each trial `nIntercept` is
-also its applied `n` value.
+where `a = 2*depth/width`, `width` is selected by `D4Sigma`, and `k` is
+the exponent in the axial decay. Calibration trials set `nSlope` to zero, so
+each trial `nIntercept` is also its applied `n` value.
 
 The headerless `constant/beam_profile.txt` table contains a normalized circular
 Gaussian:
@@ -161,12 +167,9 @@ calculated from the finite table and its bilinear interpolation, rather than an
 infinite analytic Gaussian.
 
 At startup, `calibrateHeatSource` evaluates every configured profile with
-`tabulatedProfileInfo`. The profile data provide the integral, centroid,
-principal D4Sigma values, area-equivalent D4Sigma, and azimuth. The
-area-equivalent diameter is
-`sqrt(D4SigmaMajor*D4SigmaMinor)`. The calibration normalizes measured and
-simulated depths by half this value. Calibration inputs consist of the beam
-profile and the measured melt-pool depths.
+`tabulatedProfileInfo`. `D4Sigma` is reported as `(major minor)`.
+`D4Sigma` in `config.yml` selects `areaEquivalent` (the geometric mean),
+`major`, or `minor`; calibration normalizes depths by half that value.
 
 ## Resuming a campaign
 

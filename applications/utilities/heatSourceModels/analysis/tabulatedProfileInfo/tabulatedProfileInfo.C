@@ -29,7 +29,8 @@ int main(int argc, char* argv[])
     argList args(argc, argv);
 
     const fileName profileFile(args[1]);
-    const tabulatedProfile profile(profileFile);
+    const heatSourceProfiles::tabulated profile(profileFile);
+    const profileMetrics& metrics = profile.metrics();
 
     Info<< setprecision(16)
         << "profileFile: " << profileFile << nl
@@ -41,13 +42,11 @@ int main(int argc, char* argv[])
         << "y1: " << profile.y1() << nl
         << "dx: " << profile.dx() << nl
         << "dy: " << profile.dy() << nl
-        << "integral: " << profile.integral() << nl
-        << "centroidX: " << profile.centroidX() << nl
-        << "centroidY: " << profile.centroidY() << nl
-        << "D4SigmaMajor: " << profile.D4SigmaMajor() << nl
-        << "D4SigmaMinor: " << profile.D4SigmaMinor() << nl
-        << "D4Sigma: " << profile.D4Sigma() << nl
-        << "azimuthRadians: " << profile.azimuth() << endl;
+        << "integral: " << metrics.integral() << nl
+        << "centroidX: " << metrics.centroid().x() << nl
+        << "centroidY: " << metrics.centroid().y() << nl
+        << "D4Sigma: " << metrics.D4Sigma() << nl
+        << "azimuthRadians: " << metrics.azimuth() << endl;
 
     return 0;
 }

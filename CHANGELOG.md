@@ -9,6 +9,8 @@
   tabulated planar profiles and an exponential axial projection.
 - Added conversion of PRIMES beam measurements with `primesToAdditiveFoam`.
 - Added tabulated-profile inspection and automatic D4Sigma calculation.
+- Added rotated elliptical analytic profiles, `e2` and `secondMoment` radius
+  definitions, and selectable area-equivalent, major, or minor diameters.
 - Added model-specific heat-source bounds that retain at least
   `1-tolerance` of the analytical source power.
 - Added support-based heat-source quadrature.
@@ -25,7 +27,7 @@
   once before beam subcycling.
 - Preserved the active-power fraction when a solver time step crosses the end
   of a scan path.
-- Restricted transient source-depth measurements to the planar source support
+- Restricted isotherm source-depth measurements to the planar source support
   below the beam plane and removed a modified super-Gaussian endpoint
   singularity.
 - Added calculation-ROI reconstruction, coordinate-preserving support cropping,
@@ -37,16 +39,23 @@
 
 - AdditiveFOAM 2.0 requires OpenFOAM-14. Source the OpenFOAM-14 environment
   before sourcing `etc/bashrc` and rebuild AdditiveFOAM with `./Allwmake`.
+- Sources now use nested `absorption`, `heatSource`, `profile`, `projection`,
+  and `refinement` dictionaries with a `model` entry instead of `*Coeffs`
+  dictionaries.
 - The former projected Gaussian, nLight AFX, and tabulated heat-source models
-  are now profiles selected by `projectedHeatSource`. Their shared axial model
-  is selected as the `exponential` projection.
-- `superGaussian` remains a volumetric `heatSourceModel` and can also be
-  selected as the planar `profile` of a `projectedHeatSource`. Volumetric
-  `dimensions` have three components; profile `dimensions` have two.
+  are profiles selected by the `projected` model. Their shared axial model is
+  selected in the `projection` dictionary.
+- `superGaussian` remains a volumetric model and is also a planar profile.
+  `radius` is two-dimensional and `depth` is a separate scalar.
 - The tabulated profile derives its D4Sigma metrics from the beam-profile
   table. No user-supplied lateral dimensions are required.
-- The `A` and `B` projected-depth coefficients are now named `nSlope` and
-  `nIntercept` in `exponentialCoeffs`.
+- Profile metrics expose `D4Sigma` as `(major minor)`. Reference dimensions
+  select the scalar width and constant or isotherm depth used by aspect-ratio
+  closures.
+- `widthReference` and `depthReference` independently select the reference
+  dimension definitions. The current width reference is `D4Sigma`.
+- The `A` and `B` projected-depth coefficients are named `nSlope` and
+  `nIntercept` in the `projection` dictionary.
 - Python 3.10 through 3.12 and the packages in `requirements.txt` are required
   only for the calibration and plotting utilities.
 

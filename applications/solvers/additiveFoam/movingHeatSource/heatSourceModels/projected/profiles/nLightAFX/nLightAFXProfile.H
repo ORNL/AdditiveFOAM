@@ -24,7 +24,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceProfiles::nLightAFXProfile
+    Foam::heatSourceProfiles::nLightAFX
 
 Description
     Two-component nLight AFX planar heat source profile.
@@ -44,7 +44,7 @@ namespace Foam
 namespace heatSourceProfiles
 {
 
-class nLightAFXProfile
+class nLightAFX
 :
     public heatSourceProfile
 {
@@ -71,14 +71,11 @@ class nLightAFXProfile
         //- J_1(0)
         scalar J1_;
 
-        //- Planar integral
-        scalar integral_;
-
-        //- Area-equivalent second-moment diameter
-        scalar D4Sigma_;
+        //- Exact planar moments and derived beam metrics
+        profileMetrics metrics_;
 
         //- Planar profile bounds
-        boundBox profileBb_;
+        boundBox bounds_;
 
 
     // Private Member Functions
@@ -111,7 +108,7 @@ public:
 
     // Constructors
 
-        nLightAFXProfile
+        nLightAFX
         (
             const dictionary& dict,
             const fvMesh& mesh,
@@ -119,7 +116,7 @@ public:
         );
 
     //- Destructor
-    virtual ~nLightAFXProfile()
+    virtual ~nLightAFX()
     {}
 
     // Member Functions
@@ -130,19 +127,14 @@ public:
             const scalar y
         ) const;
 
-        inline virtual scalar integral() const
+        inline virtual const profileMetrics& metrics() const
         {
-            return integral_;
+            return metrics_;
         }
 
-        inline virtual scalar D4Sigma() const
+        inline virtual const boundBox& bounds() const
         {
-            return D4Sigma_;
-        }
-
-        inline virtual const boundBox& profileBb() const
-        {
-            return profileBb_;
+            return bounds_;
         }
 
 };

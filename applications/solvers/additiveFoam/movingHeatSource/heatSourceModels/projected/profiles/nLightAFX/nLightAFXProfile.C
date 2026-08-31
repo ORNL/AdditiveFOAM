@@ -33,11 +33,11 @@ namespace Foam
 {
 namespace heatSourceProfiles
 {
-    defineTypeNameAndDebug(nLightAFXProfile, 0);
+    defineTypeNameAndDebug(nLightAFX, 0);
     addToRunTimeSelectionTable
     (
         heatSourceProfile,
-        nLightAFXProfile,
+        nLightAFX,
         dictionary
     );
 }
@@ -46,7 +46,7 @@ namespace heatSourceProfiles
 using Foam::constant::mathematical::pi;
 
 
-Foam::heatSourceProfiles::nLightAFXProfile::nLightAFXProfile
+Foam::heatSourceProfiles::nLightAFX::nLightAFX
 (
     const dictionary& dict,
     const fvMesh&,
@@ -60,30 +60,35 @@ Foam::heatSourceProfiles::nLightAFXProfile::nLightAFXProfile
     sigma1_(0),
     J0_(0),
     J1_(0),
-    integral_(0),
-    D4Sigma_(0),
-    profileBb_(point::zero, point::zero)
+    metrics_(),
+    bounds_(point::zero, point::zero)
 {
-    const dictionary& coeffs = dict.subDict(typeName + "Coeffs");
+    alpha_ = dict.lookup<scalar>("alpha");
 
-    alpha_ = coeffs.lookup<scalar>("alpha");
+    r0_ = dict.lookup<scalar>("r0");
+    sigma0_ = dict.lookup<scalar>("sigma0");
 
-    r0_ = coeffs.lookup<scalar>("r0");
-    sigma0_ = coeffs.lookup<scalar>("sigma0");
-
-    r1_ = coeffs.lookup<scalar>("r1");
-    sigma1_ = coeffs.lookup<scalar>("sigma1");
+    r1_ = dict.lookup<scalar>("r1");
+    sigma1_ = dict.lookup<scalar>("sigma1");
 
     J0_ = J(0, r0_, sigma0_);
     J1_ = J(0, r1_, sigma1_);
 
-    integral_ = 2.0*pi*J0_;
+    const scalar integral = 2.0*pi*J0_;
 
     const scalar r2 =
         (1.0 - alpha_)*K(r0_, sigma0_)/J0_
       + alpha_*K(r1_, sigma1_)/J1_;
 
-    D4Sigma_ = 4.0*Foam::sqrt(0.5*r2);
+    metrics_.reset
+    (
+        integral,
+        0,
+        0,
+        0.5*integral*r2,
+        0.5*integral*r2,
+        0
+    );
 
     scalar rMax =
         max
@@ -108,7 +113,7 @@ Foam::heatSourceProfiles::nLightAFXProfile::nLightAFXProfile
         (epsilonR > epsilon ? rMin : rMax) = R;
     }
 
-    profileBb_ =
+    bounds_ =
         boundBox
         (
             point(-rMax, -rMax, 0),
@@ -117,7 +122,7 @@ Foam::heatSourceProfiles::nLightAFXProfile::nLightAFXProfile
 }
 
 
-inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::J
+inline Foam::scalar Foam::heatSourceProfiles::nLightAFX::J
 (
     const scalar R,
     const scalar r,
@@ -138,7 +143,7 @@ inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::J
 }
 
 
-inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::K
+inline Foam::scalar Foam::heatSourceProfiles::nLightAFX::K
 (
     const scalar r,
     const scalar sigma
@@ -155,7 +160,7 @@ inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::K
 }
 
 
-inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::cutoff
+inline Foam::scalar Foam::heatSourceProfiles::nLightAFX::cutoff
 (
     const scalar r,
     const scalar sigma,
@@ -174,7 +179,7 @@ inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::cutoff
 }
 
 
-inline Foam::scalar Foam::heatSourceProfiles::nLightAFXProfile::weight
+inline Foam::scalar Foam::heatSourceProfiles::nLightAFX::weight
 (
     const scalar x,
     const scalar y

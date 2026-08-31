@@ -3,6 +3,9 @@ paths:
   template: template
   campaign: campaign
 
+D4Sigma: areaEquivalent
+isotherm: liquidus
+
 profiles:
   measured_beam:
     file: template/constant/beam_profile.txt
@@ -10,7 +13,6 @@ profiles:
 case:
   command: ./Allrun
   keep_successful: false
-  melt_pool_isovalue: liquidus
 
 calibration:
   token: nIntercept

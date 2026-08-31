@@ -24,14 +24,13 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::movingBeams
+    Foam::movingBeam
 
 Description
     Class for individual moving beam heat sources
 
 SourceFiles
     movingBeam.C
-    calculateQDot.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,13 +39,10 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include <fstream>
-#include "fvc.H"
-#include "pathVector.H"
-#include "HashTable.H"
-#include "absorptionModel.H"
+#include "dictionary.H"
 #include "DynamicList.H"
-#include "meshSearch.H"
+#include "pathVector.H"
+#include "Time.H"
 
 namespace Foam
 {
@@ -61,17 +57,8 @@ private:
 
     // Private data
 
-        //- Name of beam
-        const word& sourceName_;
-
-        //- Main moving heat source dictionary
-        const dictionary& dict_;
-
         //- Run time information
         const Time& runTime_;
-
-        //- Individual beam sub-dict
-        const dictionary& beamDict_;
 
         //- List of beam pathVectors
         DynamicList<pathVector> path_;
@@ -104,48 +91,17 @@ public:
     //- Runtime type information
     TypeName("movingBeam");
 
-    // Declare run-time constructor selection table
-    declareRunTimeSelectionTable
-    (
-        autoPtr,
-        movingBeam,
-        dictionary,
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const Time& runTime
-        ),
-        (sourceName, dict, runTime)
-    );
-
     // Constructors
 
         // Construct from time and dictionary
         movingBeam
         (
-            const word& sourceName,
-            const dictionary& dict,
+            const dictionary& sourceDict,
             const Time& runTime
         );
 
         //- Disallow default bitwise copy construction
         movingBeam(const movingBeam&);
-
-    // Selectors
-
-        //- Return a reference to the selected phaseChange model
-        static autoPtr<movingBeam> New
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const Time& runTime
-        )
-        {
-            return autoPtr<movingBeam>
-            (
-                new movingBeam(sourceName, dict, runTime)
-            );
-        }
 
     //- Destructor
     virtual ~movingBeam()
@@ -196,7 +152,7 @@ public:
         void move(const scalar time);
 
         //- Read the path file
-        void readPath();
+        void readPath(const fileName& pathName);
 };
 
 

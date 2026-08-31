@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -25,63 +25,88 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "timeStep.H"
+#include "exponential.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace refinementModels
+namespace heatSourceProjections
 {
-    defineTypeNameAndDebug(timeStep, 0);
+    defineTypeNameAndDebug(exponential, 0);
     addToRunTimeSelectionTable
     (
-        refinementModel,
-        timeStep,
+        heatSourceProjection,
+        exponential,
         dictionary
     );
 }
 }
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::refinementModels::timeStep::timeStep
+Foam::heatSourceProjections::exponential::exponential
 (
-    const PtrList<movingHeatSource>& sources,
-    const dictionary& dict,
-    const fvMesh& mesh
+    const dictionary& dict
 )
 :
-    refinementModel(typeName, sources, dict, mesh)
+    nSlope_(0),
+    nIntercept_(0),
+    depth_(0),
+    k_(1),
+    integral_(0),
+    zMin_(0)
 {
-}
-
-
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-void Foam::refinementModels::timeStep::update()
-{
-    refinementModel::markTemperature();
-
-    dimensionedScalar nextTime_ = mesh_.time() + mesh_.time().deltaT();
-
-    refinementModel::markScanPathTime(nextTime_.value());
+    nSlope_ = dict.lookup<scalar>("nSlope");
+    nIntercept_ = dict.lookup<scalar>("nIntercept");
 
 }
 
 
-bool Foam::refinementModels::timeStep::read()
+void Foam::heatSourceProjections::exponential::update
+(
+    const scalar depth,
+    const scalar aspectRatio,
+    const scalar tolerance
+)
 {
-    if (refinementModel::read())
+    depth_ = depth;
+
+    const scalar n =
+        min
+        (
+            max
+            (
+                nSlope_*std::log2(max(aspectRatio, VSMALL)) + nIntercept_,
+                0.0
+            ),
+            9.0
+        );
+
+    k_ = Foam::pow(2.0, n);
+
+    integral_ =
+        depth_*Foam::tgamma(1.0/k_)
+       /(k_*Foam::pow(3.0, 1.0/k_));
+
+    zMin_ =
+       -depth_
+       *Foam::pow
+        (
+            invIncGammaRatio_P(1.0/k_, 1.0 - tolerance)/3.0,
+            1.0/k_
+        );
+}
+
+
+inline Foam::scalar Foam::heatSourceProjections::exponential::weight
+(
+    const scalar z
+) const
+{
+    if (z > 0)
     {
-        return true;
+        return 0;
     }
-    else
-    {
-        return false;
-    }
-}
 
+    return Foam::exp(-3.0*Foam::pow(-z/depth_, k_));
+}
 
 // ************************************************************************* //

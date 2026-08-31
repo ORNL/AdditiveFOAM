@@ -70,31 +70,32 @@ Defines the base computational mesh.
 The tutorial uses one heat source:
 
 ```foam
-sources (beam);
+sources { beam { /* source definition */ } }
 ```
 
 The source uses constant absorptivity and a `superGaussian` heat source:
 
 ```foam
-beam
+sources
 {
-    pathName            scanPath;
-
-    absorptionModel     constant;
-
-    constantCoeffs
+  beam
+  {
+    path scanPath;
+    absorption
     {
-        eta             0.33;
+        model constant;
+        eta   0.33;
     }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
+    heatSource
     {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        model   superGaussian;
+        radius  (85.0e-6 85.0e-6);
+        definition secondMoment;
+        depth   30e-6;
+        k       2.0;
+        nPoints (10 10 10);
     }
+  }
 }
 ```
 
@@ -108,10 +109,11 @@ Constant absorptivity applied to the laser power from the scan path.
 
 Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a Gaussian-like source.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the heat source scale dimensions used by the moving heat source
-integration. For `k = 2`, the lateral components are `D4Sigma/2`.
+Set the lateral radius and axial depth. The optional `definition` is `e2`
+(default) or `secondMoment`; a second-moment radius is half its D4Sigma
+diameter.
 
 `tolerance`
 
@@ -128,11 +130,10 @@ Sets the target sub-cell spacing by dividing the retained source bounds by
 This tutorial has the option to use the `targetCellLoad` refinement model:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    model                   none;
+    //model                 targetCellLoad;
 
     refinementTemperature   1000;
 
@@ -141,13 +142,10 @@ refinementModel
         beam                (85.0e-6 85.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 ```
 
@@ -156,7 +154,7 @@ average cell load per processor.
 
 ### Coefficients
 
-`refinementModel`
+`model`
 
 Selects the refinement model. `targetCellLoad` projects refinement ahead along
 the scan path and adjusts the projected volume to target a cell count per

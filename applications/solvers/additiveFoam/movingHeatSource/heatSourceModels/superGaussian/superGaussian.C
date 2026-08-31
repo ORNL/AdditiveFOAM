@@ -22,14 +22,12 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "superGaussian.H"
 #include "superGaussianProfile.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#include "mathematicalConstants.H"
 
 namespace Foam
 {
@@ -42,45 +40,73 @@ namespace heatSourceModels
 
 using Foam::constant::mathematical::pi;
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
 Foam::heatSourceModels::superGaussian::superGaussian
 (
-    const word& sourceName,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    heatSourceModel(typeName, sourceName, dict, mesh),
-    dimensions_(vector::zero),
-    k_(1),
-    s_(vector::zero)
+    heatSourceModel(dict),
+    radius_(dict.lookup<vector2D>("radius")),
+    k_(dict.lookup<scalar>("k")),
+    coefficient_
+    (
+        heatSourceProfiles::superGaussian::coefficient(dict, k_)
+    ),
+    cosTheta_(0),
+    sinTheta_(0),
+    metrics_()
 {
-    dimensions_ = heatSourceModelCoeffs_.lookup<vector>("dimensions");
-    k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
+    const scalar variance =
+        0.5*Foam::tgamma(4.0/k_)/Foam::tgamma(2.0/k_);
 
-    minimumDepth_ = dimensions_.z();
-    depth_ = minimumDepth_;
+    const scalar azimuth =
+        dict.lookupOrDefault<scalar>("azimuth", 0)*pi/180.0;
 
-    D4Sigma_ =
-        heatSourceProfiles::superGaussianProfile::D4Sigma
-        (
-            dimensions_.x(),
-            dimensions_.y(),
-            k_
-        );
+    cosTheta_ = Foam::cos(azimuth);
 
-    updateSource();
+    sinTheta_ = Foam::sin(azimuth);
+
+    const scalar sx2 = sqr(radius_.x())/coefficient_;
+
+    const scalar sy2 = sqr(radius_.y())/coefficient_;
+
+    const scalar integral =
+        pi*radius_.x()*radius_.y()/coefficient_
+       *Foam::tgamma(1.0 + 2.0/k_);
+
+    const scalar varianceX =
+        sqr(cosTheta_)*sx2*variance
+      + sqr(sinTheta_)*sy2*variance;
+
+    const scalar varianceY =
+        sqr(sinTheta_)*sx2*variance
+      + sqr(cosTheta_)*sy2*variance;
+
+    const scalar covariance =
+        cosTheta_*sinTheta_*(sx2 - sy2)*variance;
+
+    metrics_.reset
+    (
+        integral,
+        0,
+        0,
+        integral*varianceX,
+        integral*varianceY,
+        integral*covariance
+    );
+
+    update(depth_, 0);
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-void Foam::heatSourceModels::superGaussian::updateSource()
+void Foam::heatSourceModels::superGaussian::update
+(
+    const scalar depth,
+    const scalar
+)
 {
-    dimensions_.z() = depth_;
-
-    s_ = dimensions_/Foam::pow(2.0, 1.0/k_);
+    sourceDepth_ = depth;
 
     const scalar fMax =
         Foam::pow
@@ -89,11 +115,29 @@ void Foam::heatSourceModels::superGaussian::updateSource()
             1.0/k_
         );
 
-    sourceBb_ =
+    const scalar xMax =
+        fMax/Foam::sqrt(coefficient_)
+       *Foam::sqrt
+        (
+            sqr(radius_.x()*cosTheta_)
+          + sqr(radius_.y()*sinTheta_)
+        );
+
+    const scalar yMax =
+        fMax/Foam::sqrt(coefficient_)
+       *Foam::sqrt
+        (
+            sqr(radius_.x()*sinTheta_)
+          + sqr(radius_.y()*cosTheta_)
+        );
+
+    const scalar zMax = fMax*sourceDepth_/Foam::pow(2.0, 1.0/k_);
+
+    bounds_ =
         boundBox
         (
-            point(-fMax*s_.x(), -fMax*s_.y(), -fMax*s_.z()),
-            point(fMax*s_.x(), fMax*s_.y(), 0)
+            point(-xMax, -yMax, -zMax),
+            point(xMax, yMax, 0)
         );
 
     V0_ =
@@ -101,57 +145,35 @@ void Foam::heatSourceModels::superGaussian::updateSource()
         (
             "V0",
             dimVolume,
-            (2.0/3.0)*s_.x()*s_.y()*s_.z()*pi
+            (2.0/3.0)*pi*radius_.x()*radius_.y()*sourceDepth_
+           /(coefficient_*Foam::pow(2.0, 1.0/k_))
            *Foam::tgamma(1.0 + 3.0/k_)
         );
 }
 
 
-void Foam::heatSourceModels::superGaussian::update()
-{
-    updateDepth();
-    updateSource();
-}
-
-
-inline Foam::scalar
-Foam::heatSourceModels::superGaussian::weight(const vector& r) const
+Foam::scalar Foam::heatSourceModels::superGaussian::weight
+(
+    const vector& r
+) const
 {
     if (r.z() > 0)
     {
         return 0;
     }
 
-    return Foam::exp(-Foam::pow(magSqr(cmptDivide(r, s_)), k_/2.0));
+    const scalar x = cosTheta_*r.x() + sinTheta_*r.y();
+
+    const scalar y = -sinTheta_*r.x() + cosTheta_*r.y();
+
+    const scalar radiusSqr =
+        sqr(x/radius_.x()) + sqr(y/radius_.y());
+
+    const scalar f =
+        coefficient_*radiusSqr
+      + Foam::pow(2.0, 2.0/k_)*sqr(r.z()/sourceDepth_);
+
+    return Foam::exp(-Foam::pow(f, k_/2.0));
 }
-
-bool Foam::heatSourceModels::superGaussian::read()
-{
-    if (heatSourceModel::read())
-    {
-        heatSourceModelCoeffs_.lookup("dimensions") >> dimensions_;
-        heatSourceModelCoeffs_.lookup("k") >> k_;
-
-        minimumDepth_ = dimensions_.z();
-        depth_ = max(minimumDepth_, isoDepth_);
-
-        D4Sigma_ =
-            heatSourceProfiles::superGaussianProfile::D4Sigma
-            (
-                dimensions_.x(),
-                dimensions_.y(),
-                k_
-            );
-
-        updateSource();
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
 
 // ************************************************************************* //

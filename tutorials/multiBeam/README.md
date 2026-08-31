@@ -15,7 +15,7 @@ The original AMB2018-02-B tutorial contains one moving heat source. This tutoria
 uses two moving heat sources:
 
 ```foam
-sources (beam1 beam2);
+sources { beam1 { /* ... */ } beam2 { /* ... */ } }
 ```
 
 The two beams follow the same scan direction, power, speed, and heat source
@@ -95,53 +95,33 @@ Defines the base computational mesh.
 This tutorial uses two heat sources:
 
 ```foam
-sources (beam1 beam2);
+sources { beam1 { /* ... */ } beam2 { /* ... */ } }
 ```
 
 Both beams use the same heat source parameters as the calibrated AMB2018-02-B
 single-beam case.
 
 ```foam
-beam1
+sources
 {
-    pathName            scanPath_1;
-
-    absorptionModel     constant;
-
-    constantCoeffs
+  beam1
+  {
+    path scanPath_1;
+    absorption
     {
-        eta             0.33;
+        model constant;
+        eta   0.33;
     }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
+    heatSource
     {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        model superGaussian;
+        radius (85.0e-6 85.0e-6);
+        depth 30e-6;
+        k 2.0;
+        nPoints (10 10 10);
     }
-}
-
-beam2
-{
-    pathName            scanPath_2;
-
-    absorptionModel     constant;
-
-    constantCoeffs
-    {
-        eta             0.33;
-    }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
-    {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
-    }
+  }
+  beam2 { /* identical, with path scanPath_2; */ }
 }
 ```
 
@@ -156,10 +136,10 @@ Constant absorptivity applied to the laser power from each scan path.
 Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a
 Gaussian-like source.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the heat source dimensions used by the moving heat source integration,
-with lateral components equal to `D4Sigma/2` when `k = 2`.
+Set the lateral radius and axial depth. `definition` optionally selects `e2`
+(default) or `secondMoment`.
 
 `tolerance`
 
@@ -180,11 +160,10 @@ name and are applied relative to each path interval for each beam.
 A representative refinement setup is:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    model                   none;
+    //model                 targetCellLoad;
 
     refinementTemperature   1000;
 
@@ -194,19 +173,16 @@ refinementModel
         beam2               (85.0e-6 85.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 ```
 
 ### Coefficients
 
-`refinementModel`
+`model`
 
 Selects the refinement model. `targetCellLoad` projects refinement ahead along
 the scan paths and adjusts the projected volume to target a cell count per

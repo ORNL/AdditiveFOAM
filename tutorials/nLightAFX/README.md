@@ -2,7 +2,7 @@
 
 ## Case description
 
-This tutorial demonstrates a `projectedHeatSource` with an `nLightAFX` planar
+This tutorial demonstrates a `projected` heat source with an `nLightAFX` planar
 profile and an `exponential` axial projection. The profile represents an
 nLight AFX beam as a linear combination of two Gaussian-ring components.
 
@@ -50,35 +50,32 @@ Defines the laser path, laser power, and scan speed or dwell time.
 
 The tutorial uses:
 
-```foam
-heatSourceModel projectedHeatSource;
-```
-
-The corresponding coefficient dictionary is:
+The heat-source dictionary is:
 
 ```foam
 #include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
-projectedHeatSourceCoeffs
+widthReference D4Sigma;
+depthReference isotherm;
+
+heatSource
 {
-    profile         nLightAFX;
-    projection      exponential;
+    model       projected;
+    depth       20.0e-6;
+    nPoints     (10 10 10);
 
-    minimumDepth    20.0e-6;
-
-    nLightAFXCoeffs
+    profile
     {
+        model   nLightAFX;
         $Index6;
     }
 
-    exponentialCoeffs
+    projection
     {
+        model       exponential;
         nSlope      0.0;
         nIntercept  1.0;
     }
-
-    transient   true;
-    nPoints     (10 10 10);
 }
 ```
 
@@ -136,8 +133,8 @@ n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `a` is the ratio between the current heat source depth and lateral heat
-source radius, `D4Sigma/2`, and `k` is the exponent in the axial decay.
+where `a` is twice the current heat-source depth divided by the selected
+D4Sigma reference width, and `k` is the exponent in the axial decay.
 
 `tolerance`
 
@@ -149,14 +146,19 @@ bounds. The default `1e-3` retains at least 99.9% of the source power.
 Sets the target sub-cell spacing by dividing the retained source bounds by
 `nPoints`.
 
-`transient`
+`widthReference`
 
-Enables heat-source depth adjustment using the depth of the selected
-temperature isotherm. The solver reports this calculated value as `isoDepth`.
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
 
-`isoValue`
+`depthReference`
 
-Optional temperature isovalue used to calculate `isoDepth`. If omitted, the
+Selects `constant` (default) or `isotherm`. The solver reports the calculated
+reference depth when `isotherm` is selected.
+
+`isotherm`
+
+Optional temperature used by the isotherm depth reference. If omitted, the
 material liquidus from `constant/transportProperties` is used.
 
 ## Example mode
@@ -178,8 +180,9 @@ Index3
 The selected profile is combined with the projection coefficients:
 
 ```foam
-exponentialCoeffs
+projection
 {
+    model       exponential;
     nSlope      0.0;
     nIntercept  1.0;
 }

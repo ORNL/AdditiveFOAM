@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -23,74 +23,37 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Class
-    Foam::heatSourceModels::superGaussian
-
-Description
-    One-sided volumetric super-Gaussian heat source. definition applies to
-    radius; depth always specifies the axial depth.
-
-SourceFiles
-    superGaussian.C
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef superGaussian_H
-#define superGaussian_H
+#include "heatSourceProfile.H"
 
-#include "heatSourceModel.H"
-
-namespace Foam
+Foam::autoPtr<Foam::heatSourceProfile> Foam::heatSourceProfile::New
+(
+    const dictionary& dict,
+    const fvMesh& mesh,
+    const scalar tolerance
+)
 {
-namespace heatSourceModels
-{
+    const word profileType(dict.lookup("model"));
 
-class superGaussian
-:
-    public heatSourceModel
-{
-    vector2D radius_;
+    Info<< "Selecting heatSourceProfile " << profileType << endl;
 
-    scalar k_;
+    const auto cstrIter = dictionaryConstructorTablePtr_->find(profileType);
 
-    scalar coefficient_;
-
-    scalar cosTheta_;
-
-    scalar sinTheta_;
-
-    profileMetrics metrics_;
-
-public:
-
-    TypeName("superGaussian");
-
-    superGaussian
-    (
-        const dictionary& dict,
-        const fvMesh& mesh
-    );
-
-    virtual ~superGaussian()
-    {}
-
-    virtual void update
-    (
-        const scalar depth,
-        const scalar aspectRatio
-    );
-
-    virtual scalar weight(const vector& r) const;
-
-    inline virtual const profileMetrics& metrics() const
+    if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
-        return metrics_;
+        FatalErrorInFunction
+            << "Unknown " << heatSourceProfile::typeName << " type "
+            << profileType << nl << nl
+            << "Valid heatSourceProfiles are:" << endl
+            << dictionaryConstructorTablePtr_->sortedToc()
+            << exit(FatalError);
     }
-};
 
-} // End namespace heatSourceModels
-} // End namespace Foam
-
-#endif
+    return autoPtr<heatSourceProfile>
+    (
+        cstrIter()(dict, mesh, tolerance)
+    );
+}
 
 // ************************************************************************* //

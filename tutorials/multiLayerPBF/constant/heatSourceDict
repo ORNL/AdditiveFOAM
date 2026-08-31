@@ -15,36 +15,39 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam);
-
-beam
+sources
 {
-    pathName            scanPath;
- 
-    absorptionModel     Kelly;    
-    KellyCoeffs
+    beam
     {
-        geometry        cone;
-        eta0            0.28;
-        etaMin          0.35;
-    }   
+        path            scanPath;
+        widthReference  D4Sigma;
+        depthReference  isotherm;
 
-    heatSourceModel     modifiedSuperGaussian;
-    modifiedSuperGaussianCoeffs
-    {
-        dimensions      (40.0e-6 40.0e-6 20.0e-6);
-        m               2.72;
-        k               7.95;
-        transient       true;
-        nPoints         (10 10 10);
+        absorption
+        {
+            model       Kelly;
+            geometry    cone;
+            eta0        0.28;
+            etaMin      0.35;
+        }
+
+        heatSource
+        {
+            model       modifiedSuperGaussian;
+            radius      (40.0e-6 40.0e-6);
+            depth       20.0e-6;
+            m           2.72;
+            k           7.95;
+            nPoints     (10 10 10);
+        }
     }
 }
 
-refinementModel
+refinement
 {
-    refinementModel         none;
+    model                   none;
 
-    //refinementModel         targetCellLoad;
+    //model                 targetCellLoad;
     
     refinementTemperature   1000;
 
@@ -53,13 +56,10 @@ refinementModel
         beam                (85.0e-6 85.0e-6 150e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 
 // ************************************************************************* //

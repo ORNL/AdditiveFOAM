@@ -408,7 +408,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    const tabulatedProfile profile(outputFile);
+    const heatSourceProfiles::tabulated profile(outputFile);
+    const profileMetrics& metrics = profile.metrics();
     const scalar micronsToMetres = 1e-6;
 
     Info<< "Input: " << inputFile << nl
@@ -417,13 +418,10 @@ int main(int argc, char *argv[])
         << "Spacing: " << dx << " x " << dy << " m" << nl
         << "ROI fill factor: " << roiFillFactor << nl
         << "ROI integral: " << integral << nl
-        << "Normalized integral: " << profile.integral() << nl
-        << "Centroid: (" << profile.centroidX() << ' '
-        << profile.centroidY() << ") m" << nl
-        << "D4Sigma: " << profile.D4Sigma() << " m" << nl
-        << "D4Sigma major: " << profile.D4SigmaMajor() << " m" << nl
-        << "D4Sigma minor: " << profile.D4SigmaMinor() << " m" << nl
-        << "Azimuth: " << profile.azimuth() << " rad" << endl;
+        << "Normalized integral: " << metrics.integral() << nl
+        << "Centroid: " << metrics.centroid() << " m" << nl
+        << "D4Sigma (major minor): " << metrics.D4Sigma() << " m" << nl
+        << "Azimuth: " << metrics.azimuth() << " rad" << endl;
 
     if
     (
@@ -460,9 +458,9 @@ int main(int argc, char *argv[])
         const scalar primesD4Sigma =
             2.0*Foam::sqrt(primesRadiusA*primesRadiusB);
 
-        const scalar majorRadius = 0.5*profile.D4SigmaMajor();
-        const scalar minorRadius = 0.5*profile.D4SigmaMinor();
-        const scalar theta = profile.azimuth();
+        const scalar majorRadius = 0.5*metrics.D4Sigma().x();
+        const scalar minorRadius = 0.5*metrics.D4Sigma().y();
+        const scalar theta = metrics.azimuth();
 
         const scalar radiusX =
             Foam::sqrt
@@ -490,8 +488,14 @@ int main(int argc, char *argv[])
             phi +=
                 phi > 0
               ? -0.5*pi
-              : 0.5*pi;
+                : 0.5*pi;
         }
+
+        const scalar D4Sigma =
+            Foam::sqrt
+            (
+                metrics.D4Sigma().x()*metrics.D4Sigma().y()
+            );
 
         Info<< nl
             << "Beam statistics: PRIMES / converted / difference" << nl
@@ -508,8 +512,8 @@ int main(int argc, char *argv[])
             << radiusY/micronsToMetres << " / "
             << (radiusY - primesRadiusY)/micronsToMetres << " um" << nl
             << "D4Sigma: " << primesD4Sigma/micronsToMetres << " / "
-            << profile.D4Sigma()/micronsToMetres << " / "
-            << (profile.D4Sigma() - primesD4Sigma)/micronsToMetres
+            << D4Sigma/micronsToMetres << " / "
+            << (D4Sigma - primesD4Sigma)/micronsToMetres
             << " um" << nl
             << "Azimuth: " << primesPhi/degreesToRadians << " / "
             << phi/degreesToRadians << " / "
@@ -529,8 +533,8 @@ int main(int argc, char *argv[])
             parseScalarValue(metadata["Window center position y"]);
 
         Info<< "Centroid in PRIMES coordinates: ("
-            << windowCenterX + profile.centroidX()/micronsToMetres << ' '
-            << windowCenterY + profile.centroidY()/micronsToMetres
+            << windowCenterX + metrics.centroid().x()/micronsToMetres << ' '
+            << windowCenterY + metrics.centroid().y()/micronsToMetres
             << ") um" << endl;
     }
 

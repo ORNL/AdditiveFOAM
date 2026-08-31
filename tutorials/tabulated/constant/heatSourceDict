@@ -15,49 +15,47 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam);
-
-beam
+sources
 {
-    pathName            scanPath;    
-
-    absorptionModel     constant;
-    
-    constantCoeffs
+    beam
     {
-        eta             0.2;
-    }
-    
-    heatSourceModel     projectedHeatSource;
-        
-    projectedHeatSourceCoeffs
-    {
-        profile         tabulated;
-        projection      exponential;
+        path            scanPath;
+        widthReference  D4Sigma;
 
-        minimumDepth    5.0e-5;
-
-        tabulatedCoeffs
+        absorption
         {
-            file        "beamProfile.txt";
+            model       constant;
+            eta         0.2;
         }
 
-        exponentialCoeffs
+        heatSource
         {
-            nSlope      0;
-            nIntercept  1;
-        }
+            model       projected;
+            depth       5.0e-5;
+            tolerance   1.0e-3;
+            nPoints     (10 10 10);
 
-        tolerance       1.0e-3;
-        nPoints         (10 10 10);
+            profile
+            {
+                model   tabulated;
+                file    "beamProfile.txt";
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0;
+                nIntercept  1;
+            }
+        }
     }
 }
 
-refinementModel
+refinement
 {
-    refinementModel         none;
+    model                   none;
 
-    //refinementModel         targetCellLoad;
+    //model                 targetCellLoad;
     
     refinementTemperature   1000;
 
@@ -66,13 +64,10 @@ refinementModel
         beam                (200.0e-6 200.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 
 // ************************************************************************* //

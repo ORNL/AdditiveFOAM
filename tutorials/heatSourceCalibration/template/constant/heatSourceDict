@@ -14,50 +14,50 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam);
-
-beam
+sources
 {
-    pathName            scanPath;
-
-    absorptionModel     Kelly;
-
-    KellyCoeffs
+    beam
     {
-        eta0                0.27;
-        etaMin              0.27;
-        aspectRatioSwitch   0.0;
-        geometry            cylinder;
-    }
+        path            scanPath;
+        widthReference  D4Sigma;
+        D4Sigma         <<D4Sigma>>;
+        depthReference  isotherm;
+        isotherm        <<isotherm>>;
 
-    heatSourceModel     projectedHeatSource;
-
-    projectedHeatSourceCoeffs
-    {
-        profile         tabulated;
-        projection      exponential;
-
-        minimumDepth    20.0e-6;
-
-        tabulatedCoeffs
+        absorption
         {
-            file        "beam_profile.txt";
+            model               Kelly;
+            eta0                0.27;
+            etaMin              0.27;
+            aspectRatioSwitch   0.0;
+            geometry            cylinder;
         }
 
-        exponentialCoeffs
+        heatSource
         {
-            nSlope      0.0;
-            nIntercept  <<nIntercept>>;
-        }
+            model               projected;
+            depth               20.0e-6;
+            nPoints             (10 10 10);
 
-        transient       true;
-        nPoints         (10 10 10);
+            profile
+            {
+                model   tabulated;
+                file    "beam_profile.txt";
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0.0;
+                nIntercept  <<nIntercept>>;
+            }
+        }
     }
 }
 
-refinementModel
+refinement
 {
-    refinementModel         none;
+    model                   none;
 
     refinementTemperature   1000;
 
@@ -66,13 +66,10 @@ refinementModel
         beam                (100.0e-6 100.0e-6 600e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 
 // ************************************************************************* //

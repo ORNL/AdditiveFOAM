@@ -41,6 +41,7 @@ SourceFiles
 #include "autoPtr.H"
 #include "boundBox.H"
 #include "dictionary.H"
+#include "profileMetrics.H"
 #include "runTimeSelectionTables.H"
 
 namespace Foam
@@ -95,14 +96,11 @@ public:
         //- Return the profile weight
         virtual scalar weight(const scalar x, const scalar y) const = 0;
 
-        //- Return the planar profile integral
-        virtual scalar integral() const = 0;
-
-        //- Return the area-equivalent second-moment diameter
-        virtual scalar D4Sigma() const = 0;
+        //- Return metrics of the intensity profile in the beam plane
+        virtual const profileMetrics& metrics() const = 0;
 
         //- Return the planar profile bounds
-        virtual const boundBox& profileBb() const = 0;
+        virtual const boundBox& bounds() const = 0;
 
     // Member Operators
 

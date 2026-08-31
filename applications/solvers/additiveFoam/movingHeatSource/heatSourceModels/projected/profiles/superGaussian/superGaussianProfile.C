@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,20 +24,19 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 \*---------------------------------------------------------------------------*/
 
-#include "modifiedSuperGaussian.H"
 #include "superGaussianProfile.H"
 #include "addToRunTimeSelectionTable.H"
 #include "mathematicalConstants.H"
 
 namespace Foam
 {
-namespace heatSourceModels
+namespace heatSourceProfiles
 {
-    defineTypeNameAndDebug(modifiedSuperGaussian, 0);
+    defineTypeNameAndDebug(superGaussian, 0);
     addToRunTimeSelectionTable
     (
-        heatSourceModel,
-        modifiedSuperGaussian,
+        heatSourceProfile,
+        superGaussian,
         dictionary
     );
 }
@@ -45,27 +44,50 @@ namespace heatSourceModels
 
 using Foam::constant::mathematical::pi;
 
-Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
+Foam::scalar
+Foam::heatSourceProfiles::superGaussian::coefficient
 (
     const dictionary& dict,
-    const fvMesh& mesh
+    const scalar k
+)
+{
+    const word definition(dict.lookupOrDefault<word>("definition", "e2"));
+
+    if (definition == "e2")
+    {
+        return Foam::pow(2.0, 2.0/k);
+    }
+    if (definition == "secondMoment")
+    {
+        return
+            2.0*Foam::tgamma(4.0/k)/Foam::tgamma(2.0/k);
+    }
+
+    FatalIOErrorInFunction(dict)
+        << "definition must be e2 or secondMoment, found " << definition
+        << exit(FatalIOError);
+
+    return 0;
+}
+
+
+Foam::heatSourceProfiles::superGaussian::superGaussian
+(
+    const dictionary& dict,
+    const fvMesh&,
+    const scalar tolerance
 )
 :
-    heatSourceModel(dict),
     radius_(dict.lookup<vector2D>("radius")),
     k_(dict.lookup<scalar>("k")),
-    m_(dict.lookup<scalar>("m")),
-    coefficient_
-    (
-        heatSourceProfiles::superGaussian::coefficient(dict, k_)
-    ),
+    coefficient_(coefficient(dict, k_)),
     cosTheta_(0),
     sinTheta_(0),
-    metrics_()
+    metrics_(),
+    bounds_(point::zero, point::zero)
 {
     const scalar variance =
         0.5*Foam::tgamma(4.0/k_)/Foam::tgamma(2.0/k_);
-
     const scalar azimuth =
         dict.lookupOrDefault<scalar>("azimuth", 0)*pi/180.0;
     cosTheta_ = Foam::cos(azimuth);
@@ -95,22 +117,10 @@ Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
         integral*covariance
     );
 
-    update(depth_, 0);
-}
-
-
-void Foam::heatSourceModels::modifiedSuperGaussian::update
-(
-    const scalar depth,
-    const scalar
-)
-{
-    sourceDepth_ = depth;
-
     const scalar fMax =
         Foam::pow
         (
-            invIncGammaRatio_P(2.0/k_, 1.0 - tolerance_),
+            invIncGammaRatio_P(2.0/k_, 1.0 - tolerance),
             1.0/k_
         );
     const scalar xMax =
@@ -129,47 +139,23 @@ void Foam::heatSourceModels::modifiedSuperGaussian::update
         );
 
     bounds_ =
-        boundBox
-        (
-            point(-xMax, -yMax, -sourceDepth_),
-            point(xMax, yMax, 0)
-        );
-
-    V0_ =
-        dimensionedScalar
-        (
-            "V0",
-            dimVolume,
-            metrics_.integral()*sourceDepth_
-           *Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
-           /Foam::tgamma(1.0 + 3.0/m_)
-        );
+        boundBox(point(-xMax, -yMax, 0), point(xMax, yMax, 0));
 }
 
 
-Foam::scalar Foam::heatSourceModels::modifiedSuperGaussian::weight
+Foam::scalar Foam::heatSourceProfiles::superGaussian::weight
 (
-    const vector& r
+    const scalar x,
+    const scalar y
 ) const
 {
-    if (r.z() > 0 || r.z() <= -sourceDepth_)
-    {
-        return 0;
-    }
-
-    const scalar g =
-        Foam::pow
-        (
-            1.0 - Foam::pow(-r.z()/sourceDepth_, m_),
-            1.0/m_
-        );
-    const scalar x = cosTheta_*r.x() + sinTheta_*r.y();
-    const scalar y = -sinTheta_*r.x() + cosTheta_*r.y();
+    const scalar xr = cosTheta_*x + sinTheta_*y;
+    const scalar yr = -sinTheta_*x + cosTheta_*y;
     const scalar radiusSqr =
         coefficient_
-       *(sqr(x/radius_.x()) + sqr(y/radius_.y()));
+       *(sqr(xr/radius_.x()) + sqr(yr/radius_.y()));
 
-    return Foam::exp(-Foam::pow(radiusSqr/sqr(g), k_/2.0));
+    return Foam::exp(-Foam::pow(radiusSqr, k_/2.0));
 }
 
 // ************************************************************************* //

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,66 +22,91 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
-#include "timeStep.H"
+#include "projected.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-namespace refinementModels
+namespace heatSourceModels
 {
-    defineTypeNameAndDebug(timeStep, 0);
+    defineTypeNameAndDebug(projected, 0);
     addToRunTimeSelectionTable
     (
-        refinementModel,
-        timeStep,
+        heatSourceModel,
+        projected,
         dictionary
     );
 }
 }
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
-Foam::refinementModels::timeStep::timeStep
+Foam::heatSourceModels::projected::projected
 (
-    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    refinementModel(typeName, sources, dict, mesh)
+    heatSourceModel(dict),
+    profile_
+    (
+        heatSourceProfile::New
+        (
+            dict.subDict("profile"),
+            mesh,
+            tolerance_/(1.0 + Foam::sqrt(1.0 - tolerance_))
+        )
+    ),
+    projection_(heatSourceProjection::New(dict.subDict("projection"))),
+    componentTolerance_
+    (
+        tolerance_/(1.0 + Foam::sqrt(1.0 - tolerance_))
+    )
 {
+    bounds_ = profile_->bounds();
+
+    Info<< "Beam-plane D4Sigma (major minor)="
+        << metrics().D4Sigma() << " m, azimuth="
+        << metrics().azimuth() << " rad" << endl;
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-void Foam::refinementModels::timeStep::update()
+void Foam::heatSourceModels::projected::update
+(
+    const scalar depth,
+    const scalar aspectRatio
+)
 {
-    refinementModel::markTemperature();
+    sourceDepth_ = depth;
 
-    dimensionedScalar nextTime_ = mesh_.time() + mesh_.time().deltaT();
+    projection_->update
+    (
+        sourceDepth_,
+        aspectRatio,
+        componentTolerance_
+    );
 
-    refinementModel::markScanPathTime(nextTime_.value());
+    bounds_.min().z() = projection_->zMin();
+    bounds_.max().z() = 0;
 
+    V0_ =
+        dimensionedScalar
+        (
+            "V0",
+            dimVolume,
+            metrics().integral()*projection_->integral()
+        );
 }
 
 
-bool Foam::refinementModels::timeStep::read()
+Foam::scalar Foam::heatSourceModels::projected::weight
+(
+    const vector& r
+) const
 {
-    if (refinementModel::read())
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return
+        projection_->weight(r.z())
+       *profile_->weight(r.x(), r.y());
 }
-
 
 // ************************************************************************* //

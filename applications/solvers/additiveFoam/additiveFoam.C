@@ -42,6 +42,12 @@ Description
 
 #include "fvmDiv.H"
 #include "fvmDdt.H"
+#include "fvcDdt.H"
+#include "fvcFlux.H"
+#include "fvcLaplacian.H"
+#include "fvcMeshPhi.H"
+#include "fvcReconstruct.H"
+#include "fvcSnGrad.H"
 #include "fvcSurfaceIntegrate.H"
 #include "fvcVolumeIntegrate.H"
 #include "fvmLaplacian.H"
@@ -56,7 +62,7 @@ Description
 #include "CrankNicolsonDdtScheme.H"
 
 #include "additiveFoamInfo.H"
-#include "movingHeatSourceModel.H"
+#include "movingHeatSources.H"
 #include "thermoPath.H"
 #include "interpolateXY.H"
 
@@ -82,7 +88,7 @@ int main(int argc, char *argv[])
     // Initialize time-stepping controls
     scalar DiNum = 0.0;
     scalar alphaCoNum = 0.0;
-    movingHeatSourceModel sources(mesh);
+    movingHeatSources sources(mesh);
 
     Info<< "\nStarting time loop\n" << endl;
 

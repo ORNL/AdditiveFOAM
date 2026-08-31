@@ -39,18 +39,16 @@ Description
 
     Example dictionary:
 
-    refinementModel
-    {
-        refinementModel         targetCellLoad;
-        refinementTemperature   1000;
-
-        buffers
+        refinement
         {
-            beam                (85e-6 85e-6 100e-6);
-        }
+            model                   targetCellLoad;
+            refinementTemperature   1000;
 
-        targetCellLoadCoeffs
-        {
+            buffers
+            {
+                beam                (85e-6 85e-6 100e-6);
+            }
+
             targetCellsPerProc          5000;
             nBufferVolumes              4;
             maxSearchIter               10;
@@ -83,15 +81,10 @@ class targetCellLoad
 :
     public Foam::refinementModel
 {
-    // Private Data
-
-        //- Coefficients dictionary
-        dictionary coeffs_;
-
     // Private Member Functions
 
-        //- Read model coefficients
-        void readCoeffs();
+        //- Read model controls
+        void readControls();
 
 
 protected:
@@ -146,7 +139,7 @@ public:
         //- Construct from components
         targetCellLoad
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

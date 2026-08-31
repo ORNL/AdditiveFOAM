@@ -63,6 +63,7 @@ functions
         enabled         true;
 
         scanPathAngle   0.0;
+        isoValues       (<<isotherm>>);
     }
 }
 

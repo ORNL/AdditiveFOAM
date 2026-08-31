@@ -2,7 +2,7 @@
 
 ## Case description
 
-This tutorial demonstrates a `projectedHeatSource` with a measured `tabulated`
+This tutorial demonstrates a `projected` heat source with a measured `tabulated`
 planar profile and an `exponential` axial projection. The nLight AFX Index 3
 profile was exported from PRIMES LaserDiagnosticsSoftware and converted to the
 AdditiveFOAM tabulated format with `primesToAdditiveFoam`.
@@ -116,33 +116,30 @@ radii and azimuth with the corresponding PRIMES header values.
 
 The tutorial uses:
 
-```foam
-heatSourceModel projectedHeatSource;
-```
-
-The corresponding coefficient dictionary is:
+The heat-source dictionary is:
 
 ```foam
-projectedHeatSourceCoeffs
+widthReference  D4Sigma;
+
+heatSource
 {
-    profile         tabulated;
-    projection      exponential;
+    model       projected;
+    depth       5.0e-5;
+    tolerance   1.0e-3;
+    nPoints     (10 10 10);
 
-    minimumDepth    5.0e-5;
-
-    tabulatedCoeffs
+    profile
     {
+        model       tabulated;
         file        "beamProfile.txt";
     }
 
-    exponentialCoeffs
+    projection
     {
+        model       exponential;
         nSlope      0;
         nIntercept  1;
     }
-
-    tolerance       1.0e-3;
-    nPoints         (10 10 10);
 }
 ```
 
@@ -153,25 +150,28 @@ projectedHeatSourceCoeffs
 Name of the tabulated two-dimensional beam file. Relative paths are interpreted
 relative to the `constant/` directory.
 
-`minimumDepth`
+`depth`
 
-Sets the minimum projected heat-source depth. The profile file determines the
+Sets the configured projected heat-source depth. The profile file determines the
 lateral characteristic size, interpolation bounds, normalization, and D4Sigma
 metrics.
 
 The profile integral and D4Sigma metrics use the exact raw moments of the
 bilinear interpolant, `Mpq = integral(x^p*y^q*I(x,y) dx dy)`.
 
-`transient`
+`widthReference`
 
-Enables transient heat-source depth adjustment based on the local melt-pool
-response.
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
 
-`isoValue`
+`depthReference`
 
-Optional temperature isovalue used by the transient projected heat-source
-closure. If omitted, the material liquidus from `constant/transportProperties`
-is used.
+Selects `constant` (default) or `isotherm` as the source depth reference.
+
+`isotherm`
+
+Optional temperature used by an isotherm depth reference. If omitted, the
+material liquidus from `constant/transportProperties` is used.
 
 `nSlope` and `nIntercept`
 
@@ -182,10 +182,11 @@ n = clip(nSlope*log2(a) + nIntercept, 0, 9)
 k = 2^n
 ```
 
-where `a = 2*depth/D4Sigma`. Here `D4Sigma` is the area-equivalent diameter,
-`sqrt(D4SigmaMajor*D4SigmaMinor)`. The source is applied below the beam
-plane with axial weight `exp(-3*(-z/depth)^k)`; its normalization uses the
-matching one-sided axial integral.
+where `a = 2*depth/width`. Profile metrics store D4Sigma as `(major minor)`;
+the source-level `D4Sigma` entry selects `areaEquivalent`, `major`, or `minor`
+for the reference width. The source is applied below the beam plane with axial
+weight `exp(-3*(-z/depth)^k)`; its normalization uses the matching one-sided
+axial integral.
 
 `tolerance`
 

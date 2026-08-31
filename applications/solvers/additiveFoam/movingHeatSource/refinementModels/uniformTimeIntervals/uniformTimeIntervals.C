@@ -49,20 +49,19 @@ namespace refinementModels
 
 Foam::refinementModels::uniformTimeIntervals::uniformTimeIntervals
 (
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
     Foam::refinementModel(typeName, sources, dict, mesh),
-    coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    nIntervals_(coeffs_.lookup<label>("intervals")),
+    nIntervals_(refinementDict_.lookup<label>("intervals")),
     intervalLength_(Zero),
     updateTime_(Zero)
 {
     if (nIntervals_ <= 0)
     {
-        FatalIOErrorInFunction(coeffs_)
+        FatalIOErrorInFunction(refinementDict_)
             << "Number of uniform scan-path intervals must be greater than "
             << "zero" << exit(FatalIOError);
     }
@@ -114,13 +113,11 @@ bool Foam::refinementModels::uniformTimeIntervals::read()
 {
     if (Foam::refinementModel::read())
     {
-        coeffs_ = refinementDict_.optionalSubDict(typeName + "Coeffs");
-
-        coeffs_.lookup("intervals") >> nIntervals_;
+        refinementDict_.lookup("intervals") >> nIntervals_;
 
         if (nIntervals_ <= 0)
         {
-            FatalIOErrorInFunction(coeffs_)
+            FatalIOErrorInFunction(refinementDict_)
                 << "Number of uniform scan-path intervals must be greater "
                 << "than zero" << exit(FatalIOError);
         }

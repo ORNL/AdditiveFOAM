@@ -24,10 +24,11 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceProfiles::superGaussianProfile
+    Foam::heatSourceProfiles::superGaussian
 
 Description
-    Planar super-Gaussian heat source profile.
+    Planar elliptical super-Gaussian intensity profile. radius contains the
+    local x/y radii and need not be ordered. definition is e2 or secondMoment.
 
 SourceFiles
     superGaussianProfile.C
@@ -38,87 +39,55 @@ SourceFiles
 #define superGaussianProfile_H
 
 #include "heatSourceProfile.H"
-#include "vector2D.H"
 
 namespace Foam
 {
 namespace heatSourceProfiles
 {
 
-class superGaussianProfile
+class superGaussian
 :
     public heatSourceProfile
 {
-    // Private Data
-
-        //- Heat source dimensions
-        vector2D dimensions_;
-
-        //- Shape coefficient
-        scalar k_;
-
-        //- Scaled heat source dimensions
-        vector2D s_;
-
-        //- Planar integral
-        scalar integral_;
-
-        //- Area-equivalent second-moment diameter
-        scalar D4Sigma_;
-
-        //- Planar profile bounds
-        boundBox profileBb_;
+    vector2D radius_;
+    scalar k_;
+    scalar coefficient_;
+    scalar cosTheta_;
+    scalar sinTheta_;
+    profileMetrics metrics_;
+    boundBox bounds_;
 
 public:
 
-    //- Runtime type information
     TypeName("superGaussian");
 
+    superGaussian
+    (
+        const dictionary& dict,
+        const fvMesh& mesh,
+        const scalar tolerance
+    );
 
-    // Constructors
+    static scalar coefficient
+    (
+        const dictionary& dict,
+        const scalar k
+    );
 
-        superGaussianProfile
-        (
-            const dictionary& dict,
-            const fvMesh& mesh,
-            const scalar tolerance
-        );
-
-    //- Destructor
-    virtual ~superGaussianProfile()
+    virtual ~superGaussian()
     {}
 
-    // Member Functions
+    virtual scalar weight(const scalar x, const scalar y) const;
 
-        //- Return the area-equivalent second-moment diameter
-        static scalar D4Sigma
-        (
-            const scalar x,
-            const scalar y,
-            const scalar k
-        );
+    inline virtual const profileMetrics& metrics() const
+    {
+        return metrics_;
+    }
 
-        virtual scalar weight
-        (
-            const scalar x,
-            const scalar y
-        ) const;
-
-        inline virtual scalar integral() const
-        {
-            return integral_;
-        }
-
-        inline virtual scalar D4Sigma() const
-        {
-            return D4Sigma_;
-        }
-
-        inline virtual const boundBox& profileBb() const
-        {
-            return profileBb_;
-        }
-
+    inline virtual const boundBox& bounds() const
+    {
+        return bounds_;
+    }
 };
 
 } // End namespace heatSourceProfiles
