@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of the the GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
@@ -35,11 +35,6 @@ namespace Foam
     defineTypeNameAndDebug(refinementModel, 0);
     defineRunTimeSelectionTable(refinementModel, dictionary);
 }
-
-const Foam::word Foam::refinementModel::refinementModelDictName
-(
-    "refinementModelDict"
-);
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -100,7 +95,7 @@ void Foam::refinementModel::readSourceBuffers()
 
     forAll(sources_, sourcei)
     {
-        buffersDict.lookup(sources_[sourcei].sourceName())
+        buffersDict.lookup(sources_[sourcei].name())
             >> sourceBuffers_[sourcei];
     }
 }
@@ -432,7 +427,7 @@ Foam::scalar Foam::refinementModel::minimumScanPathRefineVolume
 
 Foam::refinementModel::refinementModel
 (
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
@@ -441,8 +436,7 @@ Foam::refinementModel::refinementModel
 
     sources_(sources),
     mesh_(mesh),
-    heatSourceDict_(dict),
-    refinementDict_(heatSourceDict_.optionalSubDict("refinementModel")),
+    refinementDict_(dict.optionalSubDict("refinement")),
     maxRefinementLevel_(0),
     refinementTemperature_(GREAT),
     sourceBuffers_(sources.size(), vector::zero),
@@ -466,7 +460,7 @@ Foam::refinementModel::refinementModel
 Foam::refinementModel::refinementModel
 (
     const word& type,
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
@@ -475,8 +469,7 @@ Foam::refinementModel::refinementModel
 
     sources_(sources),
     mesh_(mesh),
-    heatSourceDict_(dict),
-    refinementDict_(heatSourceDict_.subDict("refinementModel")),
+    refinementDict_(dict.subDict("refinement")),
     maxRefinementLevel_(readMaxRefinementLevel()),
     refinementTemperature_
     (
@@ -513,7 +506,7 @@ Foam::refinementModel::refinementModel
     forAll(sources_, sourcei)
     {
         Info << "refinementModel: Refinement buffer for "
-             << sources_[sourcei].sourceName() << " "
+             << sources_[sourcei].name() << " "
              << sourceBuffers_[sourcei] << endl;
     }
 }
@@ -763,7 +756,7 @@ bool Foam::refinementModel::read()
 {
     if (regIOobject::read())
     {
-        refinementDict_ = optionalSubDict("refinementModel");
+        refinementDict_ = optionalSubDict("refinement");
 
         maxRefinementLevel_ = readMaxRefinementLevel();
 

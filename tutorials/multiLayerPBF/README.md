@@ -43,10 +43,11 @@ constant/heatSourceDict
 Defines the moving heat source and absorption model.
 
 ```text
-constant/scanPath
+constant/createScanPathDict
 ```
 
-Defines the laser path, laser power, and scan speed or dwell time for the current layer.
+Defines the laser path, laser power, and scan speed or dwell time used by
+`createScanPath` to generate `constant/scanPath` for the current layer.
 
 ```text
 system/extrudeMeshDict
@@ -59,35 +60,37 @@ Defines the mesh extrusion behavior used by the multi-layer workflow.
 The tutorial uses one heat source:
 
 ```foam
-sources (beam);
+sources { beam { /* source definition */ } }
 ```
 
-The source uses the `Kelly` absorption model and a transient `modifiedSuperGaussian` heat source:
+The source uses the `Kelly` absorption model, an isotherm depth reference, and
+a `modifiedSuperGaussian` heat source:
 
 ```foam
-beam
+sources
 {
-    pathName            scanPath;
-
-    absorptionModel     Kelly;
-
-    KellyCoeffs
+  beam
+  {
+    path scanPath;
+    widthReference D4Sigma;
+    depthReference isotherm;
+    absorption
     {
-        geometry        cone;
-        eta0            0.28;
-        etaMin          0.35;
+        model    Kelly;
+        geometry cone;
+        eta0     0.28;
+        etaMin   0.35;
     }
-
-    heatSourceModel     modifiedSuperGaussian;
-
-    modifiedSuperGaussianCoeffs
+    heatSource
     {
-        dimensions      (40.0e-6 40.0e-6 30e-6);
-        m               2.72;
-        k               7.95;
-        transient       true;
-        nPoints         (10 10 10);
+        model     modifiedSuperGaussian;
+        radius    (40.0e-6 40.0e-6);
+        depth     20.0e-6;
+        m         2.72;
+        k         7.95;
+        nPoints   (10 10 10);
     }
+  }
 }
 ```
 
@@ -103,30 +106,43 @@ Fresnel absorption of the liquid metal.
 
 `etaMin`
 
-Effective absorption in the conduction regime, used when the melt-pool aspect
-ratio is less than `aspectRatioSwitch`.
+Minimum effective absorption. It is used below `aspectRatioSwitch` and as a
+lower bound on the Kelly multiple-reflection curve above the switch.
 
 `aspectRatioSwitch`
 
-Optional aspect-ratio cutoff for switching between `etaMin` and the Kelly
-multiple-reflection model. If omitted, the cutoff is `1.0`.
+Optional aspect-ratio cutoff for evaluating the Kelly multiple-reflection
+model. If omitted, the cutoff is `1.0`.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the heat source dimensions. The third component is the initial projected depth.
+Set the lateral radius and configured source depth. AdditiveFOAM calculates
+D4Sigma from `radius`, `definition`, and `k`; the source-level `D4Sigma`
+selection defines the reference width used for the Kelly aspect ratio.
+
+`widthReference`
+
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
 
 `m` and `k`
 
 Shape parameters for the `modifiedSuperGaussian` heat source.
 
-`transient`
+`depthReference`
 
-When `true`, AdditiveFOAM updates the heat source depth using the material
-liquidus from `constant/transportProperties`.
+`isotherm` updates the heat-source depth using the material liquidus from
+`constant/transportProperties`; `constant` uses the configured depth.
+
+`tolerance`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 
-Controls sub-cell sampling resolution used when integrating the heat source over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 ## Post-processing
 

@@ -47,6 +47,7 @@ Usage
         h          | Uniform convection coeff     | yes    |
         emissivity | Uniform surface emissivity   | no     | transportProperties
         Tinf       | Ambient temperature          | yes    |
+        value      | Initial patch temperature    | yes    |
     \endtable
 
     Example of the boundary condition specification:
@@ -55,6 +56,8 @@ Usage
     {
         type       mixedTemperature;
         h          10.0;
+        Tinf       uniform 300;
+        value      uniform 300;
     }
     \endverbatim
 
@@ -63,8 +66,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef BC_H
-#define BC_H
+#ifndef mixedTemperatureFvPatchScalarField_H
+#define mixedTemperatureFvPatchScalarField_H
 
 #include "mixedFvPatchFields.H"
 #include "Function1.H"

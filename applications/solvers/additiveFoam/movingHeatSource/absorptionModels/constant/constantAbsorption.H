@@ -1,11 +1,9 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2026 Oak Ridge National Laboratory
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,16 +20,6 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
-Class
-    Foam::absorptionModels::constant
-
-Description
-    constant absorption model.
-
-SourceFiles
-    constantAbsorption.C
-
 \*---------------------------------------------------------------------------*/
 
 #ifndef constantAbsorption_H
@@ -39,69 +27,34 @@ SourceFiles
 
 #include "absorptionModel.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 namespace Foam
 {
 namespace absorptionModels
 {
 
-/*---------------------------------------------------------------------------*\
-                       Class constant
-\*---------------------------------------------------------------------------*/
-
 class constant
 :
     public absorptionModel
 {
-    // Private Data
-
-        //- Constant absorption scalar
-        dimensionedScalar eta_;
+    dimensionedScalar eta_;
 
 public:
 
-    //- Runtime type information
     TypeName("constant");
 
+    constant(const dictionary& dict, const fvMesh& mesh);
 
-    // Constructors
-
-        //- Construct from components
-        constant
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
-
-    //- Destructor
     virtual ~constant()
     {}
 
-    // Member Functions
-
-        //- Return the absorption as a scalar field
-        virtual scalar eta
-        (
-            const scalar& aspectRatio
-        ) const
-        {
-            return eta_.value();
-        };
-
-        //- Read the absorption properties
-        virtual bool read();
+    inline virtual scalar eta(const scalar) const
+    {
+        return eta_.value();
+    }
 };
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace absorptionModels
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

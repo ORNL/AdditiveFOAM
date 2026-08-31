@@ -1,11 +1,9 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2026 Oak Ridge National Laboratory
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,13 +20,10 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "constantAbsorption.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
@@ -39,36 +34,13 @@ namespace absorptionModels
 }
 }
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
 Foam::absorptionModels::constant::constant
 (
-    const word& sourceName,
     const dictionary& dict,
-    const fvMesh& mesh
+    const fvMesh&
 )
 :
-    absorptionModel(typeName, sourceName, dict, mesh),
-    eta_("eta", dimless, absorptionModelCoeffs_)
+    eta_("eta", dimless, dict)
 {}
-
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-bool Foam::absorptionModels::constant::read()
-{
-    if (absorptionModel::read())
-    {
-        absorptionModelCoeffs_ = optionalSubDict(type() + "Coeffs");
-
-        //- Mandatory entries
-        absorptionModelCoeffs_.lookup("eta") >> eta_;
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
 
 // ************************************************************************* //

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,11 +27,7 @@ Class
     Foam::heatSourceModels::modifiedSuperGaussian
 
 Description
-    modifiedSuperGaussian model.
-
-    Reference:
-    \verbatim
-   \endverbatim
+    One-sided modified super-Gaussian heat source with finite depth.
 
 SourceFiles
     modifiedSuperGaussian.C
@@ -43,71 +39,52 @@ SourceFiles
 
 #include "heatSourceModel.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 namespace Foam
 {
 namespace heatSourceModels
 {
 
-/*---------------------------------------------------------------------------*\
-                       Class modifiedSuperGaussian
-\*---------------------------------------------------------------------------*/
-
 class modifiedSuperGaussian
 :
     public heatSourceModel
 {
-    // Private Data
-
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-
-        //- Distribution shape coefficient of modifiedSuperGaussian distribution
-        scalar k_;
-
-        //- Geometric shape coefficient of modifiedSuperGaussian distribution
-        scalar m_;
+    vector2D radius_;
+    scalar k_;
+    scalar m_;
+    scalar coefficient_;
+    scalar cosTheta_;
+    scalar sinTheta_;
+    profileMetrics metrics_;
 
 public:
 
-    //- Runtime type information
     TypeName("modifiedSuperGaussian");
 
+    modifiedSuperGaussian
+    (
+        const dictionary& dict,
+        const fvMesh& mesh
+    );
 
-    // Constructors
-
-        //- Construct from components
-        modifiedSuperGaussian
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
-
-    //- Destructor
     virtual ~modifiedSuperGaussian()
     {}
 
+    virtual void update
+    (
+        const scalar depth,
+        const scalar aspectRatio
+    );
 
-    // Member Functions
+    virtual scalar weight(const vector& r) const;
 
-        inline virtual scalar weight(const vector& d);
-
-        inline virtual dimensionedScalar V0();
-
-        //- Read the heatSourceProperties dictionary
-        virtual bool read();
+    inline virtual const profileMetrics& metrics() const
+    {
+        return metrics_;
+    }
 };
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace heatSourceModels
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

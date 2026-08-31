@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -247,7 +247,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
             // physical boundary : take face point if above iso value
             const vectorField& Cf = mesh_.Cf().boundaryField()[patchi];
 
-            const scalarField& pif(TPf.patchInternalField());
+            const scalarField pif(TPf.patchInternalField());
 
             forAll(faceCells, facei)
             {

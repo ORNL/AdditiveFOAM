@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,13 +22,12 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 \*---------------------------------------------------------------------------*/
 
 #include "modifiedSuperGaussian.H"
+#include "superGaussianProfile.H"
 #include "addToRunTimeSelectionTable.H"
-
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+#include "mathematicalConstants.H"
 
 namespace Foam
 {
@@ -46,86 +45,131 @@ namespace heatSourceModels
 
 using Foam::constant::mathematical::pi;
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
 Foam::heatSourceModels::modifiedSuperGaussian::modifiedSuperGaussian
 (
-    const word& sourceName,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    heatSourceModel(typeName, sourceName, dict, mesh),
-    mesh_(mesh)
-{
-    k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
-    m_ = heatSourceModelCoeffs_.lookup<scalar>("m");
-}
-
-
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-inline Foam::scalar
-Foam::heatSourceModels::modifiedSuperGaussian::weight(const vector& d)
-{
-    scalar a = Foam::pow(2.0, 1.0/k_);
-
-    vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
-
-    const scalar z = mag(d.z());
-
-    if (z < s.z())
-    {
-        s *= Foam::pow(1.0 - Foam::pow(z / s.z(), m_), 1.0/m_);
-
-        vector di = vector(d.x(), d.y(), 0.0);
-
-        scalar x = Foam::pow(magSqr(cmptDivide(di, s)), k_/2.0);
-
-        return Foam::exp(-x);
-    }
-    else
-    {
-        return 0.0;
-    }
-}
-
-inline Foam::dimensionedScalar
-Foam::heatSourceModels::modifiedSuperGaussian::V0()
-{
-    const scalar a = Foam::pow(2.0, 1.0/k_);
-
-    const vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
-
-    const dimensionedScalar V0
+    heatSourceModel(dict),
+    radius_(dict.lookup<vector2D>("radius")),
+    k_(dict.lookup<scalar>("k")),
+    m_(dict.lookup<scalar>("m")),
+    coefficient_
     (
-        "V0",
-        dimVolume,
-        s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 2.0/k_)
-      * Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
-      / Foam::tgamma(1.0 + 3.0/m_)
+        heatSourceProfiles::superGaussian::coefficient(dict, k_)
+    ),
+    cosTheta_(0),
+    sinTheta_(0),
+    metrics_()
+{
+    const scalar variance =
+        0.5*Foam::tgamma(4.0/k_)/Foam::tgamma(2.0/k_);
+
+    const scalar azimuth =
+        dict.lookupOrDefault<scalar>("azimuth", 0)*pi/180.0;
+    cosTheta_ = Foam::cos(azimuth);
+    sinTheta_ = Foam::sin(azimuth);
+    const scalar sx2 = sqr(radius_.x())/coefficient_;
+    const scalar sy2 = sqr(radius_.y())/coefficient_;
+
+    const scalar integral =
+        pi*radius_.x()*radius_.y()/coefficient_
+       *Foam::tgamma(1.0 + 2.0/k_);
+    const scalar varianceX =
+        sqr(cosTheta_)*sx2*variance
+      + sqr(sinTheta_)*sy2*variance;
+    const scalar varianceY =
+        sqr(sinTheta_)*sx2*variance
+      + sqr(cosTheta_)*sy2*variance;
+    const scalar covariance =
+        cosTheta_*sinTheta_*(sx2 - sy2)*variance;
+
+    metrics_.reset
+    (
+        integral,
+        0,
+        0,
+        integral*varianceX,
+        integral*varianceY,
+        integral*covariance
     );
 
-    return V0;
+    update(depth_, 0);
 }
 
-bool Foam::heatSourceModels::modifiedSuperGaussian::read()
+
+void Foam::heatSourceModels::modifiedSuperGaussian::update
+(
+    const scalar depth,
+    const scalar
+)
 {
-    if (heatSourceModel::read())
-    {
-        heatSourceModelCoeffs_ = optionalSubDict(type() + "Coeffs");
+    sourceDepth_ = depth;
 
-        //- Mandatory entries
-        heatSourceModelCoeffs_.lookup("k") >> k_;
-        heatSourceModelCoeffs_.lookup("m") >> m_;
+    const scalar fMax =
+        Foam::pow
+        (
+            invIncGammaRatio_P(2.0/k_, 1.0 - tolerance_),
+            1.0/k_
+        );
+    const scalar xMax =
+        fMax/Foam::sqrt(coefficient_)
+       *Foam::sqrt
+        (
+            sqr(radius_.x()*cosTheta_)
+          + sqr(radius_.y()*sinTheta_)
+        );
+    const scalar yMax =
+        fMax/Foam::sqrt(coefficient_)
+       *Foam::sqrt
+        (
+            sqr(radius_.x()*sinTheta_)
+          + sqr(radius_.y()*cosTheta_)
+        );
 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    bounds_ =
+        boundBox
+        (
+            point(-xMax, -yMax, -sourceDepth_),
+            point(xMax, yMax, 0)
+        );
+
+    V0_ =
+        dimensionedScalar
+        (
+            "V0",
+            dimVolume,
+            metrics_.integral()*sourceDepth_
+           *Foam::tgamma(1.0 + 1.0/m_)*Foam::tgamma(1.0 + 2.0/m_)
+           /Foam::tgamma(1.0 + 3.0/m_)
+        );
 }
 
+
+Foam::scalar Foam::heatSourceModels::modifiedSuperGaussian::weight
+(
+    const vector& r
+) const
+{
+    if (r.z() > 0 || r.z() <= -sourceDepth_)
+    {
+        return 0;
+    }
+
+    const scalar g =
+        Foam::pow
+        (
+            1.0 - Foam::pow(-r.z()/sourceDepth_, m_),
+            1.0/m_
+        );
+    const scalar x = cosTheta_*r.x() + sinTheta_*r.y();
+    const scalar y = -sinTheta_*r.x() + cosTheta_*r.y();
+    const scalar radiusSqr =
+        coefficient_
+       *(sqr(x/radius_.x()) + sqr(y/radius_.y()));
+
+    return Foam::exp(-Foam::pow(radiusSqr/sqr(g), k_/2.0));
+}
 
 // ************************************************************************* //

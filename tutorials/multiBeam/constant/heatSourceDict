@@ -15,55 +15,54 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam1 beam2);
-
-beam1
+sources
 {
-    pathName            scanPath_1;    
+    beam1
+    {
+        path            scanPath_1;
+        widthReference  D4Sigma;
 
-    absorptionModel     constant;
-    
-    constantCoeffs
-    {
-        eta             0.33;
+        absorption
+        {
+            model       constant;
+            eta         0.33;
+        }
+
+        heatSource
+        {
+            model       superGaussian;
+            radius      (85.0e-6 85.0e-6);
+            depth       30e-6;
+            k           2.0;
+            nPoints     (10 10 10);
+        }
     }
-    
-    heatSourceModel     superGaussian;
-    
-    superGaussianCoeffs
+
+    beam2
     {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        path            scanPath_2;
+        widthReference  D4Sigma;
+
+        absorption
+        {
+            model       constant;
+            eta         0.33;
+        }
+
+        heatSource
+        {
+            model       superGaussian;
+            radius      (85.0e-6 85.0e-6);
+            depth       30e-6;
+            k           2.0;
+            nPoints     (10 10 10);
+        }
     }
 }
 
-beam2
+refinement
 {
-    pathName            scanPath_2;    
-
-    absorptionModel     constant;
-    
-    constantCoeffs
-    {
-        eta             0.33;
-    }
-    
-    heatSourceModel     superGaussian;
-    
-    superGaussianCoeffs
-    {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
-    }
-}
-
-refinementModel
-{
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    model                   none;
     
     refinementTemperature   1000;
 
@@ -73,13 +72,10 @@ refinementModel
         beam2               (85.0e-6 85.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 
 // ************************************************************************* //

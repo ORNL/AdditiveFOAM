@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023-2026 Oak Ridge National Laboratory
+                Copyright (C) 2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,87 +24,89 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::heatSourceModels::projectedGaussian
+    Foam::heatSourceProjections::exponential
 
 Description
-    projectedGaussian heat source model for additive manufacting
+    One-sided generalized exponential projection applied in the negative z
+    direction from the beam plane.
 
 SourceFiles
-    projectedGaussian.C
+    exponential.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef projectedGaussian_H
-#define projectedGaussian_H
+#ifndef exponential_H
+#define exponential_H
 
-#include "heatSourceModel.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include "heatSourceProjection.H"
 
 namespace Foam
 {
-namespace heatSourceModels
+namespace heatSourceProjections
 {
 
-/*---------------------------------------------------------------------------*\
-                       Class projectedGaussian
-\*---------------------------------------------------------------------------*/
-
-class projectedGaussian
+class exponential
 :
-    public heatSourceModel
+    public heatSourceProjection
 {
     // Private Data
 
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
+        //- nSlope in n = nSlope*log2(a) + nIntercept
+        scalar nSlope_;
 
-        //- weights for axial decay of 2D gaussian distribution in the form:
-        //- n = Alog2(x) + B
-        scalar A_;
-        scalar B_;
+        //- nIntercept in n = nSlope*log2(a) + nIntercept
+        scalar nIntercept_;
 
+        //- Projection depth
+        scalar depth_;
+
+        //- Axial decay exponent
         scalar k_;
+
+        //- Projection integral
+        scalar integral_;
+
+        //- Lower projection bound
+        scalar zMin_;
 
 public:
 
     //- Runtime type information
-    TypeName("projectedGaussian");
+    TypeName("exponential");
 
 
     // Constructors
 
-        //- Construct from components
-        projectedGaussian
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
+        explicit exponential(const dictionary& dict);
 
     //- Destructor
-    virtual ~projectedGaussian()
+    virtual ~exponential()
     {}
-
 
     // Member Functions
 
-        inline virtual scalar weight(const vector& d);
+        virtual void update
+        (
+            const scalar depth,
+            const scalar aspectRatio,
+            const scalar tolerance
+        );
 
-        inline virtual dimensionedScalar V0();
+        inline virtual scalar weight(const scalar z) const;
 
-        //- Read the heatSourceProperties dictionary
-        virtual bool read();
+        inline virtual scalar integral() const
+        {
+            return integral_;
+        }
+
+        inline virtual scalar zMin() const
+        {
+            return zMin_;
+        }
 };
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace heatSourceModels
+} // End namespace heatSourceProjections
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

@@ -20,7 +20,7 @@ License
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
 
-    You should have received a copy of the the GNU General Public License
+    You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
@@ -47,39 +47,47 @@ namespace refinementModels
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::refinementModels::targetCellLoad::readCoeffs()
+void Foam::refinementModels::targetCellLoad::readControls()
 {
     targetCellsPerProc_ =
-        coeffs_.lookupOrDefault<label>("targetCellsPerProc", 5000);
+        refinementDict_.lookupOrDefault<label>("targetCellsPerProc", 5000);
 
     nBufferVolumes_ =
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "nBufferVolumes",
             1.0
         );
 
     maxSearchIter_ =
-        coeffs_.lookupOrDefault<label>("maxSearchIter", 30);
+        refinementDict_.lookupOrDefault<label>("maxSearchIter", 30);
 
     timeTolerance_ =
-        coeffs_.lookupOrDefault<scalar>("timeTolerance", small);
+        refinementDict_.lookupOrDefault<scalar>("timeTolerance", small);
 
     initialTargetVolumeFactor_ =
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "initialTargetVolumeFactor",
             0.5
         );
 
     maxTargetVolumeGrowth_ =
-        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeGrowth", 1.2);
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "maxTargetVolumeGrowth",
+            1.2
+        );
 
     maxTargetVolumeShrink_ =
-        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeShrink", 0.8);
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "maxTargetVolumeShrink",
+            0.8
+        );
 
     postScanUpdateInterval_ =
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "postScanUpdateInterval",
             10.0
@@ -91,20 +99,19 @@ void Foam::refinementModels::targetCellLoad::readCoeffs()
 
 Foam::refinementModels::targetCellLoad::targetCellLoad
 (
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
     Foam::refinementModel(typeName, sources, dict, mesh),
-    coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
     targetCellsPerProc_
     (
-        coeffs_.lookupOrDefault<label>("targetCellsPerProc", 5000)
+        refinementDict_.lookupOrDefault<label>("targetCellsPerProc", 5000)
     ),
     nBufferVolumes_
     (
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "nBufferVolumes",
             1.0
@@ -112,15 +119,15 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     ),
     maxSearchIter_
     (
-        coeffs_.lookupOrDefault<label>("maxSearchIter", 30)
+        refinementDict_.lookupOrDefault<label>("maxSearchIter", 30)
     ),
     timeTolerance_
     (
-        coeffs_.lookupOrDefault<scalar>("timeTolerance", small)
+        refinementDict_.lookupOrDefault<scalar>("timeTolerance", small)
     ),
     initialTargetVolumeFactor_
     (
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "initialTargetVolumeFactor",
             0.5
@@ -128,15 +135,23 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
     ),
     maxTargetVolumeGrowth_
     (
-        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeGrowth", 1.2)
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "maxTargetVolumeGrowth",
+            1.2
+        )
     ),
     maxTargetVolumeShrink_
     (
-        coeffs_.lookupOrDefault<scalar>("maxTargetVolumeShrink", 0.8)
+        refinementDict_.lookupOrDefault<scalar>
+        (
+            "maxTargetVolumeShrink",
+            0.8
+        )
     ),
     postScanUpdateInterval_
     (
-        coeffs_.lookupOrDefault<scalar>
+        refinementDict_.lookupOrDefault<scalar>
         (
             "postScanUpdateInterval",
             10.0
@@ -218,17 +233,8 @@ Foam::refinementModels::targetCellLoad::targetCellLoad
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModels::targetCellLoad::update()
+void Foam::refinementModels::targetCellLoad::update()
 {
-    label nCellsTotal = mesh_.nCells();
-    reduce(nCellsTotal, sumOp<label>());
-
-    const scalar currentCellsPerProc =
-        scalar(nCellsTotal)/Pstream::nProcs();
-
-    targetToCurrentCellRatio_ =
-        targetCellsPerProc_/currentCellsPerProc;
-
     if ((updateTime_.value() - mesh_.time().value()) < small)
     {
         Foam::refinementModel::markTemperature();
@@ -244,8 +250,17 @@ bool Foam::refinementModels::targetCellLoad::update()
                 mesh_.time()
               + postScanUpdateInterval_*mesh_.time().deltaT();
 
-            return true;
+            return;
         }
+
+        label nCellsTotal = mesh_.nCells();
+        reduce(nCellsTotal, sumOp<label>());
+
+        const scalar currentCellsPerProc =
+            scalar(nCellsTotal)/Pstream::nProcs();
+
+        targetToCurrentCellRatio_ =
+            targetCellsPerProc_/currentCellsPerProc;
 
         const scalar targetVolumeRatio =
             min
@@ -285,8 +300,6 @@ bool Foam::refinementModels::targetCellLoad::update()
             << "    Target/current cell ratio: "
             << targetToCurrentCellRatio_ << endl;
     }
-
-    return true;
 }
 
 
@@ -294,9 +307,7 @@ bool Foam::refinementModels::targetCellLoad::read()
 {
     if (Foam::refinementModel::read())
     {
-        coeffs_ = refinementDict_.optionalSubDict(typeName + "Coeffs");
-
-        readCoeffs();
+        readControls();
 
         minRefineVolume_ =
             Foam::refinementModel::minimumScanPathRefineVolume

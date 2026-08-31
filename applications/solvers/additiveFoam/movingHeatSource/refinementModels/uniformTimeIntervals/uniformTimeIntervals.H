@@ -32,6 +32,8 @@ Description
     marker field is updated using the current temperature field and the
     projected scan path over the next interval.
 
+    The required intervals coefficient must be greater than zero.
+
 SourceFiles
     uniformTimeIntervals.C
 
@@ -57,12 +59,6 @@ class uniformTimeIntervals
 :
     public Foam::refinementModel
 {
-    // Private Data
-
-        //- Coefficients dictionary
-        dictionary coeffs_;
-
-
 protected:
 
     // Protected Data
@@ -88,7 +84,7 @@ public:
         //- Construct from components
         uniformTimeIntervals
         (
-            const PtrList<heatSourceModel>& sources,
+            const PtrList<movingHeatSource>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
@@ -102,9 +98,9 @@ public:
     // Member Functions
 
         //- Update the refinement marker field
-        virtual bool update();
+        virtual void update();
 
-        //- Read the heatSourceProperties dictionary
+        //- Read the heatSourceDict dictionary
         virtual bool read();
 };
 

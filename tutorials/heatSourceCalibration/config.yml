@@ -1,0 +1,35 @@
+paths:
+  experiments: experiments.yml
+  template: template
+  campaign: campaign
+
+D4Sigma: areaEquivalent
+isotherm: liquidus
+
+profiles:
+  measured_beam:
+    file: template/constant/beam_profile.txt
+
+case:
+  command: ./Allrun
+  keep_successful: false
+
+calibration:
+  token: nIntercept
+  initial_values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+  bounds: [0.0, 9.0]
+  max_simulations_per_experiment: 10
+  depth_tolerance_microns: 1.0
+  posterior_std_tolerance: 0.15
+  pchip_grid_points: 1000
+
+bayesian:
+  quadrature_points: 10000
+  posterior_samples: 1000
+
+final_fit:
+  bootstrap_samples: 1000
+  bootstrap_random_seed: 12345
+
+report:
+  enabled: true

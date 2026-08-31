@@ -70,31 +70,32 @@ Defines the base computational mesh.
 The tutorial uses one heat source:
 
 ```foam
-sources (beam);
+sources { beam { /* source definition */ } }
 ```
 
 The source uses constant absorptivity and a `superGaussian` heat source:
 
 ```foam
-beam
+sources
 {
-    pathName            scanPath;
-
-    absorptionModel     constant;
-
-    constantCoeffs
+  beam
+  {
+    path scanPath;
+    absorption
     {
-        eta             0.33;
+        model constant;
+        eta   0.33;
     }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
+    heatSource
     {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        model   superGaussian;
+        radius  (85.0e-6 85.0e-6);
+        definition secondMoment;
+        depth   30e-6;
+        k       2.0;
+        nPoints (10 10 10);
     }
+  }
 }
 ```
 
@@ -108,24 +109,31 @@ Constant absorptivity applied to the laser power from the scan path.
 
 Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a Gaussian-like source.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the heat source dimensions used by the moving heat source integration, taken as `2sigma`
+Set the lateral radius and axial depth. The optional `definition` is `e2`
+(default) or `secondMoment`; a second-moment radius is half its D4Sigma
+diameter.
+
+`tolerance`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 
-Controls sub-cell sampling resolution used when integrating the heat source over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 ## Refinement model
 
 This tutorial has the option to use the `targetCellLoad` refinement model:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    model                   none;
+    //model                 targetCellLoad;
 
     refinementTemperature   1000;
 
@@ -134,21 +142,19 @@ refinementModel
         beam                (85.0e-6 85.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 ```
 
-The refinement region projects along the heat source path and targets a desired cell load per processor.
+The refinement region projects along the heat source path and targets a desired
+average cell load per processor.
 
 ### Coefficients
 
-`refinementModel`
+`model`
 
 Selects the refinement model. `targetCellLoad` projects refinement ahead along
 the scan path and adjusts the projected volume to target a cell count per
@@ -166,14 +172,17 @@ transverse direction, and build direction.
 
 `targetCellsPerProc`
 
-Target cell count per MPI processor. The `targetCellLoad` model adjusts the
-projected refinement volume to keep the total mesh size near this load.
+Soft target for the global average cell count per MPI processor. The model
+raises this value when required by the initial mesh and minimum projected
+refinement volume. The `maxCells` entry in `dynamicMeshDict` limits global
+refinement independently.
 
 `nBufferVolumes`
 
 Minimum projected scan-path volume expressed as a multiple of the source-buffer
 volume. This keeps the projected refinement region from shrinking below the
-local scan-path coverage.
+local scan-path coverage. This minimum coverage takes precedence over further
+target-volume reduction.
 
 `maxSearchIter`
 
@@ -183,6 +192,26 @@ time interval that gives the target refinement volume.
 `timeTolerance`
 
 Stopping tolerance, in seconds, for the scan-path time-interval search.
+
+`initialTargetVolumeFactor`
+
+Initial fraction of the estimated available cell budget assigned to projected
+scan-path refinement. The default is `0.5`.
+
+`maxTargetVolumeGrowth`
+
+Maximum target-volume growth factor applied at one AMR update. The default is
+`1.2`.
+
+`maxTargetVolumeShrink`
+
+Minimum target-volume factor applied when the current mesh exceeds the target
+cell load. The default is `0.8`.
+
+`postScanUpdateInterval`
+
+Multiplier of the current time-step duration used to schedule temperature-only
+AMR checks after the scan path is complete. The default is `10`.
 
 ## Post-processing
 

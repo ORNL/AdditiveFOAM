@@ -28,6 +28,7 @@ if (pimple.firstPimpleIter() || pimple.moveMeshOuterCorrectors())
             );
 
             // Make the flux relative to the mesh motion
+            MRF.makeRelative(phi);
             fvc::makeRelative(phi, U);
         }
 

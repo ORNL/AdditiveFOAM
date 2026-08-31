@@ -24,7 +24,7 @@ Polynomial<PolySize> Cp1(solidDict.lookup("Cp"));
 Polynomial<PolySize> Cp2(liquidDict.lookup("Cp"));
 Polynomial<PolySize> Cp3(powderDict.lookup("Cp"));
 
-// Reference density [kg]
+// Reference density [kg/m^3]
 const dimensionedScalar rho
 (
     "rho",
@@ -56,7 +56,7 @@ const dimensionedScalar Lf
     transportProperties.lookup("Lf")
 );
 
-//- Liquid dynamic viscosity [m^2/(kg s)]
+//- Liquid dynamic viscosity [kg/(m s)]
 const dimensionedScalar mu
 (
     "mu",

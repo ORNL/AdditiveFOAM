@@ -29,7 +29,7 @@
             }
 
             label hi = 0;
-            for (hi=0; hi<n && xvals[hi]<x; ++hi)
+            for (hi=0; hi<n && xvals[hi]<=x; ++hi)
             {}
 
             label high = hi;
@@ -37,7 +37,7 @@
             {
                 for (label i=high; i<n; ++i)
                 {
-                    if (xvals[i] < xvals[hi] && xvals[i] >= x)
+                    if (xvals[i] < xvals[hi] && xvals[i] > x)
                     {
                         hi = i;
                     }

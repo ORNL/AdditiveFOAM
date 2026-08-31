@@ -31,22 +31,22 @@ License
 
 Foam::autoPtr<Foam::refinementModel> Foam::refinementModel::New
 (
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 {
     word modelType("none");
 
-    if (dict.found("refinementModel"))
+    if (dict.found("refinement"))
     {
         const dictionary& refinementModelDict =
-            dict.subDict("refinementModel");
+            dict.subDict("refinement");
 
         modelType =
             refinementModelDict.lookupOrDefault<word>
             (
-                "refinementModel",
+                "model",
                 "none"
             );
     }

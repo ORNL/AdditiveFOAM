@@ -48,7 +48,7 @@ namespace refinementModels
 
 Foam::refinementModels::timeStep::timeStep
 (
-    const PtrList<heatSourceModel>& sources,
+    const PtrList<movingHeatSource>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
@@ -60,7 +60,7 @@ Foam::refinementModels::timeStep::timeStep
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementModels::timeStep::update()
+void Foam::refinementModels::timeStep::update()
 {
     refinementModel::markTemperature();
 
@@ -68,7 +68,6 @@ bool Foam::refinementModels::timeStep::update()
 
     refinementModel::markScanPathTime(nextTime_.value());
 
-    return true;
 }
 
 

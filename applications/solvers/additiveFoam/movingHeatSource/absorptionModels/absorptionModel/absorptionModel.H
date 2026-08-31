@@ -1,11 +1,9 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2026 Oak Ridge National Laboratory
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,142 +20,54 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
-Class
-    Foam::absorptionModel
-
-Description
-    Abstract base class for absorption models
-
-SourceFiles
-    absorptionModel.C
-
 \*---------------------------------------------------------------------------*/
 
 #ifndef absorptionModel_H
 #define absorptionModel_H
 
+#include "autoPtr.H"
 #include "dictionary.H"
-#include "volFields.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include "fvMesh.H"
+#include "runTimeSelectionTables.H"
 
 namespace Foam
 {
 
-/*---------------------------------------------------------------------------*\
-                        Class absorptionModel Declaration
-\*---------------------------------------------------------------------------*/
-
 class absorptionModel
-:
-    public IOdictionary
 {
-    // Private member functions
-
-        //- Construct the base IO object
-        IOobject createIOobject
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        ) const;
-
-protected:
-
-    // Protected data
-
-        //- Name of beam
-        const word& sourceName_;
-
-        //- Main heat source dictionary
-        const dictionary& heatSourceDict_;
-
-           //- Pointer to mesh info
-        const fvMesh& mesh_;
-
-        //- Individual beam dictionary
-        dictionary beamDict_;
-
-        //- Absorption model coefficient dictionary
-        dictionary absorptionModelCoeffs_;
-
-
 public:
 
-    //- Runtime type information
     TypeName("absorptionModel");
 
-    //- Default heatSourceProperties dictionary name
-    static const word heatSourceDictName;
-
-    // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
         autoPtr,
         absorptionModel,
         dictionary,
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        ),
-        (sourceName, dict, mesh)
+        (const dictionary& dict, const fvMesh& mesh),
+        (dict, mesh)
     );
 
-    // Constructors
+    absorptionModel()
+    {}
 
-        //- Construct
-        absorptionModel
-        (
-            const word& type,
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+    absorptionModel(const absorptionModel&) = delete;
 
-        //- Disallow default bitwise copy construction
-        absorptionModel(const absorptionModel&);
+    static autoPtr<absorptionModel> New
+    (
+        const dictionary& dict,
+        const fvMesh& mesh
+    );
 
-    // Selectors
-
-        //- Return a reference to the selected absorption model
-        static autoPtr<absorptionModel> New
-        (
-            const word& sourceName,
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
-
-
-    //- Destructor
     virtual ~absorptionModel()
     {}
 
+    virtual scalar eta(const scalar aspectRatio) const = 0;
 
-    // Member Functions
-
-        //- Return const-access to the absorption
-        virtual scalar eta
-        (
-            const scalar& aspectRatio
-        ) const = 0;
-
-        //- Read the absorption properties
-        virtual bool read();
-
-    // Member Operators
-
-        //- Disallow default bitwise assignment
-        void operator=(const absorptionModel&) = delete;
+    void operator=(const absorptionModel&) = delete;
 };
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

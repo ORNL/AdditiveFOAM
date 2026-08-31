@@ -2,7 +2,9 @@
 
 ## Case description
 
-This tutorial demonstrates the `nLightAFX` heat source model in AdditiveFOAM. The model represents an nLight AFX beam as a linear combination of inner and outer Gaussian-ring components with the same projected axial distribution used by the `projectedGaussian` heat source.
+This tutorial demonstrates a `projected` heat source with an `nLightAFX` planar
+profile and an `exponential` axial projection. The profile represents an
+nLight AFX beam as a linear combination of two Gaussian-ring components.
 
 The purpose of this tutorial is to show how ORNL-characterized nLight AFX beam profiles can be selected from dictionary inputs.
 
@@ -27,7 +29,7 @@ Use `./Allclean` to remove generated mesh, decomposition, and result files.
 The important files for this tutorial are:
 
 ```text
-constant/nLightAFX.cfg
+$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg
 ```
 
 Defines the ORNL-characterized AFX mode parameters.
@@ -48,21 +50,32 @@ Defines the laser path, laser power, and scan speed or dwell time.
 
 The tutorial uses:
 
-```foam
-heatSourceModel nLightAFX;
-```
-
-The corresponding coefficient dictionary is:
+The heat-source dictionary is:
 
 ```foam
-#include "nLightAFX.cfg"
+#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
-nLightAFXCoeffs
+widthReference D4Sigma;
+depthReference isotherm;
+
+heatSource
 {
-    $Index6;
-
-    transient   true;
+    model       projected;
+    depth       20.0e-6;
     nPoints     (10 10 10);
+
+    profile
+    {
+        model   nLightAFX;
+        $Index6;
+    }
+
+    projection
+    {
+        model       exponential;
+        nSlope      0.0;
+        nIntercept  1.0;
+    }
 }
 ```
 
@@ -86,81 +99,120 @@ $Index6;
 
 ## Characterized AFX modes
 
-The included `nLightAFX.cfg` file contains the ORNL-characterized AFX beam parameters for modes 0 through 6. Each mode defines:
+The shared `nLightAFX-1000.cfg` file contains the ORNL-characterized AFX beam
+parameters for modes 0 through 6. Each mode defines:
 
 ```foam
-dimensions
 alpha
-
-inner
-{
-    radius
-    sigma
-    A
-    B
-}
-
-outer
-{
-    radius
-    sigma
-    A
-    B
-}
+r0
+sigma0
+r1
+sigma1
 ```
 
 `alpha`
 
-Fraction of the laser power applied to the outer Gaussian-ring component.
+Integrated fraction of laser power assigned to component 1, which represents
+the outer ring in the characterized AFX modes.
 
-`inner` and `outer`
+`r0`, `sigma0`, `r1`, and `sigma1`
 
-Define the radial beam-shape parameters for the inner and outer components. The `radius` and `sigma` values are specified in meters.
+Define the radial beam-shape parameters for Gaussian components 0 and 1. The
+values are specified in meters.
 
-`dimensions`
+The profile calculates its radial D4Sigma from these coefficients. The
+reported D4Sigma values in the shared configuration provide reference values
+for the characterized modes.
 
-Sets the lateral heat source dimensions from the characterized beam size. The third component is the initial projected depth and is updated by the transient heat source logic when `transient` is enabled.
+`nSlope` and `nIntercept`
 
-`A` and `B`
-
-Define the projected axial shape closure for each component:
+Define the projected axial shape closure shared by both components:
 
 ```text
-n = A*log2(x) + B
+n = clip(nSlope*log2(a) + nIntercept, 0, 9)
+k = 2^n
 ```
 
-where `x` is the ratio between the current heat source depth and lateral heat source size. The implementation clamps this internal numerical exponent consistently with the `projectedGaussian` model.
+where `a` is twice the current heat-source depth divided by the selected
+D4Sigma reference width, and `k` is the exponent in the axial decay.
+
+`tolerance`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power.
+
+`nPoints`
+
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
+
+`widthReference`
+
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
+
+`depthReference`
+
+Selects `constant` (default) or `isotherm`. The solver reports the calculated
+reference depth when `isotherm` is selected.
+
+`isotherm`
+
+Optional temperature used by the isotherm depth reference. If omitted, the
+material liquidus from `constant/transportProperties` is used.
 
 ## Example mode
 
-A typical mode block from `nLightAFX.cfg` looks like:
+A typical mode block from `nLightAFX-1000.cfg` looks like:
 
 ```foam
 Index3
 {
-    dimensions  (1.09290e-4 1.09290e-4 5.0e-5);
-
     alpha       0.483;
 
-    inner
-    {
-        radius  14.39e-6;
-        sigma   20.78e-6;
-        A       0.0;
-        B       1.0;
-    }
-
-    outer
-    {
-        radius  100.98e-6;
-        sigma   16.92e-6;
-        A       0.0;
-        B       1.0;
-    }
+    r0          14.39e-6;
+    sigma0      20.78e-6;
+    r1          100.98e-6;
+    sigma1      16.92e-6;
 }
 ```
 
-This mode has approximately half of the power in the outer ring. Lower modes are more center-weighted, while higher modes place more power in the outer ring.
+The selected profile is combined with the projection coefficients:
+
+```foam
+projection
+{
+    model       exponential;
+    nSlope      0.0;
+    nIntercept  1.0;
+}
+```
+
+This mode has approximately half of the power in component 1. Lower modes are
+more center-weighted, while higher modes place more power in the outer ring.
+
+The component integrals are accounted for independently so `alpha` remains the
+integrated power fraction in component 1. If `J0` and `J1` are the planar
+component integrals without the common factor of `2*pi`, the implemented
+weight and normalization are
+
+```text
+Ii(r) = exp(-0.5*((r - ri)/sigmai)^2)
+      + exp(-0.5*((r + ri)/sigmai)^2)
+p(z) = exp(-3*(-z/d)^k), z <= 0
+w = p(z)*((1 - alpha)*I0(r) + alpha*I1(r)*J0/J1)
+V0 = 2*pi*J0*d*Gamma(1/k)/(k*3^(1/k))
+```
+
+where
+
+```text
+Ji = 2*sigmai^2*exp(-0.5*(ri/sigmai)^2)
+   + sqrt(2*pi)*ri*sigmai*erf(ri/(sqrt(2)*sigmai))
+```
+
+Therefore, the normalized component contributions integrate to `1 - alpha`
+and `alpha`, and the total normalized heat source integrates to one.
 
 ## Post-processing
 

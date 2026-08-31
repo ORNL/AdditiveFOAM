@@ -15,37 +15,49 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-sources (beam);
+#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
-#include "nLightAFX.cfg"
-
-beam
+sources
 {
-    pathName            scanPath;    
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
+        depthReference  isotherm;
 
-    absorptionModel     constant;
-    
-    constantCoeffs
-    {
-        eta             0.33;
-    }
-    
-    heatSourceModel     nLightAFX;
-        
-    nLightAFXCoeffs
-    {
-        $Index6;
-        
-        transient   true;
-        nPoints     (10 10 10);
+        absorption
+        {
+            model       constant;
+            eta         0.33;
+        }
+
+        heatSource
+        {
+            model       projected;
+            depth       20.0e-6;
+            nPoints     (10 10 10);
+
+            profile
+            {
+                model   nLightAFX;
+                $Index6;
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0.0;
+                nIntercept  1.0;
+            }
+        }
     }
 }
 
-refinementModel
+refinement
 {
-    refinementModel         none;
+    model                   none;
 
-    //refinementModel         targetCellLoad;
+    //model                 targetCellLoad;
     
     refinementTemperature   1000;
 
@@ -54,13 +66,10 @@ refinementModel
         beam                (200.0e-6 200.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 
 // ************************************************************************* //

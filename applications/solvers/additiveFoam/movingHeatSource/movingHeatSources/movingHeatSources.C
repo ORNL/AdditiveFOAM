@@ -25,13 +25,11 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "movingHeatSourceModel.H"
-#include "DynamicList.H"
-#include "OFstream.H"
+#include "movingHeatSources.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::movingHeatSourceModel::movingHeatSourceModel
+Foam::movingHeatSources::movingHeatSources
 (
     const fvMesh& mesh
 )
@@ -44,11 +42,10 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             "heatSourceDict",
             mesh_.time().constant(),
             mesh_,
-            IOobject::MUST_READ,
+            IOobject::MUST_READ_IF_MODIFIED,
             IOobject::NO_WRITE
         )
     ),
-    sourceNames_(dict_.lookup("sources")),
     qDot_
     (
         IOobject
@@ -62,37 +59,45 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)
     ),
-    refinementModel_(nullptr)
+    refinement_(nullptr)
 {
-    sources_.resize(sourceNames_.size());
+    readSources();
+}
 
-    //- Create new instance of movingBeam for each beam
+
+void Foam::movingHeatSources::readSources()
+{
+    const dictionary& sourcesDict = dict_.subDict("sources");
+    const wordList names(sourcesDict.toc());
+    sources_.clear();
+    sources_.resize(names.size());
+
     forAll(sources_, i)
     {
-        Info << "Adding heatSourceModel for " << sourceNames_[i] << endl;
+        Info << "Adding moving heat source " << names[i] << endl;
         sources_.set
         (
             i,
-            heatSourceModel::New
+            new movingHeatSource
             (
-                sourceNames_[i],
-                dict_,
+                names[i],
+                sourcesDict.subDict(names[i]),
                 mesh_
-            ).ptr()
+            )
         );
     }
 
-    refinementModel_ = refinementModel::New(sources_, dict_, mesh_);
+    refinement_ = refinementModel::New(sources_, dict_, mesh_);
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //
 
-Foam::movingHeatSourceModel::~movingHeatSourceModel()
+Foam::movingHeatSources::~movingHeatSources()
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
+void Foam::movingHeatSources::adjustDeltaT(scalar& deltaT)
 {
     forAll(sources_, i)
     {
@@ -100,29 +105,35 @@ void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
     }
 }
 
-void Foam::movingHeatSourceModel::update()
+void Foam::movingHeatSources::update()
 {
-    //- Subcycle each moving heat source in time and combine into a single field
+    if (dict_.readIfModified())
+    {
+        readSources();
+    }
+
     qDot_ = dimensionedScalar("Zero", qDot_.dimensions(), 0.0);
 
     forAll(sources_, i)
     {
         if (sources_[i].beam().activePath())
         {
-            sources_[i].updateDimensions();
+            sources_[i].update();
 
-            // integrate volumetric heat source over desired time step
             scalar pathTime = mesh_.time().value();
 
-            const scalar nextTime = pathTime + mesh_.time().deltaTValue();
+            const scalar deltaT = mesh_.time().deltaTValue();
 
-            const scalar beam_dt = sources_[i].beam().deltaT();
+            const scalar nextTime =
+                min(pathTime + deltaT, sources_[i].beam().endTime());
 
-            volScalarField qDoti
+            const scalar beamDeltaT = sources_[i].beam().deltaT();
+
+            volScalarField sourceQDot
             (
                 IOobject
                 (
-                    "qDoti",
+                    "sourceQDot",
                     mesh_.time().name(),
                     mesh_
                 ),
@@ -130,30 +141,26 @@ void Foam::movingHeatSourceModel::update()
                 dimensionedScalar("Zero", qDot_.dimensions(), 0.0)
             );
 
-            scalar sumWeights = 0.0;
-
             while ((nextTime - pathTime) > small)
             {
-                scalar dt = min(beam_dt, max(0, nextTime - pathTime));
+                scalar dt = min(beamDeltaT, max(0, nextTime - pathTime));
 
                 pathTime += dt;
 
                 sources_[i].beam().move(pathTime);
 
-                qDoti += dt*sources_[i].qDot();
-
-                sumWeights += dt;
+                sourceQDot += dt*sources_[i].qDot();
             }
 
-            qDoti /= sumWeights;
+            sourceQDot /= deltaT;
 
-            qDot_ += qDoti;
+            qDot_ += sourceQDot;
         }
     }
 
     qDot_.correctBoundaryConditions();
 
-    refinementModel_->update();
+    refinement_->update();
 }
 
 // ************************************************************************* //

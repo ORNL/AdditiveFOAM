@@ -2,10 +2,10 @@
 
 ## Case description
 
-This tutorial demonstrates the `tabulated` heat source model in AdditiveFOAM
-using a measured nLight AFX Index 3 laser profile. The profile was exported from
-PRIMES LaserDiagnosticsSoftware and converted to the AdditiveFOAM tabulated
-heat-source format with `primesToAdditiveFoam`.
+This tutorial demonstrates a `projected` heat source with a measured `tabulated`
+planar profile and an `exponential` axial projection. The nLight AFX Index 3
+profile was exported from PRIMES LaserDiagnosticsSoftware and converted to the
+AdditiveFOAM tabulated format with `primesToAdditiveFoam`.
 
 The purpose of this tutorial is to show how measured beam profiles can be used
 directly in AdditiveFOAM without adding a new analytic heat-source model for
@@ -29,7 +29,7 @@ then runs the mesh generation, decomposition, solver, and reconstruction steps.
 
 `constant/heatSourceDict`
 
-Defines the moving heat source and selects the `tabulated` heat-source model.
+Defines the moving heat source and selects its profile and projection.
 
 `constant/scanPath`
 
@@ -97,24 +97,49 @@ and writes the AdditiveFOAM tabulated heat-source profile:
 constant/beamProfile.txt
 ```
 
+The supported input is an LDS table export with the calculation Region of
+Interest (ROI) enabled at a fill factor of 0.5. A rotated-moments export provides
+the `Radius a`, `Radius b`, and `Azimuth angle φ` values used for the
+beam-statistics comparison.
+
+`primesToAdditiveFoam` subtracts `Nullvalue`, sets samples below the resulting
+zero level to zero, and updates the rectangular calculation ROI from the pixel
+centroid and x/y second moments until the pixel mask converges. `SNR` is
+diagnostic metadata and is not an intensity threshold.
+
+The normalized output retains one zero-valued point outside each cropped edge.
+This boundary preserves the bilinear profile, its coordinate system, centroid,
+asymmetry, and beam statistics. The conversion report compares the profile
+radii and azimuth with the corresponding PRIMES header values.
+
 ## Heat source model
 
 The tutorial uses:
 
-```foam
-heatSourceModel tabulated;
-```
-
-The corresponding coefficient dictionary is:
+The heat-source dictionary is:
 
 ```foam
-tabulatedCoeffs
+widthReference  D4Sigma;
+
+heatSource
 {
-    file        "beamProfile.txt";
-    dimensions  (2.50e-4 2.50e-4 5.0e-5);
-    A           0;
-    B           1;
+    model       projected;
+    depth       5.0e-5;
+    tolerance   1.0e-3;
     nPoints     (10 10 10);
+
+    profile
+    {
+        model       tabulated;
+        file        "beamProfile.txt";
+    }
+
+    projection
+    {
+        model       exponential;
+        nSlope      0;
+        nIntercept  1;
+    }
 }
 ```
 
@@ -125,39 +150,53 @@ tabulatedCoeffs
 Name of the tabulated two-dimensional beam file. Relative paths are interpreted
 relative to the `constant/` directory.
 
-`dimensions`
+`depth`
 
-Sets the heat-source dimensions used by the base moving heat-source integration.
-For this tutorial, the lateral dimensions should cover the support of the
-measured nLight AFX Index 3 beam profile. The third component is the initial
-projected heat-source depth.
+Sets the configured projected heat-source depth. The profile file determines the
+lateral characteristic size, interpolation bounds, normalization, and D4Sigma
+metrics.
 
-`transient`
+The profile integral and D4Sigma metrics use the exact raw moments of the
+bilinear interpolant, `Mpq = integral(x^p*y^q*I(x,y) dx dy)`.
 
-Enables transient heat-source depth adjustment based on the local melt-pool
-response.
+`widthReference`
 
-`isoValue`
+`D4Sigma` selects the beam-plane reference width. `D4Sigma` optionally selects
+`areaEquivalent` (default), `major`, or `minor` from the profile metrics.
 
-Optional temperature isovalue used by the transient projected heat-source
-closure. If omitted, the material liquidus from `constant/transportProperties`
-is used.
+`depthReference`
 
-`A` and `B`
+Selects `constant` (default) or `isotherm` as the source depth reference.
+
+`isotherm`
+
+Optional temperature used by an isotherm depth reference. If omitted, the
+material liquidus from `constant/transportProperties` is used.
+
+`nSlope` and `nIntercept`
 
 Define the projected axial shape closure:
 
 ```text
-n = A*log2(x) + B
+n = clip(nSlope*log2(a) + nIntercept, 0, 9)
+k = 2^n
 ```
 
-where `x` is the ratio between the current heat-source depth and lateral
-heat-source size.
+where `a = 2*depth/width`. Profile metrics store D4Sigma as `(major minor)`;
+the source-level `D4Sigma` entry selects `areaEquivalent`, `major`, or `minor`
+for the reference width. The source is applied below the beam plane with axial
+weight `exp(-3*(-z/depth)^k)`; its normalization uses the matching one-sided
+axial integral.
+
+`tolerance`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 
-Controls the sub-cell sampling resolution used when integrating the heat source
-over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints`.
 
 ## Tabulated beam file format
 

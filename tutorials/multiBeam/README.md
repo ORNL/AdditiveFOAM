@@ -15,7 +15,7 @@ The original AMB2018-02-B tutorial contains one moving heat source. This tutoria
 uses two moving heat sources:
 
 ```foam
-sources (beam1 beam2);
+sources { beam1 { /* ... */ } beam2 { /* ... */ } }
 ```
 
 The two beams follow the same scan direction, power, speed, and heat source
@@ -95,53 +95,33 @@ Defines the base computational mesh.
 This tutorial uses two heat sources:
 
 ```foam
-sources (beam1 beam2);
+sources { beam1 { /* ... */ } beam2 { /* ... */ } }
 ```
 
 Both beams use the same heat source parameters as the calibrated AMB2018-02-B
 single-beam case.
 
 ```foam
-beam1
+sources
 {
-    pathName            scanPath_1;
-
-    absorptionModel     constant;
-
-    constantCoeffs
+  beam1
+  {
+    path scanPath_1;
+    absorption
     {
-        eta             0.33;
+        model constant;
+        eta   0.33;
     }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
+    heatSource
     {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
+        model superGaussian;
+        radius (85.0e-6 85.0e-6);
+        depth 30e-6;
+        k 2.0;
+        nPoints (10 10 10);
     }
-}
-
-beam2
-{
-    pathName            scanPath_2;
-
-    absorptionModel     constant;
-
-    constantCoeffs
-    {
-        eta             0.33;
-    }
-
-    heatSourceModel     superGaussian;
-
-    superGaussianCoeffs
-    {
-        k               2.0;
-        dimensions      (85.0e-6 85.0e-6 30e-6);
-        nPoints         (10 10 10);
-    }
+  }
+  beam2 { /* identical, with path scanPath_2; */ }
 }
 ```
 
@@ -156,15 +136,20 @@ Constant absorptivity applied to the laser power from each scan path.
 Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a
 Gaussian-like source.
 
-`dimensions`
+`radius` and `depth`
 
-Sets the heat source dimensions used by the moving heat source integration,
-taken as `2sigma`.
+Set the lateral radius and axial depth. `definition` optionally selects `e2`
+(default) or `secondMoment`.
+
+`tolerance`
+
+Optional maximum fraction of analytical source power outside the integration
+bounds. The default `1e-3` retains at least 99.9% of each source's power.
 
 `nPoints`
 
-Controls the sub-cell sampling resolution used when integrating each heat source
-over mesh cells.
+Sets the target sub-cell spacing by dividing the retained source bounds by
+`nPoints` for each source.
 
 ## Refinement model
 
@@ -175,11 +160,10 @@ name and are applied relative to each path interval for each beam.
 A representative refinement setup is:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel         none;
-
-    //refinementModel         targetCellLoad;
+    model                   none;
+    //model                 targetCellLoad;
 
     refinementTemperature   1000;
 
@@ -189,19 +173,16 @@ refinementModel
         beam2               (85.0e-6 85.0e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc  5000;
-        nBufferVolumes      4;
-        maxSearchIter       10;
-        timeTolerance       1e-4;
-    }
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
 }
 ```
 
 ### Coefficients
 
-`refinementModel`
+`model`
 
 Selects the refinement model. `targetCellLoad` projects refinement ahead along
 the scan paths and adjusts the projected volume to target a cell count per
@@ -220,14 +201,17 @@ direction.
 
 `targetCellsPerProc`
 
-Target cell count per MPI processor. The `targetCellLoad` model adjusts the
-projected refinement volume to keep the total mesh size near this load.
+Soft target for the global average cell count per MPI processor. The model
+raises this value when required by the initial mesh and minimum projected
+refinement volume. The `maxCells` entry in `dynamicMeshDict` limits global
+refinement independently.
 
 `nBufferVolumes`
 
 Minimum projected scan-path volume expressed as a multiple of the combined
 source-buffer volume. This keeps the projected refinement region from shrinking
-below the local scan-path coverage.
+below the local scan-path coverage. This minimum coverage takes precedence over
+further target-volume reduction.
 
 `maxSearchIter`
 
@@ -237,6 +221,26 @@ time interval that gives the target refinement volume.
 `timeTolerance`
 
 Stopping tolerance, in seconds, for the scan-path time-interval search.
+
+`initialTargetVolumeFactor`
+
+Initial fraction of the estimated available cell budget assigned to projected
+scan-path refinement. The default is `0.5`.
+
+`maxTargetVolumeGrowth`
+
+Maximum target-volume growth factor applied at one AMR update. The default is
+`1.2`.
+
+`maxTargetVolumeShrink`
+
+Minimum target-volume factor applied when the current mesh exceeds the target
+cell load. The default is `0.8`.
+
+`postScanUpdateInterval`
+
+Multiplier of the current time-step duration used to schedule temperature-only
+AMR checks after the scan path is complete. The default is `10`.
 
 ## Post-processing
 

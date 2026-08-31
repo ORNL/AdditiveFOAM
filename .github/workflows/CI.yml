@@ -42,4 +42,4 @@ jobs:
           cd userCase
           blockMesh
           decomposePar
-          mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel
+          mpirun -n 8 --oversubscribe --allow-run-as-root additiveFoam -parallel
