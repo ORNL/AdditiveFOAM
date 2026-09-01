@@ -4,17 +4,17 @@ The documentation figures are rendered from reconstructed AdditiveFOAM tutorial 
 
 ## Required cases
 
-Prepare six case directories and one completed calibration campaign from the current AdditiveFOAM tutorials:
+Prepare six case directories and one completed calibration campaign from the AdditiveFOAM tutorials:
 
-1. Run `AMB2018-02-B` without changing its supplied refinement model.
-2. Copy `AMB2018-02-B`, set `refinementModel/refinementModel` in `constant/heatSourceDict` to `timeStep`, confirm that `refineInterval` is `1` in `constant/dynamicMeshDict`, and run the case.
-3. Run `multiLayerPBF` with its supplied two-layer `Allrun` workflow.
+1. Run `AMB2018-02-B` without changing its configured refinement model.
+2. Copy `AMB2018-02-B`, set `refinement/model` in `constant/heatSourceDict` to `timeStep`, confirm that `refineInterval` is `1` in `constant/dynamicMeshDict`, and run the case.
+3. Run `multiLayerPBF` with its two-layer `Allrun` workflow.
 4. Run `multiBeam`.
 5. Run `nLightAFX`.
 6. Run `tabulated`.
 7. Run `heatSourceCalibration` with `calibrateHeatSource` so its `campaign/` directory contains `simulations.yml`, `calibration_state.yml`, `calibration_fit.yml`, and the report summary.
 
-Run each supplied `Allrun` script so the parallel fields are reconstructed. Create an empty `case.foam` marker in each reconstructed case directory. For the multi-layer input, use the parent `multiLayerPBF` directory produced by `reconstructLayers`; it contains the complete temperature history across all layers.
+Run each tutorial's `Allrun` script so the parallel fields are reconstructed. Create an empty `case.foam` marker in each reconstructed case directory. For the multi-layer input, use the parent `multiLayerPBF` directory produced by `reconstructLayers`; it contains the temperature history across all layers.
 
 ## Render
 
@@ -35,7 +35,7 @@ documentation-figures/
     └── campaign/
 ```
 
-Set the location once and regenerate and verify all 21 generated documentation
+Set the location once and regenerate and verify all 22 generated documentation
 assets with no per-case paths:
 
 ```bash
@@ -44,14 +44,20 @@ python3 scripts/visualization/regenerate_all.py
 ```
 
 The AdditiveFOAM and OpenFOAM environments must be sourced so that
-`plotPower`, `plotDimensions`, and `plotCET` are on `PATH`. The driver also
-requires `pvbatch`, FFmpeg, Pillow, Matplotlib, NumPy, and Pandas. It invokes
+`plotPower`, `plotDimensions`, and `plotCET` are on `PATH` and the shared
+`nLightAFX-1000.cfg` location is available. The driver also requires
+`pvbatch`, FFmpeg, Pillow, Matplotlib, NumPy, Pandas, PyYAML, and SciPy. It invokes
 each ParaView asset group in a fresh off-screen process, regenerates the
 quantitative and analytic plots, writes the results to
 `assets/images/visualizations`, and verifies the expected output set. Use
 `--output-dir` to write elsewhere or `--dry-run` to inspect every command.
 Alternatively, pass `--cases-root` once on the command line. Individual case
-arguments are available only as overrides for nonstandard directory layouts. Use `--calibration-campaign` and `--calibration-experiments` when those outputs are stored elsewhere.
+arguments are available only as overrides for nonstandard directory layouts. Use
+`--amb2018-data-case` if the completed AMB power log, melt-pool CSVs, and
+solidification CSV are stored separately from the reconstructed baseline case.
+The driver validates these inputs before replacing the three quantitative plots.
+Use `--calibration-campaign` and `--calibration-experiments` when those outputs
+are stored elsewhere.
 
 The case directories and their computed fields remain external inputs; the
 driver does not copy them into the documentation repository.
@@ -80,7 +86,7 @@ On headless systems whose OpenGL driver produces incomplete framebuffer tiles af
 
 ## AMB2018 output plots
 
-For the quantitative tutorial figures, enable `meltPoolDimensions` and `solidificationData` in the AMB2018-02-B `system/controlDict`, run `Allrun`, and invoke the supplied plotting utilities:
+For the quantitative tutorial figures, enable `meltPoolDimensions` and `solidificationData` in the AMB2018-02-B `system/controlDict`, run `Allrun`, and invoke the plotting utilities:
 
 ```bash
 plotPower AMB2018-02-B \
@@ -95,16 +101,18 @@ These figures are produced from `log.additiveFoam`, `postProcessing/meltPoolDime
 
 ## Heat-source model comparison
 
-Generate the normalized model comparison from the documented analytic distributions and the measured table supplied with the `tabulated` tutorial:
+Generate the normalized model comparison from the documented analytic distributions and the measured table in the `tabulated` tutorial:
 
 ```bash
 python3 scripts/visualization/plot_heat_source_models.py \
   --tabulated-profile "$ADDITIVEFOAM_TUTORIALS/tabulated/constant/beamProfile.txt" \
+  --nlight-config "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg" \
   --output assets/images/visualizations/heat-source-models.png \
-  --projection-output assets/images/visualizations/heat-source-projection.png
+  --projection-output assets/images/visualizations/heat-source-projection.png \
+  --metrics-output assets/images/visualizations/profile-metrics.png
 ```
 
-The script uses the nLight AFX Index 6 coefficients documented in the tutorial include file and reads the measured Index 6 table directly. The output is saved at 300 dpi.
+The script reads the nLight AFX Index 6 coefficients from the shared configuration and the selected tabulated-profile file, which is the measured Index 3 table in the tabulated tutorial. `heat-source-models.png` distinguishes volumetric models from `projected` profile-plus-projection compositions. `profile-metrics.png` shows a rotated elliptical centroid and principal `D4Sigma` axes, the area-equivalent reference width, and the separate reference-aspect-ratio and applied-depth data paths. The outputs are saved at 300 dpi.
 
 Generate the Kelly absorption-model figure from the parameters used in the example dictionary:
 
@@ -128,4 +136,4 @@ python3 scripts/visualization/plot_heat_source_calibration.py \
   --fit-output assets/images/visualizations/heat-source-calibration-fit.png
 ```
 
-The response figure reconstructs each PCHIP surrogate from the cached AdditiveFOAM trials and overlays the measured replicate range and local posterior mode. The fit figure uses `x = d / (D4sigma / 2)`, resamples the stored local posteriors with the campaign seed, repeats the robust uncertainty-weighted fit, and plots the empirical 95% response interval. The summary must contain `x_depth_over_half_d4sigma`, and the fit must declare `x_definition: d / (D4sigma / 2)`.
+The response figure reconstructs each PCHIP surrogate from the stored AdditiveFOAM trials and overlays the measured replicate range and local posterior mode. The fit figure uses `x = 2*Depth / selected diameter`, resamples the stored local posteriors with the campaign seed, repeats the uncertainty-weighted `soft_l1` fit, and plots the empirical 95% response interval. The generated CSV uses `x_2depth_over_diameter`; the fit must declare `x_definition: 2*Depth / selected diameter` and provide `nSlope` and `nIntercept`. The `areaEquivalent` tutorial uses the 109.69 µm area-equivalent `D4Sigma` as its selected diameter.

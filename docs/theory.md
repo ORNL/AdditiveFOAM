@@ -9,26 +9,29 @@ usemathjax: true
 
 # Governing Equations
 
-This section defines the mathematical model solved by AdditiveFOAM: incompressible momentum conservation with Boussinesq buoyancy and mushy-zone drag, temperature transport with latent heat, the semi-implicit correction that couples temperature to a tabulated solid-fraction path, supported time discretizations, and phase-dependent thermal properties with irreversible powder consolidation. Configuration entries and numerical algorithms that act on these equations are documented in the subsequent User Guide sections.
+AdditiveFOAM solves incompressible momentum conservation with Boussinesq buoyancy and mushy-zone drag, temperature transport with latent heat, and a tabulated temperature–solid-fraction relation. The formulation includes semi-implicit thermodynamic coupling, phase-dependent thermal properties, and irreversible powder consolidation.
 
 ## Continuum model
 
-AdditiveFOAM solves incompressible mass and momentum conservation for the mixture velocity $$\mathbf{u}$$:
+AdditiveFOAM solves incompressible mass and momentum conservation for the mixture velocity $$\mathbf{u}$$. In the kinematic form used by the solver,
 
 $$\nabla\cdot\mathbf{u}=0,$$
 
-$$\rho\left(\frac{\partial\mathbf{u}}{\partial t}+\mathbf{u}\cdot\nabla\mathbf{u}\right)
-=\nabla\cdot(\mu\nabla\mathbf{u})-\nabla p+\rho_k\mathbf{g}-D\mathbf{u}.$$
+$$\frac{\partial\mathbf{u}}{\partial t}+\mathbf{u}\cdot\nabla\mathbf{u}
+=\nabla\cdot(\nu\nabla\mathbf{u})-\nabla p+\rho_k\mathbf{g}-D_\nu\mathbf{u}.$$
 
 The Boussinesq density factor is
 
 $$\rho_k=1-\beta(T-T_{\mathrm{liq}}),$$
 
-and the mushy-zone resistance is based on a Kozeny–Carman form,
+and the mushy-zone resistance is based on a capped Kozeny–Carman form,
 
-$$D=\mu\frac{180}{\lambda^2}\frac{f_s^2}{(1-f_s)^3}.$$
+$$\widetilde f_s=\min(f_s,0.95),$$
 
-Here $$\mathbf{u}$$ is mixture velocity, $$t$$ is time, $$\rho$$ is reference density, $$\mu$$ is dynamic viscosity, $$p$$ is pressure, $$\mathbf{g}$$ is gravitational acceleration, and $$\nabla$$ is the spatial gradient operator. The temperature is $$T$$, $$T_{\mathrm{liq}}$$ is the liquidus, $$\beta$$ is the thermal-expansion coefficient, and $$\rho_k$$ is the Boussinesq buoyancy factor. The solid fraction is $$f_s$$, $$D$$ is the mushy-zone drag coefficient, and $$\lambda$$ is the dendrite-arm spacing.
+$$D_\nu=\nu\frac{180}{\lambda^2}
+\frac{\widetilde f_s^2}{(1-\widetilde f_s)^3}.$$
+
+Here $$\mathbf{u}$$ is mixture velocity, $$t$$ is time, $$\nu=\mu/\rho$$ is kinematic viscosity, $$\mu$$ is dynamic viscosity, $$\rho$$ is reference density, $$p$$ is kinematic pressure, $$\mathbf{g}$$ is gravitational acceleration, and $$\nabla$$ is the spatial gradient operator. The temperature is $$T$$, $$T_{\mathrm{liq}}$$ is the liquidus, $$\beta$$ is the thermal-expansion coefficient, and $$\rho_k$$ is the dimensionless Boussinesq density factor. The solid fraction is $$f_s$$, $$D_\nu$$ is the kinematic mushy-zone drag coefficient, and $$\lambda$$ is the dendrite-arm spacing. The 0.95 cap keeps the resistance finite in fully solid cells. When a rotating frame is configured, OpenFOAM's MRF acceleration is added to the left-hand side.
 
 ## Temperature and phase coupling
 
@@ -38,7 +41,7 @@ $$\rho c_p\frac{\partial T}{\partial t}
 +\rho c_p\nabla\cdot(\mathbf{u}T)
 =\nabla\cdot(k\nabla T)+\rho L_f\frac{\partial f_s}{\partial t}+\dot{q}.$$
 
-Here $$c_p$$ is specific heat capacity, $$k$$ is thermal conductivity, $$L_f$$ is latent heat of fusion, and $$\dot q$$ is volumetric heat input. The `thermoPath` table defines the solid-fraction function $$f_s=F(T)$$ and can represent Gulliver–Scheil, lever-rule, or linear behavior. AdditiveFOAM interpolates piecewise linearly between the supplied points and applies $$\operatorname{clip}_{[0,1]}\!\left[x\right]=\min[\max(x,0),1]$$.
+Here $$c_p$$ is specific heat capacity, $$k$$ is thermal conductivity, $$L_f$$ is latent heat of fusion, and $$\dot q$$ is volumetric heat input. The `thermoPath` table defines the solid-fraction function $$f_s=F(T)$$ and can represent Gulliver–Scheil, lever-rule, or linear behavior. AdditiveFOAM interpolates piecewise linearly between the table points and applies $$\operatorname{clip}_{[0,1]}\!\left[x\right]=\min[\max(x,0),1]$$.
 
 ### Semi-implicit correction from the tabulated path
 
@@ -47,11 +50,11 @@ Let $$m$$ denote the thermodynamic-correction index at the new time level. For a
 $$g^{(m)}=\left.\frac{\mathrm{d}F}{\mathrm{d}T}\right|_m
 =\frac{F_h-F_l}{T_h-T_l}.$$
 
-Rather than anchoring the linearization at a temperature that may not agree with the current iterated solid fraction, it maps $$f_s^{(m)}$$ back onto that segment:
+The solver maps $$f_s^{(m)}$$ back onto the local table segment:
 
 $$T_0^{(m)}=T_l+\frac{f_s^{(m)}-F_l}{g^{(m)}}.$$
 
-Thus the current phase state lies exactly on the local linear model. The next solid-fraction estimate is
+This places the iterated phase state on the local linear model. The next solid-fraction estimate is
 
 $$f_s^{(m+1)}=
 \operatorname{clip}_{[0,1]}\!
@@ -156,4 +159,4 @@ f_p^{\,n}, & f_s^{\,n+1}=1.
 
 Here $$n$$ and $$n+1$$ denote the old and new time levels.
 
-Thus a cell retains its initialized powder fraction while it remains completely solid. As soon as the cell begins melting, its powder fraction is set to zero and the cell thereafter uses the consolidated solid–liquid mixture, even if it later resolidifies.
+A cell retains its initialized powder fraction while fully solid. Melting sets the powder fraction to zero permanently, so subsequent solidification uses the consolidated solid–liquid mixture.

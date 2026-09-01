@@ -22,7 +22,7 @@ The selected refinement model determines the future scan-path interval represent
 | **`targetCellLoad`** | A variable look-ahead interval chosen to approach a target number of cells per process |
 | **`none`** | No AdditiveFOAM refinement marker |
 
-The `refinementModel` dictionary is optional. Users select the model and source-specific buffer dimensions in `constant/heatSourceDict`, then configure refinement limits and optional load balancing in `constant/dynamicMeshDict`.
+The top-level `refinement` dictionary is optional and defaults to `model none`. Users select the model and source-specific buffer sizes in `constant/heatSourceDict`, then configure refinement limits and optional load balancing in `constant/dynamicMeshDict`.
 
 To enable AMR:
 
@@ -39,12 +39,12 @@ To enable AMR:
   <figcaption>Dynamic AMR in the AMB2018-02-B case. Green identifies cells selected by <code>refinementField</code>; the mesh color and edges show the resulting <code>cellLevel</code>. The OpenFOAM refiner is evaluated every time step with <code>refineInterval 1</code>.</figcaption>
 </figure>
 
-Active models require:
+Active models use the same flat nested-dictionary convention as the heat-source interface:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel       timeStep;
+    model                 timeStep;
     refinementTemperature 1000;
     buffers
     {
@@ -55,7 +55,7 @@ refinementModel
 
 | Entry | Required | Default | Meaning |
 |---|---:|---|---|
-| `refinementModel` | Yes in dictionary | — | `none`, `timeStep`, `uniformTimeIntervals`, or `targetCellLoad` |
+| `model` | No | `none` | `none`, `timeStep`, `uniformTimeIntervals`, or `targetCellLoad` |
 | `refinementTemperature` | No | Disabled (`GREAT`) | Set $$R_c^T=1$$ where $$T_c\geq T_{\mathrm{ref}}$$ |
 | `buffers` | Yes for active models | — | One scan-path buffer per source |
 
@@ -73,14 +73,26 @@ $$R_c^T=H(T_c-T_{\mathrm{ref}})$$
 
 and $$H$$ is the Heaviside function with $$H(0)=1$$. The scan-path indicator $$R_c^S$$ is one when the cell overlaps at least one buffered, positive-power path segment in the selected future time interval.
 
-For a path segment from $$\mathbf{p}_0$$ to $$\mathbf{p}_1$$, define the horizontal scan frame
+For a path segment from $$\mathbf{p}_0$$ to $$\mathbf{p}_1$$, let
+
+$$L_{xy}=\sqrt{(p_{1x}-p_{0x})^2+(p_{1y}-p_{0y})^2}.$$
+
+For a nonzero horizontal displacement, the scan frame is
 
 $$\mathbf{e}_0=\frac{(p_{1x}-p_{0x},p_{1y}-p_{0y},0)}
-{\sqrt{(p_{1x}-p_{0x})^2+(p_{1y}-p_{0y})^2}},
+ {L_{xy}},
 \quad
 \mathbf{e}_1=(-e_{0y},e_{0x},0),
 \quad
 \mathbf{e}_2=(0,0,1).$$
+
+When $$L_{xy}$$ is smaller than OpenFOAM `small`, including a stationary dwell, the implementation instead uses
+
+$$\mathbf e_0=(1,0,0),\qquad
+\mathbf e_1=(0,1,0),\qquad
+\mathbf e_2=(0,0,1),$$
+
+which avoids division by zero and gives the stationary buffer the configured Cartesian orientation.
 
 The oriented buffer has centre $$\mathbf{m}=(\mathbf{p}_0+\mathbf{p}_1)/2$$ and half-lengths
 
@@ -99,7 +111,7 @@ The overlap condition used to set $$R_c^S=1$$ is
 $$\left|(\mathbf{c}_c-\mathbf{m})\cdot\mathbf{e}_k\right|
 \le L_k+r_{c,k},\qquad k=0,1,2,$$
 
-where $$\mathbf{c}_c$$ is the centre of the cell bounding box. Only path intervals with $$P_b>0$$ enter this union. The OpenFOAM `refiner` consumes $$R_c$$; mesh redistribution is a separate operation.
+where $$\mathbf{c}_c$$ is the centre of the cell bounding box. Only path intervals with $$P_b>0$$ enter this union. Cell marking is union based: a cell that overlaps multiple path segments or source buffers is marked and counted once, and a path cell already marked by temperature is not counted again as newly added scan-path volume. The OpenFOAM `refiner` consumes $$R_c$$; mesh redistribution is a separate operation.
 
 In the indicator equations, $$T_c$$ is the cell temperature, $$T_{\mathrm{ref}}$$ is `refinementTemperature`, $$R_c^T$$ is the temperature indicator, $$R_c^S$$ is the scan-path indicator, and $$P_b$$ is the power of source $$b$$.
 
@@ -110,9 +122,9 @@ Select `targetCellLoad` when the future scan-path buffer should expand or contra
 In `constant/heatSourceDict`:
 
 ```foam
-refinementModel
+refinement
 {
-    refinementModel       targetCellLoad;
+    model                 targetCellLoad;
     refinementTemperature 1000;
 
     buffers
@@ -120,17 +132,14 @@ refinementModel
         beam (85e-6 85e-6 100e-6);
     }
 
-    targetCellLoadCoeffs
-    {
-        targetCellsPerProc        5000;
-        nBufferVolumes            4;
-        maxSearchIter             30;
-        timeTolerance             1e-6;
-        initialTargetVolumeFactor 0.5;
-        maxTargetVolumeGrowth     1.2;
-        maxTargetVolumeShrink     0.8;
-        postScanUpdateInterval    10;
-    }
+    targetCellsPerProc        5000;
+    nBufferVolumes            4;
+    maxSearchIter             30;
+    timeTolerance             1e-6;
+    initialTargetVolumeFactor 0.5;
+    maxTargetVolumeGrowth     1.2;
+    maxTargetVolumeShrink     0.8;
+    postScanUpdateInterval    10;
 }
 ```
 
@@ -146,10 +155,10 @@ Here $$V_\Omega$$ is the mesh-domain volume, $$M$$ is the maximum cell-count inc
 
 The minimum corresponding cell increment is $$N_{\min}=MV_{\min}/\overline V$$. Consequently, the requested cells per process are replaced by
 
-$$N_{\mathrm{pp}}^{\star}=\max\left(N_{\mathrm{pp}},
-\frac{N+N_{\min}}{N_p}\right).$$
+$$N_{\mathrm{pp}}^{\star}=\max\left[N_{\mathrm{pp}},
+\left\lfloor\frac{N+N_{\min}}{N_p}\right\rfloor\right].$$
 
-Here $$N_{\mathrm{pp}}$$ is `targetCellsPerProc`, $$N_{\mathrm{pp}}^{\star}$$ is its minimum-volume-adjusted value, and $$N^{\star}=N_pN_{\mathrm{pp}}^{\star}$$ is the corresponding global target. With initial factor $$f_0$$ equal to `initialTargetVolumeFactor`, the initial target refinement volume is
+Here $$N_{\mathrm{pp}}$$ is `targetCellsPerProc`, $$N_{\mathrm{pp}}^{\star}$$ is its integer, minimum-volume-adjusted value, and $$N^{\star}=N_pN_{\mathrm{pp}}^{\star}$$ is the corresponding global target. The floor records the positive scalar-to-`label` conversion performed by the implementation. With initial factor $$f_0$$ equal to `initialTargetVolumeFactor`, the initial target refinement volume is
 
 $$V_R^{(0)}=\max\left[
 f_0\overline V\frac{\max(N^{\star}-N,0)}{M},V_{\min}\right].$$
@@ -167,13 +176,18 @@ V_{\min}\right].$$
 
 Here $$N^{(m)}$$ is the observed global cell count, $$r^{(m)}$$ is the target-to-observed cell-count ratio, and $$V_R^{(m)}$$ is the target marked volume at refinement update $$m$$. The quantities $$f_{\mathrm{shrink}}$$ and $$f_{\mathrm{grow}}$$ are `maxTargetVolumeShrink` and `maxTargetVolumeGrowth`, respectively.
 
-Starting at the current time $$t$$, the look-ahead endpoint $$t_R$$ is the earliest positive-power path-event time for which
+At an update, `markTemperature` first defines the existing refine volume
 
-$$\sum_cV_cR_c(t,t_R)\ge V_R^{(m+1)}$$
+$$V_T=\sum_c V_cR_c^T.$$
 
-and the newly marked scan-path volume is at least $$V_{\min}$$. Event intervals are accumulated in time order; the final interval is resolved by bisection to `timeTolerance` or `maxSearchIter`.
+The subsequent path search adds only cells not already temperature-marked and not already selected by an earlier source or segment. Let $$V_S(t,t_R)$$ be this newly added union volume. Starting at the current time $$t$$, the look-ahead endpoint $$t_R$$ is the earliest positive-power path-event time for which both
 
-Here $$V_c$$ is cell volume, $$R_c(t,t_R)$$ is the marker evaluated over the future interval $$[t,t_R]$$, $$t$$ is the current time, and $$t_R$$ is the selected look-ahead endpoint.
+$$V_T+V_S(t,t_R)\ge V_R^{(m+1)},\qquad
+V_S(t,t_R)\ge V_{\min}$$
+
+hold. Event intervals are accumulated in time order; the final interval is resolved by bisection to `timeTolerance` or `maxSearchIter`.
+
+Here $$V_c$$ is cell volume, $$V_T$$ is the existing temperature-marked volume, $$V_S$$ is the additional union of path-marked cells, $$t$$ is the current time, and $$t_R$$ is the selected look-ahead endpoint. This distinction prevents overlap between temperature and path regions—or among multiple sources—from inflating the measured marked volume.
 
 ## Mesh refinement and load balancing
 
@@ -233,24 +247,32 @@ Here $$p$$ indexes MPI processes, $$C_p$$ is the estimated load on process $$p$$
 
 ## `timeStep`
 
-Select `timeStep` when refinement should cover only the positive-power path traversed during the next CFD step. This gives the shortest look-ahead interval and has no model-specific coefficient dictionary.
+Select `timeStep` when refinement should cover only the positive-power path traversed during the next CFD step. This gives the shortest look-ahead interval and adds no model-specific entries to `refinement`.
 
 At time $$t^n$$, this model evaluates the marker over $$[t^n,t^n+\Delta t]$$:
 
 $$R_c=\max\!\left[H(T_c-T_{\mathrm{ref}}),R_c^S(t^n,t^n+\Delta t)\right].$$
 
-Here $$R_c^S(t_0,t_1)=1$$ if cell $$c$$ intersects the oriented buffer of any positive-power scan-path segment active in $$[t_0,t_1]$$, and is zero otherwise. It has no model-specific coefficient dictionary. The segment–cell intersection test is defined in [Refinement criterion](#refinement-criterion).
+Here $$R_c^S(t_0,t_1)=1$$ if cell $$c$$ intersects the oriented buffer of any positive-power scan-path segment active in $$[t_0,t_1]$$, and is zero otherwise. The segment–cell intersection test is defined in [Refinement criterion](#refinement-criterion).
 
 ## `uniformTimeIntervals`
 
 Select `uniformTimeIntervals` when the scan should be divided into a fixed number of equal refinement windows. A smaller `intervals` value produces a longer look-ahead window and a larger simultaneously refined path volume; a larger value produces shorter windows. Configure the required count with:
 
 ```foam
-uniformTimeIntervalsCoeffs
+refinement
 {
+    model                 uniformTimeIntervals;
+    refinementTemperature 1000;
+    buffers
+    {
+        beam (85e-6 85e-6 100e-6);
+    }
     intervals 100;
 }
 ```
+
+`intervals` must be greater than zero. A zero or negative value is a fatal input error.
 
 For scan end time $$t_e$$, start time $$t_s$$, and `intervals` $$N_I$$, the marker interval is
 
@@ -265,4 +287,4 @@ At the $$j$$th update it evaluates $$R_c^S(t_j,t_j+\Delta t_R)$$. After $$t_e$$,
 `none` disables calculation of $$R_c$$.
 
 {: .warning }
-The `ExaCA` function object aborts if it receives a dynamic mesh redistribution event. It supports refinement on a fixed processor decomposition, but it cannot currently be combined with runtime load balancing.
+The `ExaCA` function object aborts if it receives a dynamic mesh redistribution event. It supports refinement on a fixed processor decomposition, but it cannot be combined with runtime load balancing.

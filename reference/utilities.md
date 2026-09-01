@@ -16,7 +16,7 @@ AdditiveFOAM includes command-line utilities for calibrating projected heat sour
 |---|---|
 | Projected-source calibration | `calibrateHeatSource` |
 | Scan-path generation | `createScanPath` |
-| Measured beam conversion | `primesToAdditiveFoam` |
+| Measured beam conversion and inspection | `primesToAdditiveFoam`, `tabulatedProfileInfo` |
 | Multi-layer simulation | `runLayers`, `reconstructLayers` |
 | Function Object reconstruction | `reconstructExaCAData`, `reconstructSolidificationData` |
 | Plotting | `plotPower`, `plotDimensions`, `plotCET` |
@@ -25,17 +25,17 @@ Sourcing `etc/bashrc` adds `$ADDITIVEFOAM_BIN` to `PATH`, making these commands 
 
 ## `calibrateHeatSource`
 
-Run a campaign of rendered AdditiveFOAM cases and infer the `A` and `B` coefficients used by the common projected-source depth distribution:
+Run a campaign of rendered AdditiveFOAM cases and infer the `nSlope` and `nIntercept` coefficients used by the `projected` source's exponential axial projection:
 
 ```bash
 calibrateHeatSource --config config.yml
 ```
 
-The command requires the Python packages pinned in the repository `requirements.txt`. It reads experimental depths and a complete case template, caches every simulated response, performs local Bayesian inversions and a robust global fit, and writes YAML, CSV, and PDF products. See the [calibration model and configuration reference]({{ '/docs/heat-source-calibration/' | relative_url }}) and [worked tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}).
+The command requires Python 3.10–3.12 and the packages pinned in the repository `requirements.txt`. It reads named beam profiles, experimental depths, and a case template; evaluates local Bayesian posteriors with deterministic numerical quadrature; stores the AdditiveFOAM response trials; performs an uncertainty-weighted global fit with a `soft_l1` loss; and writes YAML, CSV, and PDF products. See the [calibration model and configuration reference]({{ '/docs/heat-source-calibration/' | relative_url }}) and [worked tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}).
 
 ## `createScanPath`
 
-Use `createScanPath` when a case requires one or more rotated raster patterns. Define the rectangular scan region, hatch spacing, rotation sequence, power, speed, and inter-track dwell in `constant/createScanPathDict`, then run `createScanPath` from the case directory. It writes `constant/scanPath_0`, `scanPath_1`, and so on for direct use by `pathName` or `runLayers`:
+Use `createScanPath` when a case requires one or more rotated raster patterns. Define the rectangular scan region, hatch spacing, rotation sequence, power, speed, and inter-track dwell in `constant/createScanPathDict`, then run `createScanPath` from the case directory. It writes `constant/scanPath_0`, `scanPath_1`, and so on for direct use by a source-level `path` entry or by `runLayers`:
 
 ```foam
 minPoint    (0 -1e-4);
@@ -53,13 +53,25 @@ The rectangular region and hatch spacing are metres; `angle` is the rotation inc
 
 ## `primesToAdditiveFoam`
 
-Use `primesToAdditiveFoam` before running a `tabulated` heat source when the lateral intensity was exported by PRIMES LaserDiagnosticsSoftware. The command converts the vendor CSV into AdditiveFOAM's regular-grid table and reports dimensions that can be transferred to the heat-source dictionary.
+Use `primesToAdditiveFoam` before running a `tabulated` projected profile when the planar intensity was exported by PRIMES LaserDiagnosticsSoftware. The command converts the vendor CSV into AdditiveFOAM's regular-grid table and reports its calculated beam statistics.
 
 ```bash
 primesToAdditiveFoam input.csv constant/beamProfile.txt
 ```
 
-Converts a PRIMES LaserDiagnosticsSoftware export to the `tabulated` model format. It reads grid dimensions and pixel pitches, subtracts an optional null value, clamps negative intensity, converts micrometres to metres, centres the table, and normalizes its planar integral. It reports measured radii and suggested lateral dimensions when metadata is present.
+The converter subtracts `Nullvalue`, clamps remaining negative intensities to zero, and treats `SNR` as diagnostic metadata rather than an intensity threshold. For an LDS table export with calculation ROI enabled at the standard 0.5 fill factor, it reconstructs the rectangular calculation ROI iteratively from the pixel centroid and x/y second moments. It then crops to the nonzero support while retaining one zero-valued perimeter node, preserves the original coordinate system, converts coordinates to metres, and normalizes the exact bilinear planar integral.
+
+The report includes the converted centroid, principal `D4Sigma` values ordered `(major minor)`, and azimuth. When compatible rotated-moments metadata are present, it also compares the area-equivalent `D4Sigma` and the converted a, b, x, and y second-moment radii with the PRIMES values. Window-centre metadata supplies the centroid in PRIMES coordinates. The converted table retains asymmetric centroid offsets, and the ROI bounds are reconstructed from the measurement statistics. The solver uses these [`profileMetrics`]({{ '/docs/heat-sources/#beam-plane-profile-metrics' | relative_url }}).
+
+## `tabulatedProfileInfo`
+
+Inspect any AdditiveFOAM tabulated profile without running a solver case:
+
+```bash
+tabulatedProfileInfo constant/beamProfile.txt
+```
+
+The utility reports grid counts, x/y bounds, spacing, the exact bilinear planar integral, centroid, principal `D4Sigma` values ordered `(major minor)`, and azimuth in radians. An area-equivalent width is the geometric mean of those two reported diameters. `calibrateHeatSource` calls the utility automatically for every named profile before selecting the requested `D4Sigma` component and constructing normalized experimental and simulation depths.
 
 ## Multi-layer workflow
 

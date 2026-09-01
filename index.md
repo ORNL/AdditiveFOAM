@@ -21,14 +21,16 @@ An open-source CFD code for additive manufacturing built on OpenFOAM.
 
 - Transient conduction, convection, melting, solidification, latent heat, buoyancy, mushy-zone drag, and Marangoni flow.
 - Multiple simultaneous moving beams with configurable spatial profiles.
+- A `projected` heat source that combines `superGaussian`, nLight AFX, or measured tabulated profiles with an exponential axial projection.
 - Temperature-dependent solid, liquid, and powder properties and tabulated solid-fraction paths.
 - Dynamic load-balanced adaptive mesh refinement (AMR) around thermal regions and moving heat sources.
 - Single-track and multi-layer powder-bed-fusion workflows.
 - Runtime melt-pool measurements, solidification-condition extraction, and thermal histories for [ExaCA](https://github.com/LLNL/ExaCA).
+- Beam-plane `profileMetrics`, selectable principal or area-equivalent `D4Sigma` reference widths, PRIMES conversion, and resumable projected-source calibration.
 
 ## Requirements
 
-AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 14**. Start with the [installation guide]({{ '/docs/installation/' | relative_url }}) and then copy a validated [tutorial]({{ '/tutorials/' | relative_url }}) instead of constructing a case from an empty directory.
+AdditiveFOAM 2.0.0 requires the OpenFOAM Foundation release **OpenFOAM 14**. Follow the [installation guide]({{ '/docs/installation/' | relative_url }}) and run a validated [tutorial]({{ '/tutorials/' | relative_url }}).
 
 ## Contributors
 

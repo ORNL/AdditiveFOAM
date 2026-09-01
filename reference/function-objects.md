@@ -11,7 +11,7 @@ usemathjax: true
 
 # Function Objects
 
-AdditiveFOAM provides three Function Objects for extracting melt-pool geometry and solidification conditions while a case runs:
+Three Function Objects extract melt-pool geometry and solidification conditions during a simulation:
 
 | Function Object | Result |
 |---|---|
@@ -125,6 +125,6 @@ $$R=\frac{T_0-T_1}{t_1-t_0}.$$
 Each rank writes `ExaCA/data_<rank>.csv` with columns `x,y,z,tm,ts,cr`. `reconstructExaCAData` creates `ExaCA/time-temperature.csv`.
 
 {: .warning }
-ExaCA supports mesh motion and topology-changing AMR on a fixed decomposition, but it deliberately aborts on dynamic mesh redistribution. Disable the ExaCA function object when using runtime load balancing.
+ExaCA supports mesh motion and topology-changing AMR on a fixed decomposition. Dynamic mesh redistribution aborts the Function Object, so disable ExaCA when using runtime load balancing.
 
 The ExaCA sampling cost and memory use grow with the box volume divided by `dx³`.

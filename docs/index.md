@@ -11,13 +11,13 @@ redirect_from:
 
 # User Guide
 
-This User Guide explains how to install, run, configure, and extend AdditiveFOAM. It documents the governing equations, numerical methods, input files, heat-source models and calibration, boundary conditions, mesh refinement, solver controls, outputs, and utilities provided by AdditiveFOAM.
+The User Guide covers installation, governing equations, numerical methods, input files, heat-source models and calibration, boundary conditions, mesh refinement, solver controls, outputs, and utilities.
 
 ## Getting started
 
 1. [Install AdditiveFOAM]({{ '/docs/installation/' | relative_url }}).
 2. [Run the quick start]({{ '/docs/quick-start/' | relative_url }}).
-3. Select the closest [tutorial]({{ '/tutorials/' | relative_url }}) and copy it as the starting point for your case.
+3. Select the closest [tutorial]({{ '/tutorials/' | relative_url }}) and copy it as the starting point for a case.
 4. Use the sections below to configure the physical models, numerical methods, and outputs required by the case.
 
 ## Table of contents
@@ -36,11 +36,11 @@ This User Guide explains how to install, run, configure, and extend AdditiveFOAM
 
 4. **[Heat Source Models]({{ '/docs/heat-sources/' | relative_url }})**
 
-   Define scan paths, absorption models, volumetric heat distributions, and spatial and temporal source integration.
+   Configure the nested source interface, reference dimensions, absorption models, volumetric sources, projected profiles and projections, and source integration.
 
 5. **[Projected Heat-source Calibration]({{ '/docs/heat-source-calibration/' | relative_url }})**
 
-   Infer the projected-source depth coefficients from measured melt-pool depths and CFD response curves.
+   Infer the projected-source depth coefficients from measured melt-pool depths and AdditiveFOAM response curves.
 
 6. **[Boundary Conditions]({{ '/docs/boundary-conditions/' | relative_url }})**
 

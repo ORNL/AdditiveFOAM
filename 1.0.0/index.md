@@ -1,12 +1,13 @@
 ---
 layout: versioned
-title: 1.0.0 Archive
-nav_order: 6
+title: 1.0.0
+parent: Archive
+nav_order: 1
 doc_version: "1.0.0"
 permalink: /1.0.0/
 ---
 
-# AdditiveFOAM
+# AdditiveFOAM 1.0.0
 {: .fs-9 }
 
 An open-source CFD code for additive manufacturing built on OpenFOAM.

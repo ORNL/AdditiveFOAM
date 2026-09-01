@@ -4,261 +4,275 @@ title: Projected Heat-source Calibration
 parent: User Guide
 nav_order: 5
 permalink: /docs/heat-source-calibration/
+redirect_from:
+  - /reference/heat-source-calibration/
 usemathjax: true
 ---
 
 # Projected Heat-source Calibration
 
-`calibrateHeatSource` estimates the two coefficients that relate melt-pool depth to the axial shape of AdditiveFOAM's projected heat sources. It runs a collection of AdditiveFOAM cases, builds a local AdditiveFOAM response curve for every experimental condition, infers one local shape parameter per condition, and then fits the global projected-source closure. The command also caches completed simulations and writes a PDF report, a machine-readable fit, and a CSV summary.
+`calibrateHeatSource` estimates the `projected` model's exponential axial-shape relation from repeated measured melt-pool depths. It runs AdditiveFOAM trials for each experimental condition, builds a response curve between the trial projection shape and simulated depth, infers a local shape value with Bayesian inference using deterministic posterior quadrature, and then fits one global `nSlope`–`nIntercept` relation.
 
-This workflow calibrates the common depth projection used by `projectedGaussian`, `nLightAFX`, and `tabulated`. It does not calibrate the lateral beam profile, source dimensions, absorptivity, material properties, or boundary conditions. Those inputs must be established before interpreting the fitted depth-distribution coefficients.
+## Quantity being calibrated
 
-The [heat-source model reference]({{ '/docs/heat-sources/#common-projected-source-formulation' | relative_url }}) defines the complete normalized volumetric distribution. This section focuses on the inverse problem solved by the calibration command.
+For the profile diameter selected by `D4Sigma`—`areaEquivalent`, `major`, or `minor`—the calibration coordinate and runtime reference aspect ratio are
 
-## Model being calibrated
+$$x=\frac{2d}{D_{4\sigma}},$$
 
-The projected models use the axial function
+$$n=\operatorname{clip}_{[0,9]}\!\left[
+\texttt{nSlope}\log_2(x)+\texttt{nIntercept}\right],
+\qquad k=2^n.$$
 
-$$p(z;k,d_z)=\exp\left[-3\left(\frac{z}{d_z}\right)^k\right],$$
+Here $$d$$ is the selected reference depth. The [exponential projection]({{ '/docs/heat-sources/#exponential-projection' | relative_url }}) defines how $$k$$ controls the axial distribution and how the applied source depth is selected.
 
-with normalization
+The local trial cases set `nSlope 0`, making the rendered `nIntercept` equal to the trial $$n$$. The global fit supplies both coefficients.
 
-$$\mathcal A_p(k,d_z)=\int_0^\infty p(z;k,d_z)\,\mathrm dz
-=\frac{d_z\Gamma(1/k)}{k3^{1/k}}.$$
+## Workflow
 
-Here $$z$$ is distance into the material, $$d_z$$ is the current source depth, and $$k$$ controls the depth-profile shape. AdditiveFOAM computes $$k$$ through
+For every parameter set, the command performs two stages:
 
-$$x_s=\max\left[\frac{d_z}{s_0},10^{-3}\right],$$
+1. Render and run trial cases at selected `nIntercept` values, extract the maximum requested melt-pool depth, normalize measured and simulated depths by `D4Sigma/2`, construct a shape-preserving PCHIP response, and infer the local posterior for $$n$$.
+2. Fit the local posterior modes to $$n=\texttt{nSlope}\log_2(x)+\texttt{nIntercept}$$ with uncertainty weighting and a `soft_l1` loss, then propagate the local posterior uncertainty through repeated global refits.
 
-$$n=\operatorname{clip}_{[0,9]}\!\left[A\log_2(x_s)+B\right],
-\qquad k=2^n,$$
+The calibration operates on melt-pool depth. Other rendered parameters—such as power, speed, end time, and write interval—define each trial but are not additional calibration responses.
 
-where
+## Inputs
 
-$$s_0=\min(d_x^0,d_y^0)$$
+The command reads four inputs:
 
-is the smaller configured lateral source dimension. The superscript $$0$$ identifies the dimensions read when the heat-source model is constructed; transient depth updates change $$d_z$$ but not $$s_0$$.
+| Input | Role |
+|---|---|
+| `config.yml` | Paths, named profiles, case execution, trial design, inference, fit, and report settings |
+| `experiments.yml` | Parameter mappings and repeated measured depths |
+| Template case | Runnable AdditiveFOAM case containing rendering placeholders |
+| Tabulated profile files | Planar intensity distributions associated with named experimental profiles |
 
-Increasing $$n$$ increases $$k$$, which makes the source more nearly uniform through most of its depth and sharpens its decay near $$d_z$$. The clipping limits imply $$1\leq k\leq512$$.
+Run it from any directory with:
 
-## Calibration overview
+```bash
+calibrateHeatSource --config /path/to/config.yml
+```
 
-The calculation has two stages:
+Relative paths in the configuration are resolved from the directory containing `config.yml`; environment variables and `~` are expanded.
 
-1. For each experimental process condition, set $$A=0$$ and infer a local value $$n_c=B_c$$ by comparing measured melt-pool depths with AdditiveFOAM trials.
-2. Regress the local estimates against normalized measured depth to obtain the production coefficients $$A$$ and $$B$$.
+### Configuration
 
-The index $$c$$ denotes an experimental condition, such as one combination of power, scan speed, and spot size. The index $$r$$ denotes repeated depth measurements at that condition, and $$j$$ denotes a trial value used in an AdditiveFOAM response curve.
+```yaml
+paths:
+  experiments: experiments.yml
+  template: template
+  campaign: campaign
 
-## Experimental observations
+D4Sigma: areaEquivalent
+isotherm: liquidus
 
-Each entry in `experiments.yml` supplies a process-condition dictionary and one or more measured depths:
+profiles:
+  measured_beam:
+    file: template/constant/beam_profile.txt
+
+case:
+  command: ./Allrun
+  keep_successful: false
+
+calibration:
+  token: nIntercept
+  initial_values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  bounds: [0, 9]
+  max_simulations_per_experiment: 10
+  depth_tolerance_microns: 1.0
+  posterior_std_tolerance: 0.15
+  pchip_grid_points: 1000
+
+bayesian:
+  quadrature_points: 10000
+  posterior_samples: 1000
+
+final_fit:
+  bootstrap_samples: 1000
+  bootstrap_random_seed: 12345
+
+report:
+  enabled: true
+```
+
+| Entry | Meaning |
+|---|---|
+| `paths.experiments` | Experimental YAML file |
+| `paths.template` | Template case copied for each trial |
+| `paths.campaign` | Writable trial-case and output directory |
+| `D4Sigma` | Select `areaEquivalent`, `major`, or `minor` for the source reference width and depth normalization |
+| `isotherm` | Numeric temperature or `liquidus`; defaults to `liquidus` |
+| `profiles.<name>.file` | Tabulated profile associated with the name used by experiments |
+| `case.command` | Command executed inside every rendered trial case |
+| `case.keep_successful` | Retain or remove processor and numeric time directories after metrics are saved |
+| `calibration.token` | Placeholder name rendered in the template; normally `nIntercept` |
+| `calibration.initial_values` | Initial local trial values |
+| `calibration.bounds` | Allowed bounds for initial and adaptively proposed trial values |
+| `calibration.max_simulations_per_experiment` | Maximum AdditiveFOAM trials for one condition |
+| `calibration.depth_tolerance_microns` | Stops adaptive refinement when a trial depth is sufficiently close to the measured mean |
+| `calibration.posterior_std_tolerance` | Stops adaptive refinement when local posterior uncertainty is sufficiently small |
+| `calibration.pchip_grid_points` | Grid used when proposing an additional trial from the response curve |
+| `bayesian.quadrature_points` | Dense PCHIP/posterior evaluation grid |
+| `bayesian.posterior_samples` | Stratified inverse-CDF samples retained for global propagation |
+| `final_fit.bootstrap_samples` | Number of posterior-resampling global refits |
+| `final_fit.bootstrap_random_seed` | Reproducible random seed for those refits |
+
+`calibration.pchip_grid_points` controls adaptive trial placement and is distinct from `bayesian.quadrature_points`, which controls posterior integration.
+
+### Experiments
+
+Each entry supplies a general parameter mapping and repeated depth observations:
 
 ```yaml
 - parameters:
-    Power_W: 300.0
+    Power_W: 187.5
     Speed_mm_s: 500
-    Spot_Size_microns: 109.69
-  Measured_Depth_microns: [168.57, 190.67]
+    Profile: measured_beam
+  Measured_Depth_microns: [87.05, 98.10]
 ```
 
-`Spot_Size_microns` is the measured full D4σ beam diameter. For condition $$c$$, denote it by $$D_c$$. The command validates that it is finite and positive, converts it to the 2σ radius
+`Profile` must match a name in `config.yml`. The tutorial template renders `Power_W`, `Speed_mm_s`, and the calibration token, but additional parameter keys may be used when matching placeholders are added to a custom template.
 
-$$w_c=\frac{D_c}{2},$$
+### Beam metrics and normalization
 
-and renders $$w_c$$ in metres through the `<<heatSourceRadius>>` placeholder. The supplied template assigns it to both lateral entries in `dimensions`, ensuring that every trial uses the beam size associated with its experimental condition.
+Before running cases, `calibrateHeatSource` calls `tabulatedProfileInfo` for every named profile. That utility reports the exact bilinear planar integral, centroid, principal second-moment diameters, and azimuth. The driver then selects `major`, `minor`, or the area-equivalent diameter
 
-The statistical calibration normalizes measured depth $$d_{c,r}$$ by that same lateral heat-source dimension:
+$$D_{4\sigma}=\sqrt{
+D_{4\sigma,\mathrm{major}}D_{4\sigma,\mathrm{minor}}}.$$
 
-$$y_{c,r}=\frac{d_{c,r}}{w_c}
-=\frac{d_{c,r}}{D_c/2}.$$
+Measured and simulated depths are both normalized as
 
-## Stage 1: local AdditiveFOAM calibration
+$$y=\frac{\mathrm{Depth}}{D_{4\sigma}/2}
+=\frac{2\,\mathrm{Depth}}{D_{4\sigma}}.$$
 
-### Trial simulations
+The profile table supplies the reference width. The source obtains its lateral support from the tabulated profile, so the template has no rendered `radius`. These quantities use the [`profileMetrics` definition]({{ '/docs/heat-sources/#beam-plane-profile-metrics' | relative_url }}).
 
-At condition $$c$$, every AdditiveFOAM trial fixes $$A=0$$ and sets the configured calibration token to a trial value $$b_j$$. The projected-source relation therefore reduces to
+### Template requirements
 
-$$n=b_j,\qquad k=2^{b_j}.$$
+The template must run independently after its placeholders are rendered. The calibration placeholder must appear once and use `<<name>>` syntax:
 
-The command copies the case template, replaces the placeholders for trial value, 2σ source radius, power, velocity, end time, and write interval, and runs the configured case command. Spot size is converted from micrometres to metres, and scan speed is converted from mm/s to m/s.
+```foam
+sources
+{
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
+        D4Sigma         <<D4Sigma>>;
+        depthReference  isotherm;
+        isotherm        <<isotherm>>;
 
-The `meltPoolDimensions` Function Object writes the isotherm history. The response recorded for trial $$j$$ is the maximum penetration over the simulated track,
+        absorption
+        {
+            model               Kelly;
+            eta0                0.27;
+            etaMin              0.27;
+            aspectRatioSwitch   0.0;
+            geometry            cylinder;
+        }
 
-$$\widehat d_{c,j}=\max_t d_{\mathrm{iso},c,j}(t),$$
+        heatSource
+        {
+            model       projected;
+            depth       20e-6;
+            nPoints     (10 10 10);
 
-and its normalized value is
+            profile
+            {
+                model   tabulated;
+                file    "beam_profile.txt";
+            }
 
-$$\widehat y_{c,j}=\frac{\widehat d_{c,j}}{w_c}
-=\frac{\widehat d_{c,j}}{D_c/2}.$$
+            projection
+            {
+                model       exponential;
+                nSlope      0;
+                nIntercept  <<nIntercept>>;
+            }
+        }
+    }
+}
+```
 
-When `case.melt_pool_isovalue` is `liquidus` or `solidus`, `foamDictionary` expands `constant/transportProperties`, reads `thermoPath`, and selects the temperature paired with `alpha.solid = 0` or `alpha.solid = 1`, respectively. A numeric temperature may be supplied instead.
+The named beam table is copied into each rendered case. The template also renders the selected `D4Sigma` component and isotherm, scan-path power and speed, end time, and write interval for the selected experiment.
 
-### Response surrogate
+When top-level `isotherm` is `liquidus`, the command expands `constant/transportProperties` with `foamDictionary`, finds the temperature paired with `alpha.solid = 0` in `thermoPath`, renders that value into both `heatSourceDict` and the `meltPoolDimensions` function object, and reads the matching CSV.
 
-The sampled pairs $$(b_j,\widehat y_{c,j})$$ are sorted by $$b_j$$. With at least three unique trials, the command evaluates a shape-preserving piecewise-cubic Hermite interpolant on a dense grid:
+## AdditiveFOAM response curves
 
-$$\widehat y_c(n)=\operatorname{PCHIP}
-\left(\{b_j,\widehat y_{c,j}\}\right).$$
+For a condition $$c$$, trial runs provide pairs $$(n_j,y_j^{\mathrm{AF}})$$, where $$y_j^{\mathrm{AF}}$$ is the normalized simulated depth. A piecewise cubic Hermite interpolating polynomial, PCHIP, constructs $$\widehat y_c(n)$$ without extrapolating beyond the available trial range. PCHIP preserves the sampled curve shape and avoids the overshoot that an unconstrained cubic spline can introduce.
 
-With only two unique trials, the sampled points are used directly and the likelihood interpolates linearly between them. The surrogate does not extrapolate beyond the smallest and largest completed trial values. PCHIP preserves local curve shape, but it does not force a non-monotonic AdditiveFOAM response to become monotonic.
-
-### Bayesian inverse problem
-
-The local prior is uniform over the simulated range:
-
-$$n_c\sim\mathcal U\!\left(b_{\min},b_{\max}\right).$$
-
-Repeated normalized depth measurements are represented with independent normal likelihoods:
-
-$$y_{c,r}\mid n_c\sim
-\mathcal N\!\left(\widehat y_c(n_c),\sigma_c^2\right),$$
-
-where
-
-$$\sigma_c=\max\left[
-0.05\,\overline y_c,
-\operatorname{std}\!\left(\{y_{c,r}\}\right)
-\right].$$
-
-The five-percent floor prevents identical or nearly identical repeated measurements from producing a zero-width likelihood. PyMC samples the posterior using the configured draws, tuning steps, cores, target acceptance, and random seed.
-
-The reported local estimate is the retained posterior sample with the largest sampled log probability. The state file also records the mean, median, variance, standard deviation, 2.5th and 97.5th percentiles, and up to 1,000 posterior samples.
-
-<figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/heat-source-calibration-responses.png' | relative_url }}" alt="Five projected heat-source calibration response curves showing AdditiveFOAM trial depth against local shape parameter, measured replicate ranges, and inferred local posterior modes.">
-  <figcaption>Local calibration for the five tutorial powers. Circles are completed AdditiveFOAM trials, solid curves are the PCHIP surrogates, purple bands span the repeated measurements, and stars identify the inferred local posterior modes. The low- and high-<em>n</em> plateaus make the finite trial range and possible non-monotonic response visible.</figcaption>
-</figure>
-
-### Optional response-curve refinement
-
-After the first posterior is sampled, the driver may add an AdditiveFOAM point when all of the following remain true:
-
-- Fewer than `max_simulations_per_experiment` trials exist.
-- The posterior standard deviation exceeds `posterior_std_tolerance`.
-- No completed trial matches the mean measured depth within `depth_tolerance_microns`.
-- The target depth crosses the PCHIP response curve within `calibration.bounds`.
-
-The new trial is obtained by interpolating the first response-curve crossing of the mean measured depth. The AdditiveFOAM case is run, the surrogate is rebuilt, and the posterior is sampled again. Refinement stops as soon as either uncertainty or depth error satisfies its tolerance, the trial limit is reached, or no in-range crossing exists.
-
-If the initial-value list already contains `max_simulations_per_experiment` values, as in the supplied tutorial, the response curve is an exhaustive fixed grid and no additional trial can be added.
-
-## Stage 2: global closure fit
-
-For every completed condition, the global fit uses the mean normalized measured depth
-
-$$x_c=\frac{1}{N_c}\sum_{r=1}^{N_c}\frac{d_{c,r}}{w_c},
-\qquad z_c=\log_2(x_c),$$
-
-the local posterior mode $$n_c$$, and its posterior standard deviation $$s_{n,c}$$. The standardized residual is
-
-$$r_c(A,B)=\frac{n_c-(Az_c+B)}{s_{n,c}}.$$
-
-Weighted linear least squares supplies the initial estimate. With at least three conditions, SciPy then minimizes the robust objective
-
-$$\frac12\sum_c\rho\!\left(r_c^2\right),$$
-
-using `soft_l1` by default. The uncertainty weighting gives better-constrained local calibrations more influence, while the robust loss limits the influence of an isolated condition that is inconsistent with the global trend.
-
-The approximate parameter covariance is
-
-$$\operatorname{Cov}(A,B)\approx
-(J^\mathsf TJ)^{-1}\max(\chi_r^2,1),$$
-
-where $$J$$ is the uncertainty-scaled design matrix and $$\chi_r^2$$ is the reduced weighted residual sum of squares.
-
-The reported production relation is
-
-$$n(x)=\operatorname{clip}_{[0,9]}\!\left[A\log_2(x)+B\right],
-\qquad k(x)=2^{n(x)}.$$
-
-The robust fit itself is performed on the unclipped linear relation. Clipping is applied when the response curve is evaluated and when AdditiveFOAM uses the coefficients.
-
-### Empirical uncertainty band
-
-The final response interval propagates the local posterior uncertainty through complete refits:
-
-1. Draw one $$n_c$$ from each stored local posterior. If samples are unavailable, draw from a normal approximation using the stored local mode and standard deviation.
-2. Clip the sampled local values to $$[0,9]$$.
-3. Refit $$A$$ and $$B$$ with the same robust, uncertainty-weighted procedure.
-4. Evaluate and clip the response curve over the plotted $$x$$ range.
-
-The pointwise 2.5th, 50th, and 97.5th percentiles of the successful bootstrap curves form the empirical interval. The report also records corresponding percentile intervals for $$A$$ and $$B$$. If too few bootstrap fits succeed, the plot falls back to the covariance approximation.
+The configured initial values are run for a new condition. If fewer than two valid trial results exist, missing initial values are added. When the initial design leaves room below `max_simulations_per_experiment`, the algorithm can add a response-curve crossing near the measured mean until either the closest simulated depth is within `depth_tolerance_microns`, the posterior standard deviation is below `posterior_std_tolerance`, no crossing can be proposed, or the trial limit is reached.
 
 <figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/heat-source-calibration-fit.png' | relative_url }}" alt="Final projected heat-source calibration relation showing five local estimates, asymmetric uncertainty bars, the robust logarithmic fit, and an empirical 95 percent interval.">
-  <figcaption>The tutorial's final 2σ-normalized closure, with x = d/(D4σ/2). Points and error bars are local posterior modes and 95% intervals; the green curve is the robust uncertainty-weighted fit, and the orange band propagates local posterior uncertainty through repeated global refits.</figcaption>
+  <img src="{{ '/assets/images/visualizations/heat-source-calibration-responses.png' | relative_url }}" alt="Five AdditiveFOAM response curves showing simulated liquidus depth, repeated measurements, and the inferred local posterior mode for each SS316L power condition.">
+  <figcaption>Local response construction for the five tutorial conditions. Circles are the ten AdditiveFOAM trials, solid lines are the PCHIP responses, purple lines and bands show the measured mean and replicate range, and stars mark the local posterior modes.</figcaption>
 </figure>
 
-## Normalization contract
+## Local Bayesian inference using deterministic posterior quadrature
 
-`Spot_Size_microns` is the measured full D4σ diameter. The driver computes the 2σ heat-source radius
+For repeated normalized measurements $$\mathbf y=(y_1,\ldots,y_R)$$, the local posterior is
 
-$$w=\frac{D_{4\sigma}}{2},$$
+$$p(n\mid\mathbf y)\propto p(\mathbf y\mid n)p(n).$$
 
-renders it into both lateral source dimensions, and uses it in the calibration coordinate:
+The response surrogate is defined only over the available trial support
 
-$$x=\frac{d_z}{w}
-=\frac{d_z}{D_{4\sigma}/2}.$$
+$$\mathcal S_n=[\min_j n_j,\max_j n_j].$$
 
-The projected heat-source models evaluate the same coordinate:
+The local prior is uniform on $$\mathcal S_n$$ and zero outside it. All trial values must lie within `calibration.bounds`, and the posterior support is the span of the completed trials. Conditional on $$n$$, repeated measurements are independent normal observations of the interpolated AdditiveFOAM response:
 
-$$x=\frac{d_z}{\min(d_x^0,d_y^0)}.$$
+$$y_r\mid n\sim\mathcal N\!\left(\widehat y(n),\sigma^2\right),$$
 
-For the supplied circular source, $$d_x^0=d_y^0=w$$, so the calibration and runtime relations are identical.
+$$s_0(\mathbf y)=
+\sqrt{\frac{1}{R}\sum_{r=1}^{R}(y_r-\overline y)^2},$$
 
-{: .important }
-Use `A` and `B` from `calibration_fit.yml` directly as the source slope and source intercept.
+$$\sigma=\max\!\left(0.05\,\overline y,s_0(\mathbf y)\right).$$
 
-## Configuration
+Here $$s_0$$ is the population standard deviation used by NumPy's default `std` calculation, with divisor $$R$$.
 
-`config.yml` contains five functional groups:
+For $$n\in\mathcal S_n$$,
 
-| Section | Entry | Meaning |
-|---|---|---|
-| `paths` | `experiments` | Experimental YAML file |
-| `paths` | `template` | Complete AdditiveFOAM case containing renderer placeholders |
-| `paths` | `campaign` | Directory for generated cases, caches, fit, and reports |
-| `case` | `command` | Command run inside each rendered case |
-| `case` | `keep_successful` | Retain or remove processor and numeric time directories after metrics are saved |
-| `case` | `melt_pool_isovalue` | `liquidus`, `solidus`, or a temperature in kelvin |
-| `calibration` | `token` | Placeholder name used for the local trial parameter |
-| `calibration` | `initial_values` | Initial local values used to form each response curve |
-| `calibration` | `bounds` | Permitted local-value interval |
-| `calibration` | `max_simulations_per_experiment` | Maximum AdditiveFOAM trials for one condition |
-| `calibration` | `depth_tolerance_microns` | Stop refinement when a trial is this close to mean measured depth |
-| `calibration` | `posterior_std_tolerance` | Stop refinement when local posterior uncertainty falls below this value |
-| `calibration` | `pchip_grid_points` | Dense-grid resolution for the response surrogate |
-| `bayesian` | `draws`, `tune`, `cores` | PyMC sampling controls |
-| `bayesian` | `target_accept` | Sampler target acceptance probability |
-| `bayesian` | `random_seed` | Reproducible local-posterior seed |
-| `final_fit` | `bootstrap_samples` | Number of uncertainty-propagation refits |
-| `final_fit` | `bootstrap_random_seed` | Reproducible bootstrap seed |
-| `report` | `enabled` | Generate the PDF and CSV report products |
+$$\log p(n\mid\mathbf y)=C-
+\frac{1}{2\sigma^2}\sum_{r=1}^{R}
+\left[y_r-\widehat y(n)\right]^2.$$
 
-Relative paths are resolved from the directory containing `config.yml`. Environment variables and `~` are expanded.
+The implementation evaluates this density on `bayesian.quadrature_points`, subtracts its maximum log density for numerical stability, and normalizes it with trapezoidal integration. It then calculates:
 
-## Case-template contract
+- the mode at the maximum evaluated density;
+- mean and variance by trapezoidal quadrature;
+- median and equal-tail 95% credible interval from the numerical CDF;
+- `bayesian.posterior_samples` stratified inverse-CDF samples for the global fit.
 
-The template must contain `0/`, `constant/heatSourceDict`, `constant/scanPath`, `constant/transportProperties`, `system/controlDict`, and `Allrun`. The renderer requires these placeholders exactly once:
+## Global calibration fit
 
-| File | Placeholder |
-|---|---|
-| `constant/heatSourceDict` | The token selected by `calibration.token`, such as `<<B>>`, and `<<heatSourceRadius>>` |
-| `constant/scanPath` | `<<power>>` and `<<velocity>>` |
-| `system/controlDict` | `<<endTime>>` and `<<writeInterval>>` |
+Each condition contributes the local posterior mode $$n_c$$, its posterior standard deviation $$s_c$$, and its measured
 
-The current end-time calculation sums the travel time of mode-`0` linear segments. It does not add mode-`1` dwell durations. Calibration templates should therefore use the supplied initial-position row followed by translating segments, unless `endTime` handling is extended for dwell-based paths.
+$$x_c=\frac{2\,\overline{\mathrm{Depth}}_c}{D_{4\sigma,c}}.$$
 
-## Cache and output files
+The global model is
 
-The campaign directory is persistent:
+$$n_c\approx\texttt{nSlope}\log_2(x_c)+\texttt{nIntercept}.$$
+
+The fit minimizes standardized residuals
+
+$$r_c=\frac{n_c-
+\texttt{nSlope}\log_2(x_c)-\texttt{nIntercept}}{
+\max(s_c,s_{\min})}$$
+
+with SciPy `least_squares` and a `soft_l1` loss when at least three conditions are available. The uncertainty weighting gives sharper local posteriors more influence, while the loss limits the leverage of an isolated inconsistent condition. AdditiveFOAM clips the fitted prediction to $$0\leq n\leq9$$.
+
+For each bootstrap realization, the command draws one value from every stored local posterior, refits `nSlope` and `nIntercept`, and evaluates the clipped response. Pointwise 2.5% and 97.5% quantiles form the empirical 95% fit interval. If stored posterior samples are unavailable for a condition, a normal approximation based on its local mode and standard deviation is used.
+
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/heat-source-calibration-fit.png' | relative_url }}" alt="Global projected heat-source calibration fit showing local posterior estimates, the nSlope and nIntercept relation, and its empirical 95 percent interval against 2 times depth divided by D4Sigma.">
+  <figcaption>The uncertainty-weighted global calibration. Points and asymmetric error bars summarize the local posteriors, the green curve is the fitted <code>nSlope</code>–<code>nIntercept</code> relation, and the orange band propagates local uncertainty through the bootstrap refits.</figcaption>
+</figure>
+
+## Outputs
 
 ```text
 campaign/
-├── cases/<condition>/<trial>/
-│   ├── log.run
-│   └── metrics.yml
+├── cases/
 ├── simulations.yml
 ├── calibration_state.yml
 ├── calibration_fit.yml
@@ -267,11 +281,15 @@ campaign/
     └── calibration_summary.csv
 ```
 
-`simulations.yml` stores completed trial values and simulated depths by process-condition dictionary. `calibration_state.yml` stores local posteriors; a condition is considered current when its parameter dictionary matches and the fingerprint of its measured-depth list is unchanged. `calibration_fit.yml` stores the final coefficients, diagnostics, covariance approximation, bootstrap intervals, and calibrated $$x$$ range.
+`simulations.yml` stores completed response trials, and `calibration_state.yml` stores local posterior summaries and retained samples. The command resumes from these files and recalculates results when their inputs change. `calibration_fit.yml` records `nSlope`, `nIntercept`, covariance diagnostics, bootstrap intervals, weighted residuals, the observed x range, and `x_definition: 2*Depth / selected diameter`. The summary CSV contains one row per experiment. The PDF contains profile metrics, response curves, local posterior densities, the global fit, and its uncertainty interval.
 
-{: .warning }
-The cache fingerprint does not include the case template, material files, solver revision, mesh, calibration settings, or Bayesian settings. After changing any of those inputs, remove the affected cached simulation and state data, or choose a new campaign directory, before rerunning the calibration.
+Apply the fitted values in the source dictionary:
 
-With `keep_successful: false`, rendered inputs, `log.run`, Function Object output, and `metrics.yml` remain, but processor and numeric time directories are removed after the maximum melt-pool depth is recorded.
-
-The complete worked example is the [heat-source calibration tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}).
+```foam
+projection
+{
+    model       exponential;
+    nSlope     <fitted-nSlope>;
+    nIntercept <fitted-nIntercept>;
+}
+```

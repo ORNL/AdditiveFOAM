@@ -4,160 +4,139 @@ title: Heat-source Calibration
 parent: Tutorials
 nav_order: 6
 permalink: /tutorials/heat-source-calibration/
-usemathjax: true
 ---
 
 # Heat-source Calibration
 
-This tutorial calibrates the projected axial distribution of an SS316L `projectedGaussian` source against melt-pool depths measured from five SS316L single tracks on a bare plate. It demonstrates the complete `calibrateHeatSource` workflow: render and run trial cases, extract maximum liquidus melt-pool depth, infer a local shape parameter for each condition, fit the global $$A,B$$ closure, and generate uncertainty and report products.
+The calibration uses measured melt-pool depths from five SS316L single tracks on a bare plate. AdditiveFOAM response trials infer one local axial-shape value per power before fitting the `nSlope`–`nIntercept` relation.
 
-Read [Projected Heat-source Calibration]({{ '/docs/heat-source-calibration/' | relative_url }}) for the derivation, likelihood, robust global fit, bootstrap interval, cache behavior, and transfer rules used by the command.
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/heat-source-calibration-responses.png' | relative_url }}" alt="Five AdditiveFOAM heat-source calibration response curves showing simulated melt-pool depth, measured replicate ranges, and inferred local shape values.">
+  <figcaption>Local AdditiveFOAM response curves. Each condition compares trial simulations with its two measured liquidus depths and identifies the local posterior mode.</figcaption>
+</figure>
 
 ## Physical setup
 
-The calibration data are SS316L single tracks produced on a bare plate. `experiments.yml` contains two measured melt-pool depths at each of five powers; scan speed and measured D4σ spot diameter are constant:
+- SS316L properties from `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.
+- Five 2 mm single tracks on a bare plate at 500 mm/s.
+- Incident powers from 187.5 W through 637.5 W.
+- A 67-by-67 tabulated circular-Gaussian profile with 2.5 µm spacing.
+- Profile `D4Sigma` of 109.69 µm.
+- A `projected` heat source with a `tabulated` profile, `exponential` projection, configured `depth 20` µm, and a liquidus reference depth.
+- Kelly cylinder absorption with `eta0 0.27`, `etaMin 0.27`, and `aspectRatioSwitch 0`.
+- Thermal-only trial cases with `nOuterCorrectors 0`.
+- Eight MPI ranks per AdditiveFOAM simulation.
 
-| Power (W) | Speed (mm/s) | D4σ spot diameter (µm) | Measured depth (µm) |
-|---:|---:|---:|---:|
-| 187.5 | 500 | 109.69 | 87.05, 98.10 |
-| 300.0 | 500 | 109.69 | 168.57, 190.67 |
-| 412.5 | 500 | 109.69 | 272.19, 264.07 |
-| 525.0 | 500 | 109.69 | 359.24, 353.71 |
-| 637.5 | 500 | 109.69 | 464.25, 467.01 |
+The experimental data in `experiments.yml` are:
 
-The AdditiveFOAM setup contains:
-
-- SS316L properties are included from `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.
-- The source is a transient `projectedGaussian`. For each experiment, the driver converts the measured D4σ diameter to a 2σ radius and assigns that value to both lateral dimensions. The supplied 109.69 µm D4σ diameter therefore produces `(54.845 54.845)` µm lateral dimensions. Initial depth is 30 µm and `nPoints` is `(10 10 10)`.
-- The cylindrical Kelly model uses `eta0 0.27`, `etaMin 0.27`, and an effectively zero aspect-ratio switch.
-- A 2 mm linear track is rendered at the experimental power and 0.5 m/s speed.
-- `targetCellLoad` refinement follows the beam, and `dynamicMeshDict` permits one refinement level.
-- Fluid flow is disabled with `nOuterCorrectors 0`.
-- `meltPoolDimensions` records the material-derived SS316L liquidus isotherm.
-- `decomposeParDict` uses eight subdomains with `scotch` decomposition.
+| Power (W) | Speed (mm/s) | Measured liquidus depths (µm) |
+|---:|---:|---|
+| 187.5 | 500 | 87.05, 98.10 |
+| 300.0 | 500 | 168.57, 190.67 |
+| 412.5 | 500 | 272.19, 264.07 |
+| 525.0 | 500 | 359.24, 353.71 |
+| 637.5 | 500 | 464.25, 467.01 |
 
 ## Run
 
-Copy the tutorial to a writable run directory, then start or resume the campaign:
+Copy the tutorial to a writable run directory and launch the campaign:
 
 ```bash
-mkdir -p "$FOAM_RUN/AdditiveFOAM"
 cp -r "$ADDITIVEFOAM_TUTORIALS/heatSourceCalibration" \
-    "$FOAM_RUN/AdditiveFOAM/heatSourceCalibration"
-cd "$FOAM_RUN/AdditiveFOAM/heatSourceCalibration"
+  "$FOAM_RUN/heatSourceCalibration"
+cd "$FOAM_RUN/heatSourceCalibration"
 calibrateHeatSource --config config.yml
 ```
 
-Do not run the campaign inside `$ADDITIVEFOAM_TUTORIALS`; it writes cases, caches, and reports beneath the copied tutorial. Each AdditiveFOAM trial uses eight MPI ranks.
+The campaign writes cases and results beneath its run directory, so use the writable copy shown above. If eight MPI ranks are unavailable, change `template/system/decomposeParDict` before starting.
+
+The campaign evaluates `nIntercept = 0,1,...,9` for all five experiments, for a total of 50 AdditiveFOAM simulations. Saved trial results allow the command to resume an interrupted campaign.
 
 ## Important inputs
 
 | File | Purpose |
 |---|---|
-| `experiments.yml` | Process conditions and repeated measured melt-pool depths |
-| `config.yml` | Case paths, trial grid, posterior sampling, refinement tolerances, and reporting |
-| `template/constant/heatSourceDict` | Projected source, absorption, dimensions, sampling, and calibration placeholders |
-| `template/constant/scanPath` | Rendered beam power, track, and velocity |
-| `template/constant/transportProperties` | SS316L material configuration |
-| `template/system/controlDict` | Run time, write interval, and `meltPoolDimensions` output |
-| `template/system/decomposeParDict` | Parallel decomposition for each trial |
+| `config.yml` | Paths, profile registration, trial design, deterministic posterior integration, global fit, and report settings |
+| `experiments.yml` | Power, speed, profile name, and repeated measured depths |
+| `template/` | AdditiveFOAM case rendered for each condition and trial |
+| `template/constant/beam_profile.txt` | Normalized tabulated circular-Gaussian planar profile |
+| `template/constant/heatSourceDict` | Kelly absorption and projected-source configuration |
+| `template/system/decomposeParDict` | Eight-rank domain decomposition |
 
-## Workflow
+### Projected source template
 
-The calibration driver treats every distinct `parameters` mapping in `experiments.yml` as an independent process condition. `Power_W`, `Speed_mm_s`, and `Spot_Size_microns` are required by the renderer and normalization logic.
-
-### Rendered trial cases
-
-The heat-source radius and trial value appear once in `template/constant/heatSourceDict`:
+The template contains:
 
 ```foam
-heatSourceRadius <<heatSourceRadius>>;
-
-projectedGaussianCoeffs
+sources
 {
-    dimensions ($heatSourceRadius $heatSourceRadius 30.0e-6);
-    A          0.0;
-    B          <<B>>;
-    transient  true;
-    nPoints    (10 10 10);
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
+        D4Sigma         <<D4Sigma>>;
+        depthReference  isotherm;
+        isotherm        <<isotherm>>;
+
+        absorption
+        {
+            model               Kelly;
+            eta0                0.27;
+            etaMin              0.27;
+            aspectRatioSwitch   0.0;
+            geometry            cylinder;
+        }
+
+        heatSource
+        {
+            model       projected;
+            depth       20.0e-6;
+            nPoints     (10 10 10);
+
+            profile
+            {
+                model   tabulated;
+                file    "beam_profile.txt";
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0.0;
+                nIntercept  <<nIntercept>>;
+            }
+        }
+    }
 }
 ```
 
-Setting $$A=0$$ makes every trial exponent independent of transient melt-pool depth:
+For each trial, `nSlope` remains zero and `<<nIntercept>>` is the calibrated parameter. The other placeholders select the profile diameter and SS316L liquidus. The configured 20 µm depth is the minimum applied source depth.
 
-$$n=B,\qquad k=2^B.$$
+## Workflow
 
-The scan path and run controls expose the remaining renderer tokens:
+For each power condition, the command:
 
-```text
-Mode  X      Y      Z  Power      Param
-1     0.000  0.000  0  0          0
-0     0.002  0.000  0  <<power>>  <<velocity>>
-```
+1. Copies `template/` to `campaign/cases/<condition>/nIntercept<trial>/`.
+2. Copies the named profile and renders the experimental parameters.
+3. Runs the ten trial cases with `./Allrun` on eight MPI ranks.
+4. Extracts the maximum liquidus melt-pool depth from each trial.
+5. Builds the response curve and local posterior.
 
-```foam
-endTime       <<endTime>>;
-writeInterval <<writeInterval>>;
-```
-
-The driver converts the full D4σ diameter from micrometres to a 2σ radius in metres and assigns it to both lateral dimensions. Measured and simulated depths use the same normalization:
-
-$$x=\frac{d}{D_{4\sigma}/2}
-=\frac{d}{\min(\mathrm{dimensions}_x,\mathrm{dimensions}_y)}.$$
-
-It also converts speed to m/s, renders the track, computes its travel time, and uses that time for both run-control placeholders.
-
-### Calibration configuration
-
-The supplied `config.yml` specifies:
-
-- Trial values $$B=0,1,\ldots,9$$ for each experimental condition.
-- Bounds $$0\leq B\leq9$$ and at most ten simulations per condition.
-- A 1 µm depth-match tolerance and 0.15 local-posterior standard-deviation tolerance.
-- A 1,000-point PCHIP surrogate grid.
-- 2,000 retained posterior draws after 1,000 tuning steps, using eight sampling cores.
-- 1,000 global uncertainty-propagation refits.
-- Automatic PDF and CSV report generation.
-
-Because the ten initial values equal the ten-simulation limit, this tutorial runs a fixed grid of 50 AdditiveFOAM cases.
-
-### Campaign stages
-
-For each process condition, `calibrateHeatSource`:
-
-1. Creates `campaign/cases/<condition>/B<trial>/` from `template/`.
-2. Renders the 2σ lateral dimension, trial value, power, velocity, end time, and write interval.
-3. Runs `blockMesh`, `decomposePar`, and parallel `additiveFoam` through the case `Allrun` script.
-4. Reads the liquidus CSV written by `meltPoolDimensions` and records the largest depth in the scan.
-5. Updates `campaign/simulations.yml` immediately so an interrupted campaign can resume.
-6. Builds the PCHIP response surrogate and samples the local posterior.
-
-After all local calibrations are current, it performs the robust uncertainty-weighted global fit and generates the report.
+The five local posterior modes are fitted to the global `nSlope`–`nIntercept` relation with uncertainty weighting and a `soft_l1` loss. One thousand bootstrap refits propagate the local uncertainty to the response band.
 
 <figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/heat-source-calibration-responses.png' | relative_url }}" alt="Five heat-source calibration response curves showing simulated melt-pool depth, measured replicate ranges, and inferred local shape parameters.">
-  <figcaption>The five local response curves produced by the tutorial campaign. Each panel combines the cached AdditiveFOAM trials, the PCHIP surrogate used by the likelihood, the repeated measured depths, and the inferred local posterior mode.</figcaption>
+  <img src="{{ '/assets/images/visualizations/heat-source-calibration-fit.png' | relative_url }}" alt="Global projected heat-source calibration fit of local shape against 2 times measured depth divided by D4Sigma, with local uncertainty and a 95 percent fit interval.">
+  <figcaption>The global fit maps <code>2*Depth / selected diameter</code> to the projected-source shape value using the area-equivalent <code>D4Sigma = 109.69</code> µm.</figcaption>
 </figure>
 
-### Adapt to another data set
-
-1. Copy the tutorial to a new writable directory and select a new `paths.campaign` location.
-2. Replace `experiments.yml` with repeated depth measurements and complete process-condition metadata.
-3. Enter the measured full D4σ diameter as `Spot_Size_microns`; the driver renders its 2σ radius into `dimensions`.
-4. Update the case template's material, lateral source profile, absorption model, mesh, boundary conditions, and parallel decomposition.
-5. Preserve each required placeholder exactly once and keep $$A=0$$ during local trials.
-6. Run the campaign and inspect every local response before adopting the fitted source slope and intercept.
-
 ## Outputs
-
-The completed directory has this structure:
 
 ```text
 campaign/
 ├── cases/
-│   └── P187p5_V500_D109p69/
-│       ├── B0/
-│       ├── B1/
+│   └── P187p5_V500_measured_beam/
+│       ├── nIntercept0/
+│       ├── nIntercept1/
 │       └── ...
 ├── simulations.yml
 ├── calibration_state.yml
@@ -167,44 +146,19 @@ campaign/
     └── calibration_summary.csv
 ```
 
-| Output | Contents |
-|---|---|
-| `cases/.../log.run` | Complete solver output for one trial |
-| `cases/.../metrics.yml` | Rendered inputs, selected isovalue, time and maximum length, width, and depth |
-| `simulations.yml` | Trial values and simulated depths for every process condition |
-| `calibration_state.yml` | Local posterior summaries and retained samples |
-| `calibration_fit.yml` | Global coefficients, residual diagnostics, calibrated range, covariance, and bootstrap intervals |
-| `calibration_summary.csv` | One row per experiment for downstream analysis |
-| `calibration_report.pdf` | Response curves, measured depths, local posteriors, final fit, and numerical summary |
+Successful trial directories retain their rendered inputs, solver log, post-processing output, and `metrics.yml`. With `keep_successful: false`, processor and numeric time directories are removed after the depth is recorded.
 
-With `keep_successful: false`, the rendered dictionaries, log, post-processing data, and metrics remain, while processor and numeric time directories are removed after a successful trial.
+## Apply the fit
 
-### Apply the fitted coefficients
-
-Open `campaign/calibration_fit.yml` and inspect `A`, `B`, the bootstrap intervals, `x_min`, `x_max`, and weighted residuals. Also inspect the local response and posterior plots in the PDF; a narrow-looking global fit does not repair a non-monotonic or poorly resolved AdditiveFOAM response curve.
-
-<figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/heat-source-calibration-fit.png' | relative_url }}" alt="Final heat-source calibration fit with local posterior intervals and empirical uncertainty band.">
-  <figcaption>The global relation fitted to the five local calibrations using x = d/(D4σ/2), the same normalized depth used by the projected heat-source models. The orange interval is obtained by drawing from the stored local posteriors and repeating the robust global fit.</figcaption>
-</figure>
-
-The coefficients are used in a production projected source as:
+Read `nSlope` and `nIntercept` from `campaign/calibration_fit.yml` and insert them into the projected source:
 
 ```foam
-projectedGaussianCoeffs
+projection
 {
-    dimensions (54.845e-6 54.845e-6 30e-6);
-    A          <source-slope>;
-    B          <source-intercept>;
-    transient  true;
-    nPoints    (10 10 10);
+    model       exponential;
+    nSlope     <fitted-nSlope>;
+    nIntercept <fitted-nIntercept>;
 }
 ```
 
-The command uses `Spot_Size_microns: 109.69` as the full measured D4σ diameter, computes the 54.845 µm 2σ heat-source radius, and renders it into both runtime lateral dimensions. Measured and simulated depths are normalized with this same radius:
-
-$$x=\frac{d}{D_{4\sigma}/2}
-=\frac{d}{\min(\mathrm{dimensions}_x,\mathrm{dimensions}_y)}.$$
-
-{: .important }
-Insert `A` and `B` from `calibration_fit.yml` directly as `<source-slope>` and `<source-intercept>`.
+See [Projected Heat-source Calibration]({{ '/docs/heat-source-calibration/' | relative_url }}) for the equations and configuration reference.

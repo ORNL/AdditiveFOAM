@@ -11,11 +11,93 @@ usemathjax: true
 
 # Heat Source Models
 
-AdditiveFOAM represents deposited energy with moving volumetric heat sources. Each source follows an arbitrary piecewise-linear or dwell-based scan path that specifies position, time, and power. A source independently selects an absorption model, which determines the absorbed fraction of the prescribed power, and a spatial distribution, which determines how that absorbed power is distributed through the material. Multiple sources can operate in the same simulation with separate paths, powers, absorption models, dimensions, and integration controls. The resulting volumetric power density is normalized so its spatial integral equals the absorbed source power.
+AdditiveFOAM represents deposited energy with one or more moving volumetric sources. Each named source defines its scan path, reference dimensions, absorption model, and heat-source model. Nested dictionaries select each model with a `model` entry.
+
+## Source dictionary
+
+The dictionary below configures a tabulated planar profile with an exponential axial projection:
+
+```foam
+sources
+{
+    beam
+    {
+        path            scanPath;
+
+        widthReference  D4Sigma;
+        D4Sigma         areaEquivalent; // areaEquivalent, major, or minor
+        depthReference  isotherm;        // constant or isotherm
+        isotherm        1620;            // optional; liquidus by default
+
+        absorption
+        {
+            model       constant;        // or Kelly
+            eta         0.35;
+        }
+
+        heatSource
+        {
+            model       projected;
+            depth       20e-6;
+            tolerance   1e-3;
+            nPoints     (10 10 10);
+
+            profile
+            {
+                model   tabulated;       // superGaussian, nLightAFX, tabulated
+                file    "beamProfile.txt";
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0;
+                nIntercept  1;
+            }
+        }
+    }
+}
+
+refinement
+{
+    model none;
+}
+```
+
+`widthReference`, `D4Sigma`, `depthReference`, and `isotherm` are source-level entries. The heat-source and absorption models use the same reference aspect ratio.
+
+### Model hierarchy
+
+| Level | Selections | Role |
+|---|---|---|
+| Source | Any user-defined dictionary name under `sources` | Combines motion, reference dimensions, absorption, and volumetric deposition |
+| `absorption` | `constant`, `Kelly` | Converts incident scan-path power to absorbed power |
+| `heatSource` | `superGaussian`, `modifiedSuperGaussian`, `projected` | Defines the normalized three-dimensional source distribution |
+| `projected/profile` | `superGaussian`, `nLightAFX`, `tabulated` | Defines the two-dimensional beam-plane distribution |
+| `projected/projection` | `exponential` | Defines the one-sided axial distribution |
+| `refinement` | `none`, `targetCellLoad`, `timeStep`, `uniformTimeIntervals` | Controls scan-path-aware mesh marking |
+
+`superGaussian` is both a volumetric model and a planar profile available inside `projected`. `modifiedSuperGaussian` is a volumetric model. `projected` combines a planar profile with an axial projection.
+
+## Source-level entries
+
+| Entry | Required | Default | Meaning |
+|---|---:|---|---|
+| `path` | Yes | — | Scan-path file under `constant/` |
+| `deltaT` | No | Unlimited | Maximum temporal source-integration interval; when configured, it is expected to be positive |
+| `hitPathIntervals` | No | `true` | Reduce solver steps as needed to land on scan-path interval ends |
+| `widthReference` | No | `D4Sigma` | Reference-width definition; only `D4Sigma` is supported |
+| `D4Sigma` | No | `areaEquivalent` | Select `areaEquivalent`, `major`, or `minor` from `profileMetrics` |
+| `depthReference` | No | `constant` | Select `constant` or `isotherm` reference depth |
+| `isotherm` | No | Material liquidus | Temperature used by `depthReference isotherm` |
+| `absorption` | Yes | — | Nested absorption model dictionary |
+| `heatSource` | Yes | — | Nested volumetric heat-source dictionary |
+
+The top-level `refinement` dictionary is optional and defaults to `model none`. See [Adaptive Mesh Refinement]({{ '/docs/amr/' | relative_url }}) for the other models.
 
 ## Scan paths
 
-The `pathName` entry selects a file under `constant/`. Its first line is a header and is ignored. Each subsequent non-empty row has six columns:
+The first line of the file selected by `path` is a header and is ignored. Each following non-empty row contains:
 
 ```text
 mode x y z power parameter
@@ -23,199 +105,158 @@ mode x y z power parameter
 
 | Mode | Position columns | Power column | Parameter column |
 |---|---|---|---|
-| `0` | Endpoint of a linear segment, in metres | Source power during the segment, in watts | Translation speed, in m/s |
-| `1` | Fixed source position, in metres | Source power during the dwell, in watts | Dwell duration, in seconds |
+| `0` | Endpoint of a linear segment, in metres | Incident power during the segment, in watts | Translation speed, in m/s |
+| `1` | Fixed source position, in metres | Incident power during the dwell, in watts | Dwell duration, in seconds |
 
-For mode `0`, the source moves from the preceding path position to $$(x,y,z)$$ at the specified speed. For mode `1`, it remains at $$(x,y,z)$$ for the specified duration. A zero-power row represents motion or dwell without energy deposition. The path begins at simulation time zero; an initial mode-`1` row can establish the starting position and an optional delay before the first translating segment.
+A zero-power row represents motion or dwell without deposition. The [case-file reference]({{ '/docs/case-files/#scan-path-file' | relative_url }}) gives the path interpolation equations.
 
-For example,
+## Beam-plane profile metrics
 
-```text
-Mode  X       Y        Z    Power  Parameter
-1     0.000   0.0000   0.0  0.0    0.0
-0     0.002   0.0000   0.0  195.0  0.8
-0     0.002   0.0001   0.0  0.0    0.8
-0     0.000   0.0001   0.0  195.0  0.8
-```
+`profileMetrics` characterizes the beam-plane intensity footprint of every heat-source profile. Analytic volumetric models and projected analytic profiles calculate the metrics from their distributions. A `tabulated` profile calculates them from its bilinear interpolant.
 
-defines two powered, 2 mm scan segments at 0.8 m/s separated by a zero-power 0.1 mm transverse move. The [scan-path file section]({{ '/docs/case-files/#scan-path-file' | relative_url }}) gives the corresponding time interpolation equations.
+For a nonnegative intensity distribution $$I(x,y)$$ in the source-relative beam plane, define the raw moments
 
-## Top-level structure
+$$M_{mn}=\iint x^m y^n I(x,y)\,\mathrm dx\,\mathrm dy,
+\qquad m+n\leq2,$$
 
-Create `constant/heatSourceDict` and list every source name in `sources`. Each named dictionary must select its scan-path file, absorption model, and spatial distribution. Use `deltaT` to control temporal sampling of source motion and `nPoints` inside the distribution coefficients to control spatial quadrature. The example below defines one source named `beam1`; additional sources use the same structure with unique names and paths.
+with positive integral $$M_{00}$$. The centroid is
 
-```foam
-sources (beam1 beam2);
+$$\bar x=\frac{M_{10}}{M_{00}},\qquad
+\bar y=\frac{M_{01}}{M_{00}},$$
 
-beam1
-{
-    pathName         scanPath_1;
-    deltaT           1e-7;
-    hitPathIntervals true;
+and the covariance matrix is
 
-    absorptionModel  constant;
-    constantCoeffs { eta 0.33; }
+$$\boldsymbol\Sigma=
+\begin{bmatrix}
+M_{20}/M_{00}-\bar x^2 & M_{11}/M_{00}-\bar x\bar y\\
+M_{11}/M_{00}-\bar x\bar y & M_{02}/M_{00}-\bar y^2
+\end{bmatrix}.$$
 
-    heatSourceModel  superGaussian;
-    superGaussianCoeffs
-    {
-        dimensions (85e-6 85e-6 30e-6);
-        nPoints    (10 10 10);
-        k          2;
-    }
-}
-```
+If $$\lambda_{\mathrm{major}}\geq\lambda_{\mathrm{minor}}$$ are the eigenvalues of $$\boldsymbol\Sigma$$, the stored beam diameters are
 
-| Entry | Required | Default | Meaning |
-|---|---:|---|---|
-| `sources` | Yes | — | Ordered list of beam dictionary names |
-| `pathName` | Yes | — | File under `constant/` |
-| `deltaT` | No | Unlimited | Internal temporal sampling interval for beam motion |
-| `hitPathIntervals` | No | `true` | Make the CFD step land on scan-path boundaries |
-| `absorptionModel` | Yes | — | `constant` or `Kelly` |
-| `heatSourceModel` | Yes | — | Spatial distribution type |
-| `dimensions` | Yes | — | Characteristic `(x y z)` dimensions in metres |
-| `nPoints` | No | `(1 1 1)` | Target sub-cell integration density |
-| `transient` | No | `false` | Update source depth from an isotherm |
-| `isoValue` | No | Material liquidus when transient | Temperature used for transient depth |
-
-See [adaptive heat-source integration](#adaptive-heat-source-integration) for how `nPoints` and `deltaT` differ.
-
-## Moving volumetric sources
-
-For $$N_b$$ heat sources, the volumetric power density is
-
-$$\dot q(\mathbf{x},t)
-=\sum_{b=1}^{N_b}
-\frac{\eta_b(a_b)P_b(t)}{V_{b,\mathrm{norm}}}
-w_b\!\left(\mathbf{x}-\mathbf{x}_b(t)\right),$$
-
-where $$P_b(t)$$ and $$\mathbf{x}_b(t)$$ are obtained by piecewise interpolation of the scan path, $$\eta_b$$ is absorptivity, $$a_b=d_{b,z}/\min(d_{b,x},d_{b,y})$$ is the source aspect ratio, $$w_b$$ is the selected spatial kernel, and $$V_{b,\mathrm{norm}}$$ normalizes its integral.
-
-Here $$\mathbf{x}$$ is spatial position, $$t$$ is time, $$N_b$$ is the number of sources, $$b$$ is the source index, $$P_b$$ is power, $$\mathbf{x}_b$$ is the source centre, and $$(d_{b,x},d_{b,y},d_{b,z})$$ are the source dimensions.
-
-### Adaptive heat-source integration
-
-The solver integrates each spatial distribution over finite-volume cells and averages its motion over every CFD time step. Users control these two approximations independently: `nPoints` sets the target spatial sampling density and the source-level `deltaT` sets the maximum temporal sub-interval. Increase `nPoints` until `plotPower` shows that the volume-integrated source has converged to the absorbed power. Reduce `deltaT` when the source moves a significant distance within one CFD step and confirm that the resulting temperature history no longer changes at the required resolution.
-
-The finite-volume source for cell $$c$$ is based on the cell-average kernel weight
-
-$$\overline{w}_{b,c}=\frac{1}{V_c}\int_{\Omega_c}
-w_b\!\left(\mathbf{x}-\mathbf{x}_b\right)\,\mathrm{d}V.$$
-
-Here $$\Omega_c$$ is the volume occupied by cell $$c$$, $$V_c=\int_{\Omega_c}\mathrm{d}V$$ is its volume, and $$\overline w_{b,c}$$ is the cell-average kernel value.
-
-#### Spatial integration
-
-Every heat-source coefficient dictionary accepts `nPoints`:
-
-```foam
-superGaussianCoeffs
-{
-    k          2.0;
-    dimensions (85e-6 85e-6 30e-6);
-    nPoints    (10 10 10);
-}
-```
-
-For source dimension $$d_{b,j}$$ and configured count $$n_{b,j}$$, the target sampling distance in direction $$j$$ is
-
-$$h_{b,j}=\frac{d_{b,j}}{n_{b,j}}.$$
-
-For a hexahedral cell with axis-aligned bounding-box span $$\ell_{c,j}$$, the number and width of integration intervals are
-
-$$N_{c,j}=\max\left(1,\left\lfloor\frac{\ell_{c,j}+\varepsilon}{h_{b,j}}\right\rfloor\right),
+$$D_{4\sigma,\mathrm{major}}=4\sqrt{\lambda_{\mathrm{major}}},
 \qquad
-\Delta x_{c,j}=\frac{\ell_{c,j}}{N_{c,j}}.$$
+D_{4\sigma,\mathrm{minor}}=4\sqrt{\lambda_{\mathrm{minor}}},$$
 
-Here $$j\in\{x,y,z\}$$ denotes a Cartesian direction, $$h_{b,j}$$ is the target sample spacing, $$\ell_{c,j}$$ is the cell bounding-box span, $$N_{c,j}$$ is the resulting interval count, $$\Delta x_{c,j}$$ is the interval width, and $$\varepsilon$$ is the small positive tolerance used before integer truncation.
+ordered `(major minor)`. The major-axis azimuth is
 
-Midpoint quadrature gives
+$$\theta=\frac12\operatorname{atan2}\!\left(
+2\Sigma_{xy},\Sigma_{xx}-\Sigma_{yy}\right).$$
 
-$$\overline{w}_{b,c}
-\approx\frac{\Delta V_c}{V_c}
-\sum_{i=1}^{N_{c,x}}
-\sum_{j=1}^{N_{c,y}}
-\sum_{k=1}^{N_{c,z}}
-w_b(\mathbf{x}_{ijk}-\mathbf{x}_b),
-\qquad
-\Delta V_c=\prod_{j=1}^{3}\Delta x_{c,j}.$$
+AdditiveFOAM reports zero azimuth for a circular profile, where orientation is undefined; numerically, it treats the eigenvalue split as circular when it is no larger than `rootSmall` times the mean variance, with a `VSMALL` floor. Each `D4Sigma` value is a diameter; the corresponding second-moment radius is $$D_{4\sigma}/2$$.
 
-The indices $$i$$, $$j$$, and $$k$$ enumerate midpoint samples in the three Cartesian directions; $$\mathbf{x}_{ijk}$$ is a sample position and $$\Delta V_c$$ is its quadrature volume.
+For `tabulated`, AdditiveFOAM integrates all six raw moments over each table cell's bilinear interpolant. The resulting planar integral must be positive. [`tabulatedProfileInfo`]({{ '/docs/utilities/#tabulatedprofileinfo' | relative_url }}) and [`primesToAdditiveFoam`]({{ '/docs/utilities/#primestoadditivefoam' | relative_url }}) report the same metrics.
 
-For non-hexahedral cells, $$\overline{w}_{b,c}=w_b(\mathbf{x}_c-\mathbf{x}_b)$$ is evaluated at the cell centre. The discrete kernel integral is
+### Reference dimensions
 
-$$V_{b,h}=\sum_c V_c\overline{w}_{b,c}.$$
+The source-level reference-dimension settings reduce the two principal profile diameters and a selected depth to the scalar aspect ratio used by the heat-source and absorption models.
 
-Let $$V_{b,0}$$ denote the normalization supplied by the heat-source model. The normalization used in the source term is
+For profile principal diameters $$D_{\mathrm{major}}$$ and $$D_{\mathrm{minor}}$$, the selected reference width is
 
-$$V_{b,\mathrm{norm}}=
+$$D_{\mathrm{ref}}=
 \begin{cases}
-V_{b,h}, & \left|1-V_{b,h}/V_{b,0}\right|<0.05,\\
-V_{b,0}, & \text{otherwise}.
+D_{\mathrm{major}}, & \texttt{D4Sigma major},\\
+D_{\mathrm{minor}}, & \texttt{D4Sigma minor},\\
+\sqrt{D_{\mathrm{major}}D_{\mathrm{minor}}},
+& \texttt{D4Sigma areaEquivalent}.
 \end{cases}$$
 
-The cell source is therefore
+With `depthReference constant`, the reference depth is the configured heat-source `depth`. With `depthReference isotherm`, AdditiveFOAM measures the maximum selected-isotherm depth below the source-relative beam plane and within the planar profile bounds. The optional `isotherm` value defaults to the material liquidus.
 
-$$\dot q_{b,c}=\eta_bP_b\frac{\overline{w}_{b,c}}{V_{b,\mathrm{norm}}},$$
+The reference aspect ratio is
 
-and its integrated power is $$\sum_cV_c\dot q_{b,c}$$. `nPoints` controls the quadrature resolution. Increase it until this integral converges to $$\eta_bP_b$$; `plotPower` plots the integrated value.
+$$a=\frac{2d_{\mathrm{ref}}}{D_{\mathrm{ref}}}.$$
 
-Sub-cell quadrature is implemented for `superGaussian`, `modifiedSuperGaussian`, `projectedGaussian`, `nLightAFX`, and `tabulated`.
+The depth actually applied to the spatial heat source is a separate quantity:
 
-#### Time integration
+$$d_{\mathrm{source}}=
+\max(d_{\mathrm{configured}},d_{\mathrm{ref}}).$$
 
-Let the CFD step be $$[t^n,t^{n+1}]$$ and the configured beam integration interval be $$\delta t_b$$. It is partitioned into $$K$$ sub-intervals with
+The configured `depth` is the minimum applied depth when `depthReference isotherm` is selected. The heat-source distribution uses $$d_{\mathrm{source}}$$. The axial projection and Kelly absorption use $$a$$.
 
-$$\delta t_k=\min\left(\delta t_b,
-t^{n+1}-t^n-\sum_{j=1}^{k-1}\delta t_j\right).$$
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/profile-metrics.png' | relative_url }}" alt="Rotated elliptical beam profile showing its centroid, principal D4Sigma diameters, area-equivalent reference width, reference depth, applied depth, and the aspect ratio shared by the exponential projection and Kelly absorption.">
+  <figcaption><code>profileMetrics</code> characterizes every planar footprint. The selected reference width and reference depth form one shared aspect ratio; the applied source depth is calculated separately.</figcaption>
+</figure>
 
-The time-averaged source is
+## Volumetric power density
 
-$$\overline{\dot q}_{b,c}^{\,n+1}
-=\frac{1}{\Delta t}
-\sum_{k=1}^{K}\delta t_k\,
-\dot q_{b,c}\!\left(t^n+\sum_{j=1}^{k}\delta t_j\right),
-\qquad
-\Delta t=\sum_{k=1}^{K}\delta t_k.$$
+Let $$\mathbf{X}$$ be a point in the global coordinate system. For source $$b$$, the beam position is $$\mathbf{X}_b(t)$$, and the source-relative position is
 
-Here $$n$$ is the CFD time-level index, $$K$$ is the number of source sub-intervals, $$k$$ is the sub-interval index, $$\delta t_k$$ is its duration, and $$\Delta t=t^{n+1}-t^n$$ is the CFD-step duration.
+$$\mathbf{x}=\mathbf{X}-\mathbf{X}_b(t)=(x,y,z).$$
 
-The beam-level `deltaT` entry specifies $$\delta t_b$$:
+The beam plane is $$z=0$$, and material below it has $$z\leq0$$. Each heat-source model defines a nonnegative dimensionless weight $$w_b(\mathbf{x},t)$$ and its volume integral
 
-```foam
-beam
-{
-    pathName         scanPath;
-    deltaT           2e-7;
-    hitPathIntervals true;
-    // absorption and heat-source entries ...
-}
-```
+$$\mathcal V_b(t)=\iiint_{\mathbb R^3}
+w_b(\mathbf{x},t)\,\mathrm dV.$$
 
-With `hitPathIntervals true`, the remaining time $$\tau$$ to the next scan-path event is divided into an integer number of CFD steps, so a step endpoint coincides with that event.
+The absorbed volumetric power density is
+
+$$\dot q_b(\mathbf{X},t)=
+\eta_b(a_b(t))P_b(t)
+\frac{w_b(\mathbf{x},t)}{\mathcal V_b(t)},$$
+
+where $$P_b$$ is incident power and $$\eta_b$$ is absorptivity. The normalized kernel $$w_b/\mathcal V_b$$ has units of m$$^{-3}$$, so $$\dot q_b$$ has units of W m$$^{-3}$$ and satisfies
+
+$$\iiint_{\mathbb R^3}\dot q_b(\mathbf{X},t)\,\mathrm dV
+=\eta_b(a_b(t))P_b(t).$$
+
+For $$B$$ sources, the field in the energy equation is
+
+$$\dot q(\mathbf{X},t)=\sum_{b=1}^{B}\dot q_b(\mathbf{X},t).$$
+
+The analytic normalization stored by the model is `V0`. The spatial quadrature evaluates the cell-average weight. If its domain integral is within five percent of `V0`, AdditiveFOAM uses that discrete integral to remove the remaining quadrature error.
+
+For analytic profiles with azimuth $$\theta$$, define the coordinates aligned with the profile's principal axes by
+
+$$u=x\cos\theta+y\sin\theta,\qquad
+v=-x\sin\theta+y\cos\theta.$$
+
+The equations below use $$\mathbf{X}$$ only for the global evaluation point, $$\mathbf{x}$$ only for the source-relative position, and $$(u,v)$$ only for this planar rotation. The source index is omitted within each individual model equation.
+
+## Source update and temporal integration
+
+Source state is synchronized once before temporal beam subcycling:
+
+1. Select the profile-metric reference width.
+2. Use the configured depth or measure the selected isotherm depth.
+3. Form $$a=2d_{\mathrm{ref}}/D_{\mathrm{ref}}$$ and $$d_{\mathrm{source}}=\max(d_{\mathrm{configured}},d_{\mathrm{ref}})$$.
+4. Update the heat-source shape, normalization, and retained bounds with those two quantities.
+5. Evaluate Kelly, when selected, with the same reference aspect ratio.
+6. Temporally integrate the moving source through the solver step.
+
+For a CFD step $$[t^n,t^{n+1}]$$ of duration $$\Delta t^n$$, the field supplied to the energy equation is the temporal average
+
+$$\overline{\dot q}^{n}(\mathbf{X})=
+\frac{1}{\Delta t^n}
+\sum_{b=1}^{B}
+\int_{t^n}^{\min(t^{n+1},t_{\mathrm{end},b})}
+\dot q_b(\mathbf{X},t)\,\mathrm dt.$$
+
+AdditiveFOAM evaluates this integral by beam subcycling with the source-level `deltaT`. Division by the full CFD-step duration preserves the active-power fraction when the step extends past the end of a scan path.
+
+All heat-source kernels are one-sided below the source-relative beam plane: they are zero for $$z>0$$ and normalized over their support at $$z\leq0$$.
 
 ## Absorption models
-
-The absorption model converts prescribed scan-path power into absorbed power. Select `constant` for a fixed absorptivity or `Kelly` when absorptivity should vary with the source depth-to-width aspect ratio. The selected value multiplies the normalized spatial distribution and is reported through the integrated source power in the solver log.
 
 ### `constant`
 
 ```foam
-absorptionModel constant;
-constantCoeffs { eta 0.33; }
+absorption
+{
+    model constant;
+    eta   0.33;
+}
 ```
 
-`eta` is required.
+`eta` is the fixed absorbed fraction of incident scan-path power.
 
 ### `Kelly`
 
-The Kelly model represents the increase in effective absorptivity caused by repeated reflections within a conical or cylindrical depression. It uses a fixed absorptivity below a prescribed depth-to-width ratio and the geometry-dependent multiple-reflection relation above it.
-
 ```foam
-absorptionModel Kelly;
-KellyCoeffs
+absorption
 {
+    model             Kelly;
     geometry          cone;
     eta0              0.28;
     etaMin            0.35;
@@ -223,279 +264,393 @@ KellyCoeffs
 }
 ```
 
-Let $$a=d_z/\min(d_x,d_y)$$ be the source aspect ratio and $$a_s$$ be `aspectRatioSwitch`. The implemented absorptivity is
+`geometry` is required and must be `cone` or `cylinder`; `eta0` and `etaMin` are required. `aspectRatioSwitch` defaults to one. With source-level reference aspect ratio $$a$$ and switch $$a_s$$,
 
-$$
-\eta(a)=
+$$\eta(a)=
 \begin{cases}
 \eta_{\min}, & a\leq a_s,\\[4pt]
-\displaystyle
-\eta_0\frac{1+(1-\eta_0)[G(a)-F(a)]}
-{1-(1-\eta_0)[1-G(a)]}, & a>a_s.
-\end{cases}
-$$
+\max\!\left[\eta_{\min},
+\displaystyle\eta_0\frac{1+(1-\eta_0)[G(a)-F(a)]}
+{1-(1-\eta_0)[1-G(a)]}\right], & a>a_s.
+\end{cases}$$
 
-For $$a>a_s$$, define $$\theta=\tan^{-1}(1/a)$$. The geometric functions are
+Above the switch, $$\beta=\tan^{-1}(1/a)$$ and
 
-$$
-[F(a),G(a)]=
+$$[F,G]=
 \begin{cases}
-\left[
-\dfrac{3\sin\theta-\sin(3\theta)}{4},
-\dfrac{1}{1+\sqrt{1+a^2}}
-\right], & \texttt{geometry cone},\\[12pt]
-\left[
-\dfrac{1-\cos(2\theta)}{2},
-\dfrac{1}{2(1+a)}
-\right], & \texttt{geometry cylinder}.
-\end{cases}
-$$
+\left[(3\sin\beta-\sin3\beta)/4,
+1/(1+\sqrt{1+a^2})\right], & \texttt{cone},\\[4pt]
+\left[(1-\cos2\beta)/2,1/(2(1+a))\right],
+& \texttt{cylinder}.
+\end{cases}$$
 
-`eta0`, `etaMin`, and `geometry` are required; $$a_s$$ defaults to one.
-
-In these equations, $$\eta_0$$ is the base optical absorptivity, $$\eta_{\min}$$ is the value used below the switch, $$\theta$$ is the depression half-angle, and $$F$$ and $$G$$ are the selected cone or cylinder geometry factors.
+At or below `aspectRatioSwitch`, Kelly returns `etaMin` before evaluating $$1/a$$. Above the switch, `etaMin` lower-bounds the analytic curve.
 
 <figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/kelly-absorption.png' | relative_url }}" alt="Kelly effective absorptivity as a function of source aspect ratio for cone and cylinder geometries.">
-  <figcaption>Kelly absorptivity for the parameters in the example dictionary. The model uses the fixed value $\eta_{\min}$ through the aspect-ratio switch $a_s$, after which the cone or cylinder multiple-reflection relation determines $\eta(a)$.</figcaption>
+  <img src="{{ '/assets/images/visualizations/kelly-absorption.png' | relative_url }}" alt="Kelly effective absorptivity as a function of the shared reference aspect ratio for cone and cylinder geometries.">
+  <figcaption>Kelly absorptivity uses the source-level reference aspect ratio. <code>etaMin</code> applies below the switch and lower-bounds the analytic curve above it.</figcaption>
 </figure>
 
-## Heat-source models
+## Heat-source entries
 
-The heat-source model determines the three-dimensional distribution of absorbed power. Select the model according to the available beam description:
+Every `heatSource` model requires scalar `depth`. The optional entries are:
 
-| Model | Spatial input |
-|---|---|
-| `superGaussian` | One analytic three-dimensional ellipsoidal distribution |
-| `modifiedSuperGaussian` | Analytic lateral super-Gaussian whose width contracts with depth |
-| `projectedGaussian` | Analytic elliptical Gaussian intensity projected through depth |
-| `nLightAFX` | Two characterized Gaussian-ring components projected through depth |
-| `tabulated` | Measured or computed lateral intensity table projected through depth |
+| Entry | Default | Meaning |
+|---|---|---|
+| `tolerance` | `1e-3` | Maximum analytic source-power fraction omitted outside retained bounds |
+| `nPoints` | `(1 1 1)` | Nominal source-bound resolution used to derive per-cell midpoint sample counts |
 
-<figure class="documentation-figure">
-  <img src="{{ '/assets/images/visualizations/heat-source-models.png' | relative_url }}" alt="Top-surface and centre-plane distributions for the five AdditiveFOAM heat-source models.">
-  <figcaption>Heat-source distributions for the five AdditiveFOAM models. The <code>nLightAFX</code> and <code>tabulated</code> distributions use the Index 6 profiles supplied with the tutorials.</figcaption>
-</figure>
+Analytic models derive bounds from their cumulative integrals. Tabulated profiles use their exact finite nodal support. A `projected` source divides the total tolerance between planar and axial factors using
 
-All models use `dimensions` and accept `nPoints`. For models that accept `transient true`, AdditiveFOAM updates only the depth dimension from the position of `isoValue`; if `isoValue` is omitted, the material liquidus is used. This allows the volumetric distribution and aspect-ratio-dependent absorption or projection to follow the evolving penetration depth.
+$$\epsilon=\frac{\texttt{tolerance}}
+{1+\sqrt{1-\texttt{tolerance}}},$$
+
+so $$(1-\epsilon)^2=1-\texttt{tolerance}$$.
+
+For retained-bound span $$L_j$$, `nPoints` defines a nominal spacing $$h_j=L_j/n_j$$. In an overlapping hexahedral cell with bounding-box span $$\ell_{c,j}$$, the implementation converts the positive ratio to an integer and enforces at least one sample:
+
+$$N_{c,j}=\max\!\left(1,
+\left\lfloor\frac{\ell_{c,j}+\texttt{small}}{h_j}\right\rfloor\right).$$
+
+The cell is sampled at the midpoints of the resulting uniform subdivisions. Because the ratio is integerized, `nPoints` establishes a nominal resolution; it does not guarantee that every actual subcell spacing is no larger than $$h_j$$. Non-hexahedral cells are evaluated at the cell centre.
+
+## Volumetric models
 
 ### `superGaussian`
 
-The `superGaussian` model defines one ellipsoidal distribution whose shape is uniform in the scaled coordinate $$\sum_j(r_j/s_j)^2$$. The exponent $$k$$ controls the transition from a Gaussian profile at $$k=2$$ to a flatter central region with steeper decay for $$k>2$$.
-
-For displacement $$\mathbf{r}=\mathbf{x}-\mathbf{x}_b$$ and
-
-$$s_j=\frac{d_j}{2^{1/k}},$$
-
-the kernel and analytic normalization are
-
-$$w(\mathbf{r})=\exp\left\{-\left[
-\sum_{j=1}^{3}\left(\frac{r_j}{s_j}\right)^2
-\right]^{k/2}\right\},$$
-
-$$V_0=\frac{2}{3}\pi s_xs_ys_z
-\Gamma\!\left(1+\frac{3}{k}\right).$$
-
-Here $$r_j$$ is component $$j$$ of the source-relative displacement, $$d_j$$ is the corresponding configured dimension, $$s_j$$ is its scaled length, $$V_0$$ is the analytic kernel integral over the active half-space, and $$\Gamma$$ is the Euler gamma function.
-
-Thus `k=2` is Gaussian. `k` is required.
-
 ```foam
-superGaussianCoeffs
+heatSource
 {
-    dimensions (85e-6 85e-6 30e-6);
-    k          2;
-    nPoints    (10 10 10);
+    model       superGaussian;
+    radius      (85e-6 60e-6);
+    depth       30e-6;
+    definition  secondMoment;
+    azimuth     25;
+    k           2;
+    nPoints     (10 10 10);
 }
 ```
+
+`radius` is a required `vector2D`, `depth` and `k` are required scalars, and `azimuth` defaults to zero degrees. `definition` defaults to `e2` and may be `e2` or `secondMoment`. For lateral coefficient
+
+$$C=\begin{cases}
+2^{2/k}, & \texttt{e2},\\
+2\,\Gamma(4/k)/\Gamma(2/k), & \texttt{secondMoment},
+\end{cases}$$
+
+and the principal-axis coordinates $$(u,v)$$ defined above, the volumetric weight is
+
+$$w_{\mathrm{SG}}(u,v,z)=
+\begin{cases}
+\displaystyle
+\exp\!\left\{-\left[
+C\left(\frac{u^2}{r_x^2}+\frac{v^2}{r_y^2}\right)
++2^{2/k}\frac{z^2}{d_{\mathrm{source}}^2}
+\right]^{k/2}\right\}, & z\leq0,\\[8pt]
+0, & z>0.
+\end{cases}$$
+
+Its analytic volume integral is
+
+$$\mathcal V_{\mathrm{SG}}=
+\frac{2\pi r_xr_y d_{\mathrm{source}}}
+{3C\,2^{1/k}}
+\Gamma\!\left(1+\frac{3}{k}\right),$$
+
+and the model supplies
+
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)
+\frac{w_{\mathrm{SG}}(u,v,z)}
+{\mathcal V_{\mathrm{SG}}}.$$
+
+Before rotation by `azimuth`, the principal beam-plane diameters are
+
+$$D_{4\sigma,x}=4r_x
+\sqrt{\frac{\Gamma(4/k)}{2C\,\Gamma(2/k)}},
+\qquad
+D_{4\sigma,y}=4r_y
+\sqrt{\frac{\Gamma(4/k)}{2C\,\Gamma(2/k)}}.$$
+
+The `secondMoment` definition makes each configured local radius one half of its corresponding `D4Sigma` diameter. The `e2` definition makes each radius the planar distance at which the axis-aligned profile falls to $$e^{-2}$$.
 
 ### `modifiedSuperGaussian`
 
-The `modifiedSuperGaussian` model applies a super-Gaussian profile in each plane normal to the source-depth direction. Its lateral scale decreases continuously with $$\lvert r_z\rvert$$ and becomes zero at $$\lvert r_z\rvert=d_z$$, producing a bounded three-dimensional distribution.
-
-Let $$s_x=d_x/2^{1/k}$$, $$s_y=d_y/2^{1/k}$$, $$s_z=d_z$$, and $$z=\lvert r_z\rvert$$. For $$z<s_z$$, define
-
-$$g(z)=\left[1-\left(\frac{z}{s_z}\right)^m\right]^{1/m}$$
-
-and
-
-$$w(\mathbf{r})=\exp\left\{-\left[
-\left(\frac{r_x}{s_xg}\right)^2+
-\left(\frac{r_y}{s_yg}\right)^2
-\right]^{k/2}\right\};$$
-
-$$w=0$$ for $$z\geq s_z$$. The analytic normalization is
-
-$$V_0=\pi s_xs_ys_z\Gamma\!\left(1+\frac{2}{k}\right)
-\frac{\Gamma(1+1/m)\Gamma(1+2/m)}{\Gamma(1+3/m)}.$$
-
-Here $$g(z)$$ is the depth-dependent lateral scale multiplier, $$V_0$$ is the kernel integral, `k` controls the lateral exponent, and `m` controls the contraction with depth; both coefficients are required.
-
 ```foam
-modifiedSuperGaussianCoeffs
+heatSource
 {
-    dimensions (40e-6 40e-6 30e-6);
-    k          7.95;
-    m          2.72;
-    transient  true;
-    nPoints    (10 10 10);
+    model       modifiedSuperGaussian;
+    radius      (40e-6 40e-6);
+    depth       20e-6;
+    definition  e2;
+    azimuth     0;
+    k           7.95;
+    m           2.72;
+    nPoints     (10 10 10);
 }
 ```
 
-### Common projected-source formulation
+`modifiedSuperGaussian` uses the same `radius`, `depth`, `definition`, `azimuth`, and `k` entries as `superGaussian` and also requires `m`. With positive depth $$\zeta=-z$$,
 
-The `projectedGaussian`, `tabulated`, and `nLightAFX` models construct a volumetric distribution from a lateral intensity and a depth projection. Let $$(x,y,z)$$ be coordinates relative to the source centre, with $$z\geq0$$ directed into the active material. For lateral intensity $$I(x,y)$$ and projection $$p(z)$$, define the normalized distribution
+$$g(\zeta)=\left[1-(\zeta/d_{\mathrm{source}})^m\right]^{1/m},$$
 
-$$Q(x,y,z)=
-\frac{I(x,y)p(z)}{\mathcal{A}_I\mathcal{A}_p},$$
+$$w_{\mathrm{MSG}}(u,v,\zeta)=
+\begin{cases}
+\displaystyle
+\exp\!\left\{-\left[
+\frac{C}{g(\zeta)^2}
+\left(\frac{u^2}{r_x^2}+\frac{v^2}{r_y^2}\right)
+\right]^{k/2}\right\},
+&0\leq\zeta<d_{\mathrm{source}},\\[8pt]
+0,&\text{otherwise}.
+\end{cases}$$
 
-where
+The beam-plane integral at $$\zeta=0$$ and the three-dimensional normalization are
 
-$$\mathcal{A}_I=\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}
-I(x,y)\,\mathrm{d}x\,\mathrm{d}y,
+$$\mathcal A_{\mathrm{SG}}=
+\frac{\pi r_xr_y}{C}
+\Gamma\!\left(1+\frac{2}{k}\right),$$
+
+$$\mathcal V_{\mathrm{MSG}}=
+\mathcal A_{\mathrm{SG}}d_{\mathrm{source}}
+\frac{\Gamma(1+1/m)\Gamma(1+2/m)}
+{\Gamma(1+3/m)}.$$
+
+The corresponding power density is
+
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)
+\frac{w_{\mathrm{MSG}}(u,v,\zeta)}
+{\mathcal V_{\mathrm{MSG}}}.$$
+
+At $$\zeta=0$$, the planar weight is $$I_{\mathrm{SG}}$$. The principal `D4Sigma` diameters therefore follow the `superGaussian` expression above.
+
+## `projected` model
+
+`projected` constructs a separable volumetric source from one planar profile $$I(x,y)$$ and one axial projection $$p(z)$$. Define
+
+$$\mathcal A_I=\iint_{\mathbb R^2}I(x,y)\,\mathrm dx\,\mathrm dy,
 \qquad
-\mathcal{A}_p=\int_0^\infty p(z)\,\mathrm{d}z.$$
+\mathcal A_p=\int_{-\infty}^{0}p(z)\,\mathrm dz.$$
 
-Thus $$Q$$ has units of inverse volume and satisfies
+The normalized planar and axial kernels are
 
-$$\int_0^\infty\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}
-Q(x,y,z)\,\mathrm{d}x\,\mathrm{d}y\,\mathrm{d}z=1.$$
-
-The volumetric power density contributed by one source is
-
-$$\dot q(x,y,z,t)=\eta P(t)Q(x,y,z),$$
-
-where $$P(t)$$ is the scan-path power and $$\eta$$ is the absorptivity. All three models use the projection
-
-$$p(z;k,d_z)=\exp\left[-3\left(\frac{z}{d_z}\right)^k\right],
+$$\phi(x,y)=\frac{I(x,y)}{\mathcal A_I},
 \qquad
-\mathcal{A}_p(k,d_z)=\frac{d_z\Gamma(1/k)}{k\,3^{1/k}},$$
+\psi(z)=\frac{p(z)}{\mathcal A_p},$$
 
-where $$d_z$$ is the source depth and $$k$$ is its projection exponent. Define the clipped logarithmic parameter
+with units m$$^{-2}$$ and m$$^{-1}$$, respectively. Therefore
 
-$$a=\max\left[\frac{d_z}{\min(d_x^0,d_y^0)},10^{-3}\right],
+$$w_{\mathrm{projected}}(x,y,z)=I(x,y)p(z),
 \qquad
-n=\operatorname{clip}_{[0,9]}\!\left[A\log_2(a)+B\right].$$
+\mathcal V_{\mathrm{projected}}=\mathcal A_I\mathcal A_p,$$
 
-Here $$a$$ is the depth-to-width aspect ratio, $$d_x^0$$ and $$d_y^0$$ are the configured lateral dimensions, $$A$$ and $$B$$ are the model coefficients, and $$n$$ is the clipped base-two logarithm of the projection exponent. The exponent used in $$p(z;k,d_z)$$ is $$k=2^n$$. A transient depth changes $$d_z$$ and therefore updates $$a$$, $$n$$, $$k$$, and $$\mathcal{A}_p$$.
+and the deposited power density is
 
-<figure class="documentation-figure documentation-figure--plot">
-  <img src="{{ '/assets/images/visualizations/heat-source-projection.png' | relative_url }}" alt="Normalized common depth-projection function for exponents 1, 2, 4, and 8.">
-  <figcaption>The common projected-source depth function for representative exponents. Increasing the exponent produces a more uniform distribution through most of the configured depth followed by a sharper decay near the specified source depth.</figcaption>
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)\phi(x,y)\psi(z)
+=\eta(a)P(t)
+\frac{I(x,y)p(z)}{\mathcal A_I\mathcal A_p}.$$
+
+<figure class="documentation-figure">
+  <img src="{{ '/assets/images/visualizations/heat-source-models.png' | relative_url }}" alt="Volumetric super-Gaussian models and projected sources assembled from superGaussian, nLightAFX, or tabulated profiles with the exponential projection.">
+  <figcaption>Model hierarchy and representative one-sided distributions. Every <code>projected</code> source combines one planar profile with the shared <code>exponential</code> projection.</figcaption>
 </figure>
 
-### `projectedGaussian`
+### `exponential` projection
 
-The `projectedGaussian` model uses an elliptical Gaussian lateral intensity with the common depth projection above:
+The supported axial projection is:
 
-$$I_G(x,y)=\exp\left[-2\left(
-\frac{x^2}{d_x^2}+\frac{y^2}{d_y^2}\right)\right],
+```foam
+projection
+{
+    model       exponential;
+    nSlope      0;
+    nIntercept  1;
+}
+```
+
+For positive depth $$\zeta=-z$$ and the separately calculated source depth $$d_{\mathrm{source}}$$,
+
+$$p(z)=
+\begin{cases}
+\displaystyle
+\exp\!\left[-3
+\left(\frac{\zeta}{d_{\mathrm{source}}}\right)^k\right], & z\leq0,\\[6pt]
+0, & z>0,
+\end{cases}$$
+
+$$n=\operatorname{clip}\!\left[
+\texttt{nSlope}\log_2\!\left(\max(a,\texttt{VSMALL})\right)
++\texttt{nIntercept},0,9\right],
+\qquad k=2^n,$$
+
+$$\mathcal A_p=\frac{d_{\mathrm{source}}\Gamma(1/k)}
+{k\,3^{1/k}}.$$
+
+Here $$a=2d_{\mathrm{ref}}/D_{\mathrm{ref}}$$ sets the exponent, while $$d_{\mathrm{source}}$$ sets the axial length scale in $$p$$ and $$\mathcal A_p$$.
+
+<figure class="documentation-figure documentation-figure--plot">
+  <img src="{{ '/assets/images/visualizations/heat-source-projection.png' | relative_url }}" alt="Normalized one-sided exponential projection for axial exponents 1, 2, 4, and 8 below the beam plane.">
+  <figcaption>The one-sided <code>exponential</code> projection. Increasing <em>n</em>, and therefore <em>k</em>, flattens the distribution through most of the applied depth and sharpens its edge.</figcaption>
+</figure>
+
+Use [`calibrateHeatSource`]({{ '/docs/heat-source-calibration/' | relative_url }}) to infer `nSlope` and `nIntercept` from measured melt-pool depths and AdditiveFOAM response curves.
+
+### `superGaussian` profile
+
+```foam
+profile
+{
+    model       superGaussian;
+    radius      (55e-6 40e-6);
+    definition  secondMoment;
+    azimuth     25;
+    k           2;
+}
+```
+
+The planar profile uses the same required `radius` and `k`, optional `definition e2|secondMoment`, and optional azimuth in degrees as the volumetric model. Its weight and planar integral are
+
+$$I_{\mathrm{SG}}(u,v)=
+\exp\!\left\{-\left[
+C\left(\frac{u^2}{r_x^2}+\frac{v^2}{r_y^2}\right)
+\right]^{k/2}\right\},$$
+
+$$\mathcal A_{\mathrm{SG}}=
+\frac{\pi r_xr_y}{C}
+\Gamma\!\left(1+\frac{2}{k}\right).$$
+
+Thus $$\phi_{\mathrm{SG}}=I_{\mathrm{SG}}/\mathcal A_{\mathrm{SG}}$$, and a projected source using this profile has
+
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)\phi_{\mathrm{SG}}(u,v)\psi(z).$$
+
+The principal `D4Sigma` diameters are given by the `superGaussian` expression above. The profile calculates `profileMetrics` analytically.
+
+### `nLightAFX` profile
+
+```foam
+#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
+
+profile
+{
+    model nLightAFX;
+    $Index6;
+}
+```
+
+Each shared mode supplies `alpha`, `r0`, `sigma0`, `r1`, and `sigma1`. For component $$i\in\{0,1\}$$, $$r_i$$ is the ring radius and $$\sigma_i$$ is its radial standard deviation. With $$\rho=\sqrt{x^2+y^2}$$, the two unnormalized ring weights are
+
+$$I_i(\rho)=\exp\!\left[-\tfrac12((\rho-r_i)/\sigma_i)^2\right]
++\exp\!\left[-\tfrac12((\rho+r_i)/\sigma_i)^2\right].$$
+
+Their radial integrals are
+
+$$J_i=\int_0^\infty I_i(\rho)\rho\,\mathrm d\rho
+=2\sigma_i^2\exp\!\left(-\frac{r_i^2}{2\sigma_i^2}\right)
++r_i\sigma_i\sqrt{2\pi}\,
+\operatorname{erf}\!\left(\frac{r_i}{\sqrt{2}\sigma_i}\right).$$
+
+Because the planar integral of component $$i$$ is $$2\pi J_i$$, the combined planar weight is
+
+$$I_{\mathrm{AFX}}(\rho)=
+(1-\alpha)I_0(\rho)
++\alpha\frac{J_0}{J_1}I_1(\rho),$$
+
+with
+
+$$\mathcal A_{\mathrm{AFX}}=2\pi J_0.$$
+
+The normalized planar kernel is
+
+$$\phi_{\mathrm{AFX}}(\rho)=
+(1-\alpha)\frac{I_0(\rho)}{2\pi J_0}
++\alpha\frac{I_1(\rho)}{2\pi J_1}.$$
+
+The factor $$J_0/J_1$$ gives both unweighted ring profiles the same planar integral before $$\alpha$$ is applied. Equivalently,
+
+$$\iint (1-\alpha)\frac{I_0}{2\pi J_0}\,\mathrm dA=1-\alpha,
 \qquad
-\mathcal{A}_{I,G}=\frac{\pi d_xd_y}{2},$$
+\iint \alpha\frac{I_1}{2\pi J_1}\,\mathrm dA=\alpha.$$
 
-where $$d_x$$ and $$d_y$$ are the lateral source dimensions. Its normalized distribution is $$Q_G=I_Gp/(\mathcal{A}_{I,G}\mathcal{A}_p)$$.
+A projected nLight AFX source is
+
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)\phi_{\mathrm{AFX}}(\rho)\psi(z).$$
+
+For the circular profile, define
+
+$$\begin{aligned}
+K_i&=\int_0^\infty I_i(\rho)\rho^3\,\mathrm d\rho\\
+&=
+2\sigma_i^2(r_i^2+2\sigma_i^2)
+\exp\!\left(-\frac{r_i^2}{2\sigma_i^2}\right)
++r_i\sigma_i\sqrt{2\pi}(r_i^2+3\sigma_i^2)
+\operatorname{erf}\!\left(\frac{r_i}{\sqrt{2}\sigma_i}\right).
+\end{aligned}$$
+
+The radial second moment and equal major/minor beam diameters are
+
+$$\langle \rho^2\rangle=
+(1-\alpha)\frac{K_0}{J_0}
++\alpha\frac{K_1}{J_1},
+\qquad
+D_{4\sigma}=4\sqrt{\frac{\langle \rho^2\rangle}{2}}.$$
+
+The core and ring share one axial projection.
+
+### `tabulated` profile
 
 ```foam
-projectedGaussianCoeffs
+profile
 {
-    dimensions (85e-6 85e-6 30e-6);
-    A          0;
-    B          1;
-    transient  true;
-    nPoints    (10 10 10);
+    model tabulated;
+    file  "beamProfile.txt";
 }
 ```
 
-Use [`calibrateHeatSource`]({{ '/docs/heat-source-calibration/' | relative_url }}) to infer `A` and `B` from measured melt-pool depths and AdditiveFOAM response curves. The [worked calibration tutorial]({{ '/tutorials/heat-source-calibration/' | relative_url }}) provides an SS316L example.
+The table is a nonnegative uniform nodal grid. For the cell bounded by nodes $$(x_i,y_j)$$ and $$(x_{i+1},y_{j+1})$$, define the local interpolation fractions
 
-### `nLightAFX`
+$$s=\frac{x-x_i}{\Delta x},\qquad
+t=\frac{y-y_j}{\Delta y}.$$
 
-The `nLightAFX` model represents a measured beam as the weighted sum of two normalized concentric Gaussian-ring components. Each component uses the common projection-function form, but its coefficients can produce a different depth exponent.
+The planar weight inside that cell is the bilinear interpolant
 
-For component $$i\in\{0,1\}$$, let $$r_i$$ be its ring radius, $$\sigma_i$$ its radial standard deviation, and $$A_i$$ and $$B_i$$ its projection coefficients. Its clipped logarithmic parameter is
+$$I_{\mathrm{tab}}(x,y)=
+(1-s)(1-t)f_{ij}
++s(1-t)f_{i+1,j}
++(1-s)tf_{i,j+1}
++stf_{i+1,j+1}.$$
 
-$$n_i=\operatorname{clip}_{[0,9]}\!\left[A_i\log_2(a)+B_i\right].$$
+The profile is zero outside the nodal domain. Its planar integral is
 
-The corresponding projection exponent is $$k_i=2^{n_i}$$.
+$$\mathcal A_{\mathrm{tab}}=
+\sum_{i=0}^{n_x-2}\sum_{j=0}^{n_y-2}
+\frac{\Delta x\Delta y}{4}
+\left(f_{ij}+f_{i+1,j}+f_{i,j+1}+f_{i+1,j+1}\right),$$
 
-With radial coordinate $$r=\sqrt{x^2+y^2}$$, define the lateral intensity and depth projection
+which must be positive. The normalized planar kernel and projected power density are
 
-$$I_i(r)=\exp\left[-\frac12\left(\frac{r-r_i}{\sigma_i}\right)^2\right]
-+\exp\left[-\frac12\left(\frac{r+r_i}{\sigma_i}\right)^2\right],$$
+$$\phi_{\mathrm{tab}}(x,y)=
+\frac{I_{\mathrm{tab}}(x,y)}{\mathcal A_{\mathrm{tab}}},$$
 
-$$p_i(z)=p(z;k_i,d_z).$$
+$$\dot q(\mathbf{X},t)=
+\eta(a)P(t)\phi_{\mathrm{tab}}(x,y)\psi(z).$$
 
-The volume integral of component $$i$$ is
+AdditiveFOAM integrates the raw moments of the same bilinear interpolant to calculate `profileMetrics`. The table coordinates are retained in the source-relative beam plane, including any centroid offset.
 
-$$\mathcal{A}_i=
-\left(\int_{\mathbb R^2}I_i\,\mathrm{d}x\,\mathrm{d}y\right)
-\left(\int_0^\infty p_i\,\mathrm{d}z\right)
-=\frac{2\pi\sigma_i d_z\Gamma(1/k_i)}{k_i3^{1/k_i}}
-\left[2\sigma_i e^{-r_i^2/(2\sigma_i^2)}
-+\sqrt{2\pi}r_i\operatorname{erf}\left(\frac{r_i}{\sqrt2\sigma_i}\right)\right].$$
-
-For outer-component fraction `alpha` $$=\alpha$$, the normalized distribution is
-
-$$Q_{\mathrm{AFX}}(r,z)
-=(1-\alpha)\frac{I_0(r)p_0(z)}{\mathcal{A}_0}
-+\alpha\frac{I_1(r)p_1(z)}{\mathcal{A}_1},$$
-
-where $$0\leq\alpha\leq1$$ and indices $$0$$ and $$1$$ denote the inner and outer components, respectively.
-
-Each component requires `radius`, `sigma`, `A`, and `B`; `dimensions` is shared.
-
-```foam
-nLightAFXCoeffs
-{
-    dimensions (142.905e-6 142.905e-6 50e-6);
-    alpha      0.902;
-    inner { radius 33.50e-6; sigma 18.510e-6; A 0; B 1; }
-    outer { radius 101.41e-6; sigma 16.3475e-6; A 0; B 1; }
-    transient true;
-    nPoints   (10 10 10);
-}
-```
-
-The tutorial-supplied `nLightAFX.cfg` contains characterized modes `Index0` through `Index6` that can be expanded with OpenFOAM dictionary substitution.
-
-### `tabulated`
-
-The `tabulated` model supplies $$I(x,y)$$ as a measured or computed regular-grid table and combines it with the common depth projection.
-
-Let $$f_{ij}=I(x_i,y_j)$$ be the intensity at grid node $$(x_i,y_j)$$, and let $$\Delta x$$ and $$\Delta y$$ be the uniform grid spacings. Inside cell $$(i,j)$$, define local coordinates $$\xi=(x-x_i)/\Delta x$$ and $$\upsilon=(y-y_j)/\Delta y$$. The lateral intensity is the bilinear interpolant
-
-$$f(x,y)=(1-\xi)(1-\upsilon)f_{ij}
-+\xi(1-\upsilon)f_{i+1,j}
-+(1-\xi)\upsilon f_{i,j+1}
-+\xi\upsilon f_{i+1,j+1}.$$
-
-It is zero outside the nodal domain. For $$n_x$$ nodes in $$x$$ and $$n_y$$ nodes in $$y$$, its lateral normalization is
-
-$$\mathcal{A}_{I,T}=\frac{\Delta x\Delta y}{4}
-\sum_{j=0}^{n_y-2}\sum_{i=0}^{n_x-2}
-\left(f_{ij}+f_{i+1,j}+f_{i,j+1}+f_{i+1,j+1}\right).$$
-
-The normalized volumetric distribution is $$Q_T=f(x,y)p(z)/(\mathcal{A}_{I,T}\mathcal{A}_p)$$. Here $$i$$ and $$j$$ are the grid indices, while $$n_x$$ and $$n_y$$ are the node counts read from the first line of the table.
-
-```foam
-tabulatedCoeffs
-{
-    file       "beamProfile.txt";
-    dimensions (250e-6 250e-6 50e-6);
-    A          0;
-    B          1;
-    nPoints    (10 10 10);
-}
-```
-
-`file` is relative to `constant/`. Its headerless format is:
+The headerless format is:
 
 ```text
 nx ny
 x0 y0
 dx dy
-f00 f10 ...
-f01 f11 ...
+f00 f10 ... f(nx-1,0)
+f01 f11 ... f(nx-1,1)
+...
 ```
 
-Coordinates and spacing are metres. Values are row-major with x varying fastest. Use `primesToAdditiveFoam` to normalize compatible PRIMES CSV exports.
+Coordinates are metres and `i` varies fastest. Use `primesToAdditiveFoam` to convert supported PRIMES exports and `tabulatedProfileInfo` to inspect the same `profileMetrics` reported by the solver.
+
+The [nLight AFX]({{ '/tutorials/nlight-afx/' | relative_url }}), [tabulated profile]({{ '/tutorials/tabulated/' | relative_url }}), and [calibration]({{ '/tutorials/heat-source-calibration/' | relative_url }}) tutorials contain source dictionaries.

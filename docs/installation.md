@@ -8,16 +8,16 @@ permalink: /docs/installation/
 
 # Installation
 
-AdditiveFOAM 2.0 requires the OpenFOAM Foundation release **OpenFOAM 14**.
+AdditiveFOAM 2.0.0 requires the OpenFOAM Foundation release **OpenFOAM 14**.
 
 ## Prerequisites
 
 - OpenFOAM 14 built or installed according to the [Foundation instructions](https://openfoam.org/download/14-source/).
-- Python 3.10 or newer. The projected-source calibration workflow uses the packages pinned in `requirements.txt`.
+- Python 3.10 through 3.12 when using the optional calibration and plotting utilities.
 - ParaView for visualizing OpenFOAM fields.
 - Optional: Zoltan support in OpenFOAM for [dynamic load-balanced AMR]({{ '/docs/amr/#mesh-refinement-and-load-balancing' | relative_url }}).
 
-## Install from main
+## Build AdditiveFOAM
 
 Source OpenFOAM first:
 
@@ -57,6 +57,10 @@ python -m pip install -r requirements.txt
 python -m pip check
 ```
 
+`requirements.txt` pins Matplotlib, NumPy, Pandas, PyYAML, ReportLab, SciPy, and Seaborn. These packages are optional for the compiled solver and C++ utilities; they are required by `calibrateHeatSource` and the plotting commands.
+
+The website-asset workflow has separate tooling requirements: ParaView's `pvbatch` renders reconstructed fields, FFmpeg encodes tutorial animations, and Pillow assembles rendered frames. They are not calibration dependencies.
+
 The AdditiveFOAM environment adds the scripts to `PATH`; it does not create or activate the Python environment. Activate the intended Python environment in each new shell before invoking `calibrateHeatSource`.
 
 ## Verify the installation
@@ -65,6 +69,7 @@ The AdditiveFOAM environment adds the scripts to `PATH`; it does not create or a
 command -v additiveFoam
 command -v createScanPath
 command -v primesToAdditiveFoam
+command -v tabulatedProfileInfo
 command -v calibrateHeatSource
 echo "$ADDITIVEFOAM_VERSION"
 ```

@@ -57,6 +57,7 @@ EXPECTED_ASSETS = (
     "multi-layer-temperature.png",
     "nlight-afx-temperature.mp4",
     "nlight-afx-temperature.png",
+    "profile-metrics.png",
     "quick-start-temperature.png",
     "tabulated-temperature.mp4",
     "tabulated-temperature.png",
@@ -80,9 +81,33 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--baseline-case", type=Path)
+    parser.add_argument(
+        "--amb2018-data-case",
+        type=Path,
+        help=(
+            "AMB2018 case containing log.additiveFoam, melt-pool CSVs, and "
+            "solidification data for the three quantitative plots. Defaults "
+            "to --baseline-case."
+        ),
+    )
     parser.add_argument("--multi-beam-case", type=Path)
     parser.add_argument("--nlight-case", type=Path)
     parser.add_argument("--tabulated-case", type=Path)
+    parser.add_argument(
+        "--nlight-config",
+        type=Path,
+        default=(
+            Path(os.environ["ADDITIVEFOAM_ETC"])
+            / "heatSources"
+            / "nLightAFX-1000.cfg"
+            if os.environ.get("ADDITIVEFOAM_ETC")
+            else None
+        ),
+        help=(
+            "Shared nLight AFX mode configuration. Defaults to "
+            "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg."
+        ),
+    )
     parser.add_argument("--amr-case", type=Path)
     parser.add_argument("--multi-layer-case", type=Path)
     parser.add_argument(
@@ -168,6 +193,29 @@ def validate_calibration_campaign(path: Path) -> Path:
     return resolved
 
 
+def validate_amb2018_data(path: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    required = (
+        resolved / "log.additiveFoam",
+        resolved / "solidificationData" / "solidification-data.csv",
+    )
+    missing = [str(item) for item in required if not item.is_file()]
+    dimensions = list(
+        (resolved / "postProcessing" / "meltPoolDimensions").glob("*.csv")
+    )
+    if not dimensions:
+        missing.append(
+            str(resolved / "postProcessing" / "meltPoolDimensions" / "*.csv")
+        )
+    if missing:
+        raise SystemExit(
+            "AMB2018 quantitative-plot data are incomplete; missing: {}. "
+            "Run the documented function objects or pass --amb2018-data-case."
+            .format(", ".join(missing))
+        )
+    return resolved
+
+
 def select_case(
     label: str,
     override: Path | None,
@@ -230,6 +278,11 @@ def main() -> None:
             CASE_DIRECTORY_NAMES["multi_layer"],
         ),
     }
+    amb2018_data = validate_amb2018_data(
+        args.amb2018_data_case
+        if args.amb2018_data_case is not None
+        else cases["baseline"]
+    )
     calibration_campaign_input = args.calibration_campaign
     if calibration_campaign_input is None:
         if cases_root is None:
@@ -256,13 +309,27 @@ def main() -> None:
         )
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    if args.nlight_config is None:
+        raise SystemExit(
+            "Source the AdditiveFOAM environment or pass --nlight-config."
+        )
+    nlight_config = args.nlight_config.expanduser().resolve()
+    if not nlight_config.is_file():
+        raise SystemExit(
+            "nLight AFX configuration does not exist: {}".format(nlight_config)
+        )
 
     environment = os.environ.copy()
     environment["QT_QPA_PLATFORM"] = "offscreen"
+    # OpenFOAM can prepend ParaView's bundled Python packages globally. Keep
+    # those packages out of Matplotlib/pandas subprocesses and add them back
+    # only for pvbatch below.
+    environment.pop("PYTHONPATH", None)
+    render_environment = environment.copy()
     pythonpath = args.paraview_pythonpath.expanduser().resolve()
     if pythonpath.is_dir():
-        existing = environment.get("PYTHONPATH")
-        environment["PYTHONPATH"] = (
+        existing = render_environment.get("PYTHONPATH")
+        render_environment["PYTHONPATH"] = (
             str(pythonpath) if not existing else "{}:{}".format(pythonpath, existing)
         )
 
@@ -280,7 +347,7 @@ def main() -> None:
     )
     for executable, filename in quantitative_plots:
         run(
-            [executable, str(cases["baseline"]), "-o", str(output_dir / filename)],
+            [executable, str(amb2018_data), "-o", str(output_dir / filename)],
             environment,
             args.dry_run,
         )
@@ -305,7 +372,7 @@ def main() -> None:
         str(output_dir),
     ]
     for group in RENDER_GROUPS:
-        run(render_base + ["--only", group], environment, args.dry_run)
+        run(render_base + ["--only", group], render_environment, args.dry_run)
 
     run(
         [
@@ -313,10 +380,14 @@ def main() -> None:
             str(SCRIPT_DIR / "plot_heat_source_models.py"),
             "--tabulated-profile",
             str(cases["tabulated"] / "constant/beamProfile.txt"),
+            "--nlight-config",
+            str(nlight_config),
             "--output",
             str(output_dir / "heat-source-models.png"),
             "--projection-output",
             str(output_dir / "heat-source-projection.png"),
+            "--metrics-output",
+            str(output_dir / "profile-metrics.png"),
         ],
         environment,
         args.dry_run,

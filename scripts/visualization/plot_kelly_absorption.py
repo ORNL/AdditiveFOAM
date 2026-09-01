@@ -29,9 +29,10 @@ def kelly_absorptivity(aspect_ratio, geometry, eta0, eta_min, switch):
         g = 1.0 / (2.0 * (1.0 + a))
     else:
         raise ValueError(f"Unknown geometry: {geometry}")
-    absorptivity[active] = eta0 * (1.0 + (1.0 - eta0) * (g - f)) / (
+    kelly_curve = eta0 * (1.0 + (1.0 - eta0) * (g - f)) / (
         1.0 - (1.0 - eta0) * (1.0 - g)
     )
+    absorptivity[active] = np.maximum(eta_min, kelly_curve)
     return absorptivity
 
 
@@ -76,7 +77,7 @@ def main():
         color="0.25",
     )
     axis.set(
-        xlabel="Source aspect ratio,  $a=d_z/\\min(d_x,d_y)$",
+        xlabel="Reference aspect ratio,  $a=2d_{ref}/w_{ref}$",
         ylabel="Effective absorptivity,  $\\eta(a)$",
         xlim=(0.0, 6.0),
         ylim=(0.25, 1.0),

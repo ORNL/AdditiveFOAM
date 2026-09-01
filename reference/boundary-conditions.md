@@ -105,7 +105,7 @@ top
 | `h` | Yes | — | Convective heat-transfer coefficient in W/(m² K) |
 | `Tinf` | Yes | — | Ambient temperature patch field in K |
 | `emissivity` | Yes, locally or globally | — | Surface emissivity |
-| `value` | No | `Tinf` | Patch value written by OpenFOAM |
+| `value` | Yes | — | Initial patch value required by the OpenFOAM mixed condition |
 
 If `emissivity` is absent from the patch, it is read from `transportProperties`. The condition uses the local `kappa` patch field and a Stefan–Boltzmann constant of $$5.67\times10^{-8}$$ W/(m² K⁴).
 

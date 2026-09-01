@@ -19,8 +19,8 @@ from plot_style import PUBLICATION_STYLE
 
 
 COLORS = ("#0072B2", "#E69F00", "#009E73", "#CC79A7", "#D55E00")
-NORMALIZED_DEPTH_COLUMN = "x_depth_over_half_d4sigma"
-EXPECTED_X_DEFINITION = "d / (D4sigma / 2)"
+NORMALIZED_DEPTH_COLUMN = "x_2depth_over_diameter"
+EXPECTED_X_DEFINITION = "2*Depth / selected diameter"
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,17 +44,23 @@ def load_yaml(path: Path):
 
 def load_summary(path: Path) -> list[dict[str, float]]:
     with path.open(encoding="utf-8", newline="") as stream:
-        return [
-            {key: float(value) for key, value in row.items()}
-            for row in csv.DictReader(stream)
-        ]
+        rows = []
+        for row in csv.DictReader(stream):
+            parsed = {}
+            for key, value in row.items():
+                try:
+                    parsed[key] = float(value)
+                except (TypeError, ValueError):
+                    parsed[key] = value
+            rows.append(parsed)
+        return rows
 
 
 def validate_normalization(summary, fit) -> None:
     if not summary or NORMALIZED_DEPTH_COLUMN not in summary[0]:
         raise ValueError(
             "Calibration summary must contain "
-            f"{NORMALIZED_DEPTH_COLUMN!r} for the 2sigma normalization."
+            f"{NORMALIZED_DEPTH_COLUMN!r} for the selected-D4Sigma normalization."
         )
     if fit.get("x_definition") != EXPECTED_X_DEFINITION:
         raise ValueError(
@@ -64,8 +70,11 @@ def validate_normalization(summary, fit) -> None:
 
 
 def condition_key(parameters: dict) -> tuple:
-    names = ("Power_W", "Speed_mm_s", "Spot_Size_microns")
-    return tuple((name, float(parameters[name])) for name in names)
+    return (
+        ("Power_W", float(parameters["Power_W"])),
+        ("Speed_mm_s", float(parameters["Speed_mm_s"])),
+        ("Profile", str(parameters["Profile"])),
+    )
 
 
 def response_curve(trial_values, depths):
@@ -83,9 +92,11 @@ def response_curve(trial_values, depths):
 
 
 def plot_responses(experiments, simulations, summary, output: Path) -> None:
-    summary_by_condition = {condition_key(row): row for row in summary}
     experiments_by_condition = {
         condition_key(row["parameters"]): row for row in experiments
+    }
+    simulations_by_condition = {
+        condition_key(row["parameters"]): row for row in simulations
     }
     figure, axes = plt.subplots(
         3,
@@ -96,12 +107,12 @@ def plot_responses(experiments, simulations, summary, output: Path) -> None:
     )
     axes = axes.ravel()
 
-    for index, simulation in enumerate(simulations):
+    for index, summary_row in enumerate(summary):
         axis = axes[index]
+        key = condition_key(summary_row)
+        simulation = simulations_by_condition[key]
         parameters = simulation["parameters"]
         power = float(parameters["Power_W"])
-        key = condition_key(parameters)
-        summary_row = summary_by_condition[key]
         measured_depths = np.asarray(
             experiments_by_condition[key]["Measured_Depth_microns"], dtype=float
         )
@@ -110,7 +121,7 @@ def plot_responses(experiments, simulations, summary, output: Path) -> None:
         )
 
         measured_mean = summary_row["mean_depth_microns"]
-        spot_size = summary_row["Spot_Size_microns"]
+        selected_diameter = 2.0 * measured_mean / summary_row[NORMALIZED_DEPTH_COLUMN]
         calibrated_n = summary_row["calibrated_n"]
         calibrated_depth = np.interp(calibrated_n, dense_trials, dense_depths)
 
@@ -149,7 +160,7 @@ def plot_responses(experiments, simulations, summary, output: Path) -> None:
             zorder=4,
         )
         axis.set_title(
-            f"{power:g} W   ($D_{{4\\sigma}}={spot_size:g}$ µm)", pad=4
+            f"{power:g} W   ($D_{{selected}}={selected_diameter:.2f}$ µm)", pad=4
         )
         axis.set_xlim(float(trials.min()), float(trials.max()))
         axis.set_ylim(bottom=0.0)
@@ -160,7 +171,7 @@ def plot_responses(experiments, simulations, summary, output: Path) -> None:
     for axis in axes[::2]:
         axis.set_ylabel("Maximum liquidus depth (µm)")
     for axis in axes[4:]:
-        axis.set_xlabel("Local shape parameter,  $n=B$")
+        axis.set_xlabel("Local shape parameter,  $n=\\mathtt{nIntercept}$")
 
     legend_axis = axes[-1]
     legend_axis.axis("off")
@@ -251,7 +262,7 @@ def bootstrap_band(summary, states, fit, x_range):
         parameters = {
             "Power_W": row["Power_W"],
             "Speed_mm_s": row["Speed_mm_s"],
-            "Spot_Size_microns": row["Spot_Size_microns"],
+            "Profile": row["Profile"],
         }
         state = state_by_key[condition_key(parameters)]
         posterior_samples.append(
@@ -287,7 +298,10 @@ def plot_fit(summary, states, fit, output: Path) -> None:
         summary, states, fit, x_range
     )
     fitted = np.clip(
-        float(fit["A"]) * np.log2(x_range) + float(fit["B"]), 0.0, 9.0
+        float(fit["nSlope"]) * np.log2(x_range)
+        + float(fit["nIntercept"]),
+        0.0,
+        9.0,
     )
 
     figure, axis = plt.subplots(figsize=(4.5, 3.25), constrained_layout=True)
@@ -305,8 +319,9 @@ def plot_fit(summary, states, fit, output: Path) -> None:
         fitted,
         color="#007A53",
         label=(
-            "$n=A\\log_2(x)+B$\n"
-            f"$A={float(fit['A']):.3f}$, $B={float(fit['B']):.3f}$"
+            "$n=\\mathtt{nSlope}\\log_2(x)+\\mathtt{nIntercept}$\n"
+            f"$\\mathtt{{nSlope}}={float(fit['nSlope']):.3f}$, "
+            f"$\\mathtt{{nIntercept}}={float(fit['nIntercept']):.3f}$"
         ),
         zorder=2,
     )
@@ -343,7 +358,7 @@ def plot_fit(summary, states, fit, output: Path) -> None:
 
     axis.set_xscale("log", base=2)
     axis.set(
-        xlabel="Normalized measured depth,  $x=d/(2\\sigma)$",
+        xlabel="Reference aspect ratio,  $x=2\\,\\mathrm{Depth}/D_{selected}$",
         ylabel="Local shape parameter,  $n$",
         xlim=(x_range.min(), x_range.max()),
         ylim=(0.0, 7.0),

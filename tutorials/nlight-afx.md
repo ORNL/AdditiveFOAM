@@ -8,7 +8,7 @@ permalink: /tutorials/nlight-afx/
 
 # nLight AFX Heat Source
 
-This SS316L case represents an nLight AFX beam as a weighted combination of inner and outer Gaussian rings with projected axial distributions.
+The SS316L case uses the ORNL-characterized nLight AFX Index 6 profile with a `projected` heat source and `exponential` axial projection.
 
 <figure class="documentation-figure">
   <video controls autoplay loop muted playsinline poster="{{ '/assets/images/visualizations/nlight-afx-temperature.png' | relative_url }}" aria-label="Animated plan view of the nLight AFX SS316L temperature field and phase boundaries">
@@ -21,9 +21,11 @@ This SS316L case represents an nLight AFX beam as a weighted combination of inne
 ## Physical setup
 
 - SS316L properties from `$ADDITIVEFOAM_ETC/materials/SS316L.cfg`.
-- One `nLightAFX` heat source composed of inner and outer Gaussian rings.
-- Seven characterized beam modes, `Index0` through `Index6`.
-- A projected axial distribution with transient source-depth updating.
+- One `projected` heat source with an `nLightAFX` planar profile.
+- Seven characterized beam modes, `Index0` through `Index6`; the tutorial selects `Index6`.
+- An `exponential` axial projection with configured `depth 20` µm.
+- A liquidus reference depth; the configured depth is the minimum applied depth.
+- Eight MPI ranks.
 
 ## Run
 
@@ -37,33 +39,73 @@ cd "$FOAM_RUN/nLightAFX"
 
 | File | Purpose |
 |---|---|
-| `constant/nLightAFX.cfg` | Defines the seven characterized beam modes |
-| `constant/heatSourceDict` | Selects the mode, absorption model, source sampling, and AMR model |
+| `$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg` | Shared definitions for characterized modes `Index0` through `Index6` |
+| `constant/heatSourceDict` | Profile, projection, absorption, integration, and AMR settings |
 | `constant/scanPath` | Beam position, time, and power |
 | `constant/transportProperties` | Includes the SS316L material properties |
+| `system/decomposeParDict` | Eight-rank domain decomposition |
 | `system/controlDict` | Run controls and optional Function Objects |
 
 ## Workflow
 
-`constant/nLightAFX.cfg` defines `Index0` through `Index6`. The heat-source dictionary includes that file and expands one mode:
+The heat-source dictionary includes the shared mode definitions and selects one inside the nested `profile` dictionary:
 
 ```foam
-#include "nLightAFX.cfg"
+#include "$ADDITIVEFOAM_ETC/heatSources/nLightAFX-1000.cfg"
 
-nLightAFXCoeffs
+sources
 {
-    $Index6;
-    transient true;
-    nPoints   (10 10 10);
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
+        depthReference  isotherm;
+
+        absorption
+        {
+            model   constant;
+            eta     0.33;
+        }
+
+        heatSource
+        {
+            model       projected;
+            depth       20.0e-6;
+            nPoints     (10 10 10);
+
+            profile
+            {
+                model   nLightAFX;
+                $Index6;
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0.0;
+                nIntercept  1.0;
+            }
+        }
+    }
 }
 ```
 
-Change only `$Index6` to another defined index to select a different characterized profile. Each mode provides lateral dimensions, outer-ring fraction `alpha`, and `radius`, `sigma`, `A`, and `B` for both components.
+Change only `$Index6` to `$Index0`, `$Index1`, …, or `$Index5` to select another characterized mode.
 
-Lower modes are more centre-weighted; higher modes place a larger share of power in the outer ring. The scan path sets total incident power. `alpha` partitions that power between the profile components and is distinct from the material absorptivity. The transient closure updates source depth using the local liquidus isotherm.
+Each index supplies:
+
+```foam
+alpha
+r0
+sigma0
+r1
+sigma1
+```
+
+`r0`, `sigma0`, `r1`, and `sigma1` are metres. `alpha` is the integrated power fraction assigned to the outer ring. The tutorial uses `nSlope 0`, `nIntercept 1`, and the area-equivalent `D4Sigma` width. See [Heat Source Models]({{ '/docs/heat-sources/#nlightafx-profile' | relative_url }}) for the profile and projection equations.
 
 ## Outputs
 
-Open the reconstructed case in ParaView and visualize `T`, `alpha.solid`, and `qDot` to compare the selected inner- and outer-ring intensity distribution with the resulting temperature and phase fields.
+Open the reconstructed case in ParaView and visualize `T`, `alpha.solid`, and `qDot` to compare the selected ring profile with its temperature and phase response.
 
 Absorbed power, melt-pool dimensions, solidification data, and ExaCA histories are covered by the [baseline output workflows]({{ '/tutorials/amb2018/#outputs' | relative_url }}).

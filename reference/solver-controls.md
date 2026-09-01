@@ -11,11 +11,11 @@ usemathjax: true
 
 # Solver and Time Controls
 
-This section controls four parts of the solution procedure: nonlinear temperature–phase correction, temporal discretization, optional PIMPLE fluid-flow coupling, and adaptive time-step selection. The controls are divided between the `PIMPLE` and linear-solver dictionaries in `system/fvSolution`, the `ddtSchemes` dictionary in `system/fvSchemes`, and the time controls in `system/controlDict`. A thermal-only case uses `nOuterCorrectors 0`; a coupled melt-pool-flow case uses a positive outer-corrector count.
+Solver settings control nonlinear temperature–phase correction, temporal discretization, PIMPLE fluid-flow coupling, and adaptive time stepping. They are distributed across `system/fvSolution`, `system/fvSchemes`, and `system/controlDict`. A thermal-only case uses `nOuterCorrectors 0`; a coupled melt-pool-flow case uses a positive outer-corrector count.
 
 ## Thermodynamic coupling
 
-These controls determine how many temperature–solid-fraction corrections are performed within each CFD time step. Keep `nThermoCorrectors` large enough for the reported maximum solid-fraction update to fall below `thermoTolerance`; the solver log reports that update for every correction. `Tmax` limits the temperature accepted by the implicit solve, while `explicitSolve` permits forward Euler only when the instantaneous diffusion criterion is below one.
+`nThermoCorrectors` and `thermoTolerance` control the temperature–solid-fraction corrections within each CFD time step. Set `nThermoCorrectors` high enough for the reported maximum solid-fraction update to fall below `thermoTolerance`; the solver reports that update for every correction. `Tmax` limits the temperature accepted by the implicit solve, while `explicitSolve` permits forward Euler only when the instantaneous diffusion criterion is below one.
 
 AdditiveFOAM reads these entries from the `PIMPLE` dictionary in `system/fvSolution`:
 

@@ -8,11 +8,11 @@ permalink: /docs/quick-start/
 
 # Quick Start
 
-The AMB2018-02-B tutorial is the best first case: it is a calibrated IN625 single track with a Gaussian volumetric source.
+Use the calibrated IN625 single-track `AMB2018-02-B` tutorial as the first case.
 
 ## Copy the tutorial
 
-Never run directly inside the installation tree.
+Copy the tutorial to a writable run directory:
 
 ```bash
 mkdir -p "$FOAM_RUN/AdditiveFOAM"
@@ -37,7 +37,7 @@ Follow progress in another terminal:
 tail -f log.additiveFoam
 ```
 
-Useful log entries include the AdditiveFOAM build identity, time step, Courant/diffusion/thermo numbers, source depth, absorbed power, and thermodynamic iteration residual.
+The log reports the AdditiveFOAM build identity, time step, Courant/diffusion/thermo numbers, source depth, absorbed power, and thermodynamic iteration residual.
 
 ## Visualize results
 
@@ -72,4 +72,4 @@ Use `plotPower` separately from ParaView to plot the volume-integrated heat-sour
 plotPower
 ```
 
-This creates `power.png` in the case directory. Use it to verify that the spatially integrated source converges to the expected absorbed power: absorptivity multiplied by the prescribed source power.
+`plotPower` creates `power.png` in the case directory. The spatially integrated source should converge to the expected absorbed power: absorptivity multiplied by the prescribed source power.

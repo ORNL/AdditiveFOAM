@@ -11,7 +11,7 @@ usemathjax: true
 
 # Case Files and Materials
 
-This section describes the files needed to construct an AdditiveFOAM case: initial fields, bundled and user-defined materials, temperature-dependent phase properties, the tabulated temperature–solid-fraction relation, scan-path input, and the OpenFOAM dictionaries that control the mesh and solution. AdditiveFOAM currently provides ready-to-use configurations for IN625, SS316L, and AlSi10Mg under `$ADDITIVEFOAM_ETC/materials`.
+An AdditiveFOAM case contains initial fields, material properties, a temperature–solid-fraction relation, scan paths, and OpenFOAM mesh and solver dictionaries. Material configurations for IN625, SS316L, and AlSi10Mg are installed under `$ADDITIVEFOAM_ETC/materials`.
 
 ## Case structure
 
@@ -55,12 +55,12 @@ Under `system/`, `blockMeshDict` defines the initial mesh, `controlDict` defines
 
 ## Materials
 
-Sourcing `etc/bashrc` sets `ADDITIVEFOAM_ETC`. AdditiveFOAM currently supplies these material configurations under `$ADDITIVEFOAM_ETC/materials/`:
+Sourcing `etc/bashrc` sets `ADDITIVEFOAM_ETC`. The material configurations are:
 
 | Configuration | Material | Solidus (K) | Liquidus (K) | Tutorials |
 |---|---|---:|---:|---|
 | `IN625.cfg` | Inconel 625 | 1410 | 1620 | AMB2018-02-B, multi-beam, multi-layer PBF |
-| `SS316L.cfg` | 316L stainless steel | 1471 | 1709 | nLight AFX |
+| `SS316L.cfg` | 316L stainless steel | 1471 | 1709 | nLight AFX, heat-source calibration |
 | `AlSi10Mg.cfg` | AlSi10Mg aluminum alloy | 850 | 870 | tabulated source |
 
 Include one configuration from `constant/transportProperties`:
@@ -80,7 +80,7 @@ A material not listed above is defined by providing the same entries directly in
 
 ## `transportProperties`
 
-Use a bundled material include when one of the supplied alloys applies. For another material, define the same phase polynomials and constant properties directly in `constant/transportProperties`; these values control heat conduction, sensible-energy storage, buoyancy, viscous flow, mushy-zone resistance, and latent heat.
+Use a bundled material include when one of the configured alloys applies. For another material, define the same phase polynomials and constant properties directly in `constant/transportProperties`; these values control heat conduction, sensible-energy storage, buoyancy, viscous flow, mushy-zone resistance, and latent heat.
 
 Each phase supplies quadratic polynomial coefficients in ascending powers of temperature:
 
@@ -129,7 +129,7 @@ The shared entries `dSigmadT` and `emissivity` provide default material values f
 
 Set `thermoPath` to the temperature–solid-fraction relation for the selected alloy. The solver uses it to initialize `alpha.solid`, update phase fraction during every thermodynamic correction, evaluate latent heat, identify the solidus and liquidus, and provide default isovalues to heat-source and solidification outputs.
 
-The preferred 2.0 form is an entry inside `constant/transportProperties`:
+Define `thermoPath` inside `constant/transportProperties`:
 
 ```foam
 thermoPath
@@ -139,7 +139,7 @@ thermoPath
 );
 ```
 
-For compatibility, if that entry is absent, AdditiveFOAM reads the same list from the legacy `constant/thermoPath` file. At least two points are required, and the path must contain exact entries with solid fraction `1` and `0` so the solidus and liquidus can be inferred. For adjacent table points $$(T_i,f_i)$$ and $$(T_{i+1},f_{i+1})$$,
+At least two points are required, and the path must contain exact entries with solid fraction `1` and `0` so the solidus and liquidus can be inferred. For adjacent table points $$(T_i,f_i)$$ and $$(T_{i+1},f_{i+1})$$,
 
 $$f_s(T)=\operatorname{clip}_{[0,1]}\!\left[
 f_i+\frac{f_{i+1}-f_i}{T_{i+1}-T_i}(T-T_i)
@@ -147,7 +147,7 @@ f_i+\frac{f_{i+1}-f_i}{T_{i+1}-T_i}(T-T_i)
 
 Here $$i$$ is the table-interval index, $$T_i$$ and $$T_{i+1}$$ are consecutive temperatures, and $$f_i$$ and $$f_{i+1}$$ are their tabulated solid fractions.
 
-The table may represent any tabulated temperature–solid-fraction relation, including Gulliver–Scheil, lever-rule, or linear behavior. Its liquidus is the default isovalue for transient source depth, ExaCA, and solidification data.
+The table may represent any tabulated temperature–solid-fraction relation, including Gulliver–Scheil, lever-rule, or linear behavior. Its liquidus is the default isotherm for a source-level `depthReference isotherm`, ExaCA, and solidification data.
 
 ## Scan-path file
 
@@ -171,7 +171,7 @@ $$\Delta t_i=\frac{\|\mathbf{x}_{i+1}-\mathbf{x}_i\|}{v_i},
 
 Here $$i$$ is the scan-path interval index, $$\mathbf{x}_i$$ and $$\mathbf{x}_{i+1}$$ are its endpoints, $$v_i$$ is its prescribed speed, $$t_i$$ is its start time, and $$\Delta t_i$$ is its duration.
 
-For mode 1, $$\mathbf{x}(t)=\mathbf{x}_i$$ and the parameter is $$\Delta t_i$$. A zero-power interval contributes no heat, and zero-duration intervals are omitted. Path time begins at zero; the interval search is bidirectional so restart times earlier or later than the current cached interval are supported.
+For mode 1, $$\mathbf{x}(t)=\mathbf{x}_i$$ and the parameter is $$\Delta t_i$$. A zero-power interval contributes no heat, and zero-duration intervals are omitted. Path time begins at zero; the bidirectional interval search supports restart times on either side of the active interval.
 
 `hitPathIntervals` defaults to `true`, causing adaptive time stepping to land on path event boundaries. The solver stops evaluating a beam after the last positive-power segment; trailing zero-power motion does not extend active heating.
 
