@@ -36,8 +36,8 @@ topoChanger
     dumpLevel       true;
 }
 
-// Cell-count-based redistribution for parallel AMR. To enable it, change
-// the type from none to distributor.
+// Cell-count-based redistribution for parallel AMR.
+// To enable, change type from "none" to "distributor".
 distributor
 {
     type                    none;
