@@ -57,7 +57,16 @@ Defines the laser path, laser power, and scan speed or dwell time.
 constant/dynamicMeshDict
 ```
 
-Defines the dynamic mesh/refinement settings.
+Defines the dynamic mesh/refinement settings and cell-count-based runtime
+redistribution.
+
+```text
+system/decomposeParDict
+```
+
+Selects Scotch for the initial decomposition and PT-Scotch for optional runtime
+redistribution. It also enables the `refinementHistory` constraint required to
+keep refinement siblings together for unrefinement.
 
 ```text
 system/blockMeshDict
@@ -152,6 +161,17 @@ refinement
 The refinement region projects along the heat source path and targets a desired
 average cell load per processor.
 
+Runtime redistribution is disabled by default with `type none` in
+`constant/dynamicMeshDict`. Change it to `type distributor` to enable the
+provided PT-Scotch configuration. The mesh distributor then checks every 10
+time steps and redistributes when an active refinement model creates more than
+10% cell-count imbalance. These are starting values; production cases should
+tune `redistributionInterval` and `maxImbalance` for their mesh and MPI count.
+
+The tutorial uses OpenFOAM's generic `distributor`, which balances cell counts.
+Do not change its type to `loadBalancer`: that component requires registered
+per-cell `cpuLoad` objects that AdditiveFOAM does not currently provide.
+
 ### Coefficients
 
 `model`
@@ -232,6 +252,11 @@ enabled false;
 `meltPoolDimensions` writes melt-pool length, width, and depth data.
 `solidificationData` writes solidification events for CET analysis.
 `ExaCA` writes temperature history data for ExaCA input files.
+
+The ExaCA function object supports refinement on a fixed processor
+decomposition but not runtime mesh redistribution. Keep the distributor set to
+`type none` in `constant/dynamicMeshDict` when combining ExaCA with an active
+refinement model.
 
 The `Allrun` script calls the reconstruction helpers after the solver finishes:
 
