@@ -36,4 +36,17 @@ topoChanger
     dumpLevel       true;
 }
 
+// Cell-count-based redistribution for parallel AMR.
+// To enable, change type from "none" to "distributor".
+distributor
+{
+    type                    none;
+
+    libs                    ("libfvMeshDistributors.so");
+
+    redistributionInterval  10;
+
+    maxImbalance            0.10;
+}
+
 // ************************************************************************* //

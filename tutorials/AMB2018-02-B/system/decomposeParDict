@@ -17,6 +17,18 @@ FoamFile
 
 numberOfSubdomains  8;
 
-method              scotch;
+decomposer          scotch;
+
+distributor         ptscotch;
+
+libs                ("libptscotchDecomp.so");
+
+constraints
+{
+    refinementHistory
+    {
+        type            refinementHistory;
+    }
+}
 
 // ************************************************************************* //
