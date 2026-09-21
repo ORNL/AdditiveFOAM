@@ -1,13 +1,10 @@
+alpha3 *= pos0(solidus - T);
+alpha3.correctBoundaryConditions();
+
 forAll(mesh.cells(), cellI)
 {
-    // update phase fractions
     scalar alpha1_ = alpha1[cellI];
     scalar alpha2_ = 1.0 - alpha1[cellI];
-
-    if (alpha1_ < 1.0)
-    {
-        alpha3[cellI] = 0.0;
-    }
     scalar alpha3_ = alpha3[cellI];
 
     // update temperature ranges for phase properties
@@ -24,6 +21,5 @@ forAll(mesh.cells(), cellI)
       + alpha3_*Cp3.value(T1);
 }
 
-alpha3.correctBoundaryConditions();
 Cp.correctBoundaryConditions();
 kappa.correctBoundaryConditions();
