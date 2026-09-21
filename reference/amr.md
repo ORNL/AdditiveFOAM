@@ -11,7 +11,7 @@ usemathjax: true
 
 # Adaptive Mesh Refinement
 
-AdditiveFOAM generates `refinementField` from two criteria: temperature above `refinementTemperature` and intersection with buffered, positive-power portions of the future scan path. OpenFOAM's `refiner` uses this field to refine and coarsen the mesh; its `loadBalancer` can then redistribute the changed mesh between MPI processes.
+AdditiveFOAM generates `refinementField` from two criteria: temperature above `refinementTemperature` and intersection with buffered, positive-power portions of the future scan path. OpenFOAM's `refiner` uses this field to refine and coarsen the mesh; its cell-count-based mesh distributor can then redistribute the changed mesh between MPI processes.
 
 The selected refinement model determines the future scan-path interval represented by `refinementField`:
 
@@ -22,13 +22,13 @@ The selected refinement model determines the future scan-path interval represent
 | **`targetCellLoad`** | A variable look-ahead interval chosen to approach a target number of cells per process |
 | **`none`** | No AdditiveFOAM refinement marker |
 
-The top-level `refinement` dictionary is optional and defaults to `model none`. Users select the model and source-specific buffer sizes in `constant/heatSourceDict`, then configure refinement limits and optional load balancing in `constant/dynamicMeshDict`.
+The top-level `refinement` dictionary is optional and defaults to `model none`. Users select the model and source-specific buffer sizes in `constant/heatSourceDict`, then configure refinement limits and optional runtime redistribution in `constant/dynamicMeshDict`.
 
 To enable AMR:
 
 1. Select `timeStep`, `uniformTimeIntervals`, or `targetCellLoad` in `constant/heatSourceDict` and provide one buffer for each named heat source.
 2. Configure OpenFOAM's `refiner` in `constant/dynamicMeshDict`, including `refineInterval 1`, `maxRefinement`, and `maxCells`.
-3. Add the `loadBalancer` and a redistribution method in `system/decomposeParDict` when the refined mesh should be redistributed in parallel.
+3. Add the mesh `distributor` and a parallel redistribution method in `system/decomposeParDict` when the refined mesh should be redistributed in parallel.
 4. During the run, inspect the reported cell count and load imbalance. With `dumpLevel true`, reconstruct and visualize `cellLevel` and `refinementField` in ParaView to confirm where refinement is requested and applied.
 
 <figure class="documentation-figure">
@@ -210,40 +210,60 @@ topoChanger
 
 distributor
 {
-    type                    loadBalancer;
+    type                    distributor;
     libs                    ("libfvMeshDistributors.so");
     redistributionInterval  10;
     maxImbalance            0.10;
 }
 ```
 
-`refineInterval` must be `1` for the AdditiveFOAM refinement models. The OpenFOAM `refiner` therefore evaluates the updated `refinementField` every CFD time step. `maxRefinement` supplies $$L_{\max}$$ in the equations above. `maxCells` bounds the global mesh size, and `redistributionInterval` is measured in time steps.
+`refineInterval` must be `1` for the AdditiveFOAM refinement models. The OpenFOAM `refiner` therefore evaluates the updated `refinementField` every CFD time step. `maxRefinement` supplies $$L_{\max}$$ in the equations above. `maxCells` bounds the global mesh size. The distributor checks the cell-count imbalance every `redistributionInterval` time steps and redistributes only when it exceeds `maxImbalance`.
 
-The load balancer reads its distributor from `system/decomposeParDict`:
+The recommended OpenFOAM-14 configuration uses the parallel PT-Scotch distributor. In `system/decomposeParDict`:
 
 ```foam
 numberOfSubdomains 8;
 
-method scotch;
+decomposer scotch;
 
+distributor ptscotch;
+libs ("libptscotchDecomp.so");
+
+constraints
+{
+    refinementHistory
+    {
+        type refinementHistory;
+    }
+}
+```
+
+Let $$n_p$$ be the number of cells on process $$p$$, $$N$$ the global number of cells, and $$N_p$$ the number of MPI processes. The ideal cell count is $$\bar n=N/N_p$$. OpenFOAM redistributes when
+
+$$I=\max_p\left|1-\frac{n_p}{\bar n}\right|
+>I_{\max},$$
+
+where $$I_{\max}$$ is `maxImbalance`. Because AdditiveFOAM does not currently supply per-cell cost weights, this balances cell count rather than measured CPU work. The `refinementHistory` constraint keeps the children of a refined parent on the same process, preserving reliable unrefinement after redistribution.
+
+`redistributionInterval 10` and `maxImbalance 0.10` are useful starting values, not universal optima. A shorter interval responds sooner but can spend more time partitioning and migrating the mesh; a longer interval reduces that overhead but permits a larger temporary imbalance. Tune both values for the production mesh and MPI count.
+
+Zoltan remains available as an optional OpenFOAM-14 distributor when OpenFOAM and ThirdParty are built with Zoltan support:
+
+```foam
 distributor zoltan;
-libs ("libzoltanRenumber.so");
+libs ("libzoltanDecomp.so");
 
-zoltanCoeffs
+zoltan
 {
     lb_method   graph;
     lb_approach repartition;
 }
 ```
 
-For processor CPU-load estimates $$C_p$$, OpenFOAM defines the average $$\overline C=N_p^{-1}\sum_pC_p$$ and a conservative maximum $$C_{\max}$$ from the maximum base-CFD and registered load components. Redistribution occurs when
+The [`zoltanRenumber` removal](https://github.com/OpenFOAM/OpenFOAM-14/commit/4b6b4924082f3499c99687fd45108410e59d1788) removed a mesh-renumbering method, not this parallel distributor. In OpenFOAM-14 the distributor library is `libzoltanDecomp.so`, and its settings dictionary is named `zoltan`, without a `Coeffs` suffix.
 
-$$I=\frac{C_{\max}-\overline C}{\overline C}
->I_{\max},$$
-
-where $$I_{\max}$$ is `maxImbalance`. Zoltan operates only in parallel and requires `libzoltanRenumber.so`; `lb_approach repartition` computes a new weighted decomposition from the current one.
-
-Here $$p$$ indexes MPI processes, $$C_p$$ is the estimated load on process $$p$$, $$\overline C$$ is the process-average load, $$C_{\max}$$ is the conservative maximum load, and $$I$$ is the relative load imbalance.
+{: .warning }
+Do not select `type loadBalancer` for AdditiveFOAM at present. That OpenFOAM component requires solver-registered `cpuLoad` objects; AdditiveFOAM does not allocate them and the run terminates with `No CPU loads have been allocated`. Use `type distributor` for cell-count-based redistribution.
 
 ## `timeStep`
 
