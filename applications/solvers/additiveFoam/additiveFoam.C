@@ -94,8 +94,6 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
-        #include "updateProperties.H"
-
         #include "readDyMControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
@@ -103,6 +101,22 @@ int main(int argc, char *argv[])
         sources.update();
 
         mesh.update();
+
+        if (mesh.topoChanged())
+        {
+            // Temperature is authoritative after topology changes. A
+            // conservative scheme should consider enthalpy as authoritative.
+            forAll(mesh.cells(), cellI)
+            {
+                scalar alpha1_ =
+                    interpolateXY(T[cellI], thermo.x(), thermo.y());
+                alpha1[cellI] = min(max(alpha1_, 0.0), 1.0);
+            }
+
+            alpha1.correctBoundaryConditions();
+
+            #include "updateProperties.H"
+        }
 
         runTime++;
 
@@ -122,6 +136,8 @@ int main(int argc, char *argv[])
         }
 
         #include "thermo/TEqn.H"
+
+        #include "updateProperties.H"
 
         runTime.write();
 
