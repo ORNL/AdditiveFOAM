@@ -21,13 +21,13 @@
 
     volScalarField T0("T0", T);
 
-    alphaS.oldTime();
+    alphaSolid.oldTime();
 
-    forAll(alphaS, celli)
+    forAll(alphaSolid, celli)
     {
-        alphaS[celli] = alpha1c[celli]*metal.fs(T[celli]);
+        alphaSolid[celli] = alpha1c[celli]*metal.fs(T[celli]);
     }
-    alphaS.correctBoundaryConditions();
+    alphaSolid.correctBoundaryConditions();
 
     #include "thermo/updateProperties.H"
 
@@ -45,7 +45,7 @@
         dFdT.correctBoundaryConditions();
 
         const volScalarField Tprev("Tprev", T);
-        const volScalarField alphaSprev("alphaSprev", alphaS);
+        const volScalarField alphaSolidPrev("alphaSolidPrev", alphaSolid);
 
         const surfaceScalarField rhoCpPhi
         (
@@ -75,7 +75,7 @@
           - fvm::laplacian(kappa, T)
          ==
             sources.qDot()
-          + rho1*Lf*fvc::ddt(alphaS)
+          + rho1*Lf*fvc::ddt(alphaSolid)
           + rDeltaT*rho1*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
         );
 
@@ -94,7 +94,7 @@
 
             const scalar Estar =
                 rhoH[i] + rhoCp[i]*(Tc[i] - Tk)
-              + r1*L*(ac - alphaSprev[i] - dFdT[i]*(Tc[i] - Tk));
+              + r1*L*(ac - alphaSolidPrev[i] - dFdT[i]*(Tc[i] - Tk));
 
             auto energy = [&](const scalar t)
             {
@@ -130,11 +130,11 @@
         }
         T.correctBoundaryConditions();
 
-        forAll(alphaS, celli)
+        forAll(alphaSolid, celli)
         {
-            alphaS[celli] = alpha1c[celli]*metal.fs(T[celli]);
+            alphaSolid[celli] = alpha1c[celli]*metal.fs(T[celli]);
         }
-        alphaS.correctBoundaryConditions();
+        alphaSolid.correctBoundaryConditions();
 
         #include "thermo/updateProperties.H"
 
@@ -147,7 +147,12 @@
            *(
                 rhoCp.primitiveField()
                *mag(T.primitiveField() - Tprev.primitiveField())
-              + r1*L*mag(alphaS.primitiveField() - alphaSprev.primitiveField())
+              + r1*L
+               *mag
+                (
+                    alphaSolid.primitiveField()
+                  - alphaSolidPrev.primitiveField()
+                )
             )
         );
         const scalar energyStep = gSum
@@ -157,7 +162,11 @@
                 rhoCp.primitiveField()
                *mag(T.primitiveField() - T.oldTime().primitiveField())
               + r1*L
-               *mag(alphaS.primitiveField() - alphaS.oldTime().primitiveField())
+               *mag
+                (
+                    alphaSolid.primitiveField()
+                  - alphaSolid.oldTime().primitiveField()
+                )
               + sources.qDot().primitiveField()/rDeltaT.value()
             )
         );

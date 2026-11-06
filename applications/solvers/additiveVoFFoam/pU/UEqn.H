@@ -1,7 +1,7 @@
 #include "pU/surfaceTensionForce.H"
 
 // Mushy-zone drag of the solid volume fraction (Carman-Kozeny)
-const volScalarField porosity(min(max(1.0 - alphaS, scalar(0)), scalar(1)));
+const volScalarField porosity(min(max(1.0 - alphaSolid, scalar(0)), scalar(1)));
 
 const volScalarField D
 (
@@ -18,12 +18,12 @@ const surfaceScalarField Df("Df", fvc::interpolate(D));
 
 // Buoyancy density: the fluid weight with thermal expansion; the solid
 // carries its own weight
-const volScalarField alphaL(alpha1 - min(alphaS, alpha1));
+const volScalarField alphaL(alpha1 - min(alphaSolid, alpha1));
 
 const volScalarField rhoBuoyant
 (
     "rhoBuoyant",
-    rho - min(alphaS, alpha1)*(rho1 - rho2)
+    rho - min(alphaSolid, alpha1)*(rho1 - rho2)
   - alphaL*rho1*beta1*(T - liquidus)
   - (1.0 - alphaL)*rho2*beta2*(T - liquidus)
 );

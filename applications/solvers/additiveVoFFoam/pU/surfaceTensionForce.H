@@ -71,7 +71,7 @@ surfaceScalarField surfaceTensionForce
         );
     }
 
-    const volScalarField alphaL(max(alpha1c - alphaS, scalar(0)));
+    const volScalarField alphaL(max(alpha1c - alphaSolid, scalar(0)));
     const volScalarField alpha2c(1.0 - alpha1c);
 
     surfaceTensionForce +=

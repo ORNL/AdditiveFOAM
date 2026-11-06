@@ -50,7 +50,7 @@ surfaceScalarField nHatf
 volScalarField alpha1c("alpha1c", min(max(alpha1, scalar(0)), scalar(1)));
 
 //- Solid volume fraction of the cell, on the phase-change path
-volScalarField alphaS
+volScalarField alphaSolid
 (
     IOobject
     (
@@ -64,11 +64,11 @@ volScalarField alphaS
     zeroGradientFvPatchScalarField::typeName
 );
 
-forAll(alphaS, celli)
+forAll(alphaSolid, celli)
 {
-    alphaS[celli] = alpha1c[celli]*metal.fs(T[celli]);
+    alphaSolid[celli] = alpha1c[celli]*metal.fs(T[celli]);
 }
-alphaS.correctBoundaryConditions();
+alphaSolid.correctBoundaryConditions();
 
 Info<< "Reading field p_rgh\n" << endl;
 volScalarField p_rgh

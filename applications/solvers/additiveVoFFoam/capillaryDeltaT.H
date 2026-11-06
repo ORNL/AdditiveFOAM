@@ -26,7 +26,7 @@
         const surfaceScalarField alpha1f(fvc::interpolate(alpha1));
         const surfaceScalarField alphaLf
         (
-            fvc::interpolate(max(alpha1 - alphaS, scalar(0)))
+            fvc::interpolate(max(alpha1 - alphaSolid, scalar(0)))
         );
         const surfaceScalarField Tf(fvc::interpolate(T));
         const surfaceScalarField dTf
