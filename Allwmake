@@ -24,6 +24,7 @@ $ADDITIVEFOAM_BUILD_FLAGS \
 #------------------------------------------------------------------------------
 # Compile AdditiveFOAM libraries and applications
 
+src/Allwmake $targetType $*
 applications/Allwmake $targetType $*
 
 #------------------------------------------------------------------------------

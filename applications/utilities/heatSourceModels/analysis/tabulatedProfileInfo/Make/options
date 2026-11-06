@@ -1,5 +1,5 @@
 EXE_INC = \
-    -I$(ADDITIVEFOAM_APPLICATIONS)/solvers/additiveFoam/movingHeatSource/lnInclude
+    -I$(ADDITIVEFOAM_SRC)/movingHeatSource/lnInclude
 
 EXE_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
