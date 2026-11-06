@@ -23,6 +23,8 @@
 - The moving heat source, function object and utility libraries moved from
   `applications/solvers/additiveFoam` to `src`. Library names are unchanged.
   `ADDITIVEFOAM_SRC` points to the new location.
+- The tutorials are grouped by solver in `tutorials/additiveFoam` and
+  `tutorials/additiveVoFFoam`.
 
 # Release 2.0.0
 

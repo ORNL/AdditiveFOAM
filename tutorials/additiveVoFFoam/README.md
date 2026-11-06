@@ -1,6 +1,6 @@
 # additiveVoFFoam Tutorials
 
-Both cases repeat the [tabulated](../tabulated) heat-source tutorial, a 2 mm
+Both cases repeat the [tabulated](../additiveFoam/tabulated) heat-source tutorial, a 2 mm
 single track in AlSi10Mg at 400 W and 0.8 m/s with a measured nLight AFX
 profile, with `additiveVoFFoam`. The metal and the argon above it are separated
 by a volume of fluid interface, and the beam is absorbed at the first metal

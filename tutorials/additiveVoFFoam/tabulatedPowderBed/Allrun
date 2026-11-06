@@ -7,7 +7,7 @@ application=`getApplication`
 
 #------------------------------------------------------------------------------
 # Case setup
-primesToAdditiveFoam $ADDITIVEFOAM_TUTORIALS/tabulated/constant/primes-export.csv \
+primesToAdditiveFoam $ADDITIVEFOAM_TUTORIALS/additiveFoam/tabulated/constant/primes-export.csv \
     constant/beamProfile.txt
 
 restore0Dir

@@ -16,7 +16,7 @@ Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
 ```sh
 source /path/to/OpenFOAM-14/etc/bashrc
 source /path/to/AdditiveFOAM/etc/bashrc
-cd "$ADDITIVEFOAM_TUTORIALS/multiLayerPBF"
+cd "$ADDITIVEFOAM_TUTORIALS/additiveFoam/multiLayerPBF"
 ./Allrun
 ```
 

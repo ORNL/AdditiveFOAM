@@ -1,29 +1,13 @@
-# AMB2018-02-B multiBeam Tutorial
+# AMB2018-02-B Tutorial
 
 ## Case description
 
-This tutorial demonstrates a simple two-beam extension of the AdditiveFOAM
-AMB2018-02-B single-track tutorial.
+This tutorial demonstrates an AdditiveFOAM single-track case calibrated to the AMBenchmark 2018 AMB2018-02-B single-track data.
 
-This tutorial is intended to show how neighboring beams can alter the thermal
-field and solidification conditions relative to a single-beam setup.
+The purpose of this tutorial is to provide a calibrated AMBench baseline case using a Gaussian heat source model.
 
 This tutorial uses the IN625 material configuration from
 `$ADDITIVEFOAM_ETC/materials/IN625.cfg`.
-
-The original AMB2018-02-B tutorial contains one moving heat source. This tutorial
-uses two moving heat sources:
-
-```foam
-sources { beam1 { /* ... */ } beam2 { /* ... */ } }
-```
-
-The two beams follow the same scan direction, power, speed, and heat source
-parameters of the original AMB2018-02-B scan path, but are translated `+/- 50`
-microns in the hatch direction.
-
-Because each beam uses the original AMB2018-02-B laser power, the total applied
-laser power is twice that of the single-beam baseline.
 
 ## Running the tutorial
 
@@ -32,7 +16,7 @@ Build AdditiveFOAM against OpenFOAM-14, source both environments, and run:
 ```sh
 source /path/to/OpenFOAM-14/etc/bashrc
 source /path/to/AdditiveFOAM/etc/bashrc
-cd "$ADDITIVEFOAM_TUTORIALS/multiBeam"
+cd "$ADDITIVEFOAM_TUTORIALS/additiveFoam/AMB2018-02-B"
 ./Allrun
 ```
 
@@ -40,19 +24,17 @@ Use `./Allclean` to remove generated mesh, decomposition, and result files.
 
 ## Reference
 
-The baseline case is based on the AMBenchmark 2018 AMB2018-02 description:
+This case is based on the AMBenchmark 2018 AMB2018-02 description:
 
 ```text
 https://www.nist.gov/ambench/amb2018-02-description
 ```
 
-The model coefficients used by the AMB2018-02-B tutorial, including absorption
-and heat source dimensions, were calibrated in:
-
+The model coefficients (absorption and heat source dimensions) were calibrated in:
 ```text
-G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
-Calibrating uncertain parameters in melt pool simulations of additive
-manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.111904.
+    G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
+    Calibrating uncertain parameters in melt pool simulations of additive
+    manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.111904.
 ```
 
 ## File structure
@@ -63,26 +45,28 @@ The important files for this tutorial are:
 constant/heatSourceDict
 ```
 
-Defines the two moving heat sources, their absorption models, heat source
-models, and mesh refinement model.
+Defines the moving heat source, absorption model, and mesh refinement model.
 
 ```text
-constant/scanPath_1
+constant/scanPath
 ```
 
-Defines the first beam path.
-
-```text
-constant/scanPath_2
-```
-
-Defines the second beam path.
+Defines the laser path, laser power, and scan speed or dwell time.
 
 ```text
 constant/dynamicMeshDict
 ```
 
-Defines the dynamic mesh/refinement settings.
+Defines the dynamic mesh/refinement settings and cell-count-based runtime
+redistribution.
+
+```text
+system/decomposeParDict
+```
+
+Selects Scotch for the initial decomposition and PT-Scotch for optional runtime
+redistribution. It also enables the `refinementHistory` constraint required to
+keep refinement siblings together for unrefinement.
 
 ```text
 system/blockMeshDict
@@ -92,21 +76,20 @@ Defines the base computational mesh.
 
 ## Heat source model
 
-This tutorial uses two heat sources:
+The tutorial uses one heat source:
 
 ```foam
-sources { beam1 { /* ... */ } beam2 { /* ... */ } }
+sources { beam { /* source definition */ } }
 ```
 
-Both beams use the same heat source parameters as the calibrated AMB2018-02-B
-single-beam case.
+The source uses constant absorptivity and a `superGaussian` heat source:
 
 ```foam
 sources
 {
-  beam1
+  beam
   {
-    path scanPath_1;
+    path scanPath;
     absorption
     {
         model constant;
@@ -114,14 +97,14 @@ sources
     }
     heatSource
     {
-        model superGaussian;
-        radius (85.0e-6 85.0e-6);
-        depth 30e-6;
-        k 2.0;
+        model   superGaussian;
+        radius  (85.0e-6 85.0e-6);
+        definition secondMoment;
+        depth   30e-6;
+        k       2.0;
         nPoints (10 10 10);
     }
   }
-  beam2 { /* identical, with path scanPath_2; */ }
 }
 ```
 
@@ -129,35 +112,31 @@ sources
 
 `eta`
 
-Constant absorptivity applied to the laser power from each scan path.
+Constant absorptivity applied to the laser power from the scan path.
 
 `k`
 
-Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a
-Gaussian-like source.
+Super-Gaussian shape exponent. In this tutorial, `k = 2.0`, giving a Gaussian-like source.
 
 `radius` and `depth`
 
-Set the lateral radius and axial depth. `definition` optionally selects `e2`
-(default) or `secondMoment`.
+Set the lateral radius and axial depth. The optional `definition` is `e2`
+(default) or `secondMoment`; a second-moment radius is half its D4Sigma
+diameter.
 
 `tolerance`
 
 Optional maximum fraction of analytical source power outside the integration
-bounds. The default `1e-3` retains at least 99.9% of each source's power.
+bounds. The default `1e-3` retains at least 99.9% of the source power.
 
 `nPoints`
 
 Sets the target sub-cell spacing by dividing the retained source bounds by
-`nPoints` for each source.
+`nPoints`.
 
 ## Refinement model
 
-This tutorial can use the same `targetCellLoad` refinement model as the
-single-beam AMB2018-02-B tutorial. The `buffers` entries are keyed by source
-name and are applied relative to each path interval for each beam.
-
-A representative refinement setup is:
+This tutorial has the option to use the `targetCellLoad` refinement model:
 
 ```foam
 refinement
@@ -169,8 +148,7 @@ refinement
 
     buffers
     {
-        beam1               (85.0e-6 85.0e-6 100e-6);
-        beam2               (85.0e-6 85.0e-6 100e-6);
+        beam                (85.0e-6 85.0e-6 100e-6);
     }
 
     targetCellsPerProc      5000;
@@ -180,12 +158,26 @@ refinement
 }
 ```
 
+The refinement region projects along the heat source path and targets a desired
+average cell load per processor.
+
+Runtime redistribution is disabled by default with `type none` in
+`constant/dynamicMeshDict`. Change it to `type distributor` to enable the
+provided PT-Scotch configuration. The mesh distributor then checks every 10
+time steps and redistributes when an active refinement model creates more than
+10% cell-count imbalance. These are starting values; production cases should
+tune `redistributionInterval` and `maxImbalance` for their mesh and MPI count.
+
+The tutorial uses OpenFOAM's generic `distributor`, which balances cell counts.
+Do not change its type to `loadBalancer`: that component requires registered
+per-cell `cpuLoad` objects that AdditiveFOAM does not currently provide.
+
 ### Coefficients
 
 `model`
 
 Selects the refinement model. `targetCellLoad` projects refinement ahead along
-the scan paths and adjusts the projected volume to target a cell count per
+the scan path and adjusts the projected volume to target a cell count per
 processor.
 
 `refinementTemperature`
@@ -195,9 +187,8 @@ Temperature threshold used to mark hot cells for refinement during AMR updates.
 `buffers`
 
 Source-specific scan-path projection buffers. Entries are keyed by heat source
-name and are applied to the corresponding beam path. The vector components
-define the buffer size in the scan direction, transverse direction, and build
-direction.
+name. The vector components define the buffer size in the scan direction,
+transverse direction, and build direction.
 
 `targetCellsPerProc`
 
@@ -208,10 +199,10 @@ refinement independently.
 
 `nBufferVolumes`
 
-Minimum projected scan-path volume expressed as a multiple of the combined
-source-buffer volume. This keeps the projected refinement region from shrinking
-below the local scan-path coverage. This minimum coverage takes precedence over
-further target-volume reduction.
+Minimum projected scan-path volume expressed as a multiple of the source-buffer
+volume. This keeps the projected refinement region from shrinking below the
+local scan-path coverage. This minimum coverage takes precedence over further
+target-volume reduction.
 
 `maxSearchIter`
 
@@ -261,6 +252,11 @@ enabled false;
 `meltPoolDimensions` writes melt-pool length, width, and depth data.
 `solidificationData` writes solidification events for CET analysis.
 `ExaCA` writes temperature history data for ExaCA input files.
+
+The ExaCA function object supports refinement on a fixed processor
+decomposition but not runtime mesh redistribution. Keep the distributor set to
+`type none` in `constant/dynamicMeshDict` when combining ExaCA with an active
+refinement model.
 
 The `Allrun` script calls the reconstruction helpers after the solver finishes:
 

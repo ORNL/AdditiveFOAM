@@ -15,7 +15,7 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 | [VoF solver](applications/solvers/additiveVoFFoam)        | Free-surface (VoF) solver source          |
 | [tutorials](tutorials)                                     | Tutorial cases |
 | [calibration utility](bin/calibrateHeatSource)             | Heat-source calibration command |
-| [calibration tutorial](tutorials/heatSourceCalibration)    | Projected heat-source calibration workflow |
+| [calibration tutorial](tutorials/additiveFoam/heatSourceCalibration) | Projected heat-source calibration workflow |
 
 ## Installation
 [![OpenFOAM-14](https://img.shields.io/badge/OpenFOAM-14-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-14)

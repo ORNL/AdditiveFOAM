@@ -18,7 +18,7 @@ Copy the tutorial before running it:
 
 ```bash
 mkdir -p "$FOAM_RUN/AdditiveFOAM"
-cp -r "$ADDITIVEFOAM_TUTORIALS/heatSourceCalibration" \
+cp -r "$ADDITIVEFOAM_TUTORIALS/additiveFoam/heatSourceCalibration" \
     "$FOAM_RUN/AdditiveFOAM/heatSourceCalibration"
 cd "$FOAM_RUN/AdditiveFOAM/heatSourceCalibration"
 ```

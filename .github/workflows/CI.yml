@@ -38,7 +38,7 @@ jobs:
         run: |
           . /opt/openfoam14/etc/bashrc
           . ./etc/bashrc
-          cp -r tutorials/AMB2018-02-B userCase
+          cp -r tutorials/additiveFoam/AMB2018-02-B userCase
           cd userCase
           blockMesh
           decomposePar
@@ -50,7 +50,7 @@ jobs:
           cp -r tutorials/additiveVoFFoam/tabulated vofCase
           cd vofCase
           primesToAdditiveFoam \
-            $ADDITIVEFOAM_TUTORIALS/tabulated/constant/primes-export.csv \
+            $ADDITIVEFOAM_TUTORIALS/additiveFoam/tabulated/constant/primes-export.csv \
             constant/beamProfile.txt
           cp -r 0.orig 0
           foamDictionary -entry endTime -set 2e-5 system/controlDict
