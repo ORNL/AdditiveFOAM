@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Write system/setFieldsDict for a random AlSi10Mg powder layer on the plate.
+
+Non-overlapping spheres are placed by random sequential addition in a 50 um
+layer above the plate (z = 0). Radii follow a normal distribution, mean 15 um,
+standard deviation 4 um, limited to 8-25 um. The seed is fixed.
+"""
+
+import math
+import random
+
+random.seed(1)
+
+xmin, xmax = -0.2e-3, 2.2e-3
+ymin, ymax = -0.17e-3, 0.17e-3
+height = 50e-6
+rmin, rmax = 8e-6, 25e-6
+attempts = 200000
+
+cell = 2*rmax
+grid = {}
+spheres = []
+
+
+def key(x, y, z):
+    return (int(x//cell), int(y//cell), int(z//cell))
+
+
+for _ in range(attempts):
+    r = min(max(random.gauss(15e-6, 4e-6), rmin), rmax)
+    c = (
+        random.uniform(xmin + r, xmax - r),
+        random.uniform(ymin + r, ymax - r),
+        random.uniform(r, height - r)
+    )
+    i, j, k = key(*c)
+    if all(
+        math.dist(c, s[:3]) >= r + s[3]
+        for di in (-1, 0, 1) for dj in (-1, 0, 1) for dk in (-1, 0, 1)
+        for s in grid.get((i + di, j + dj, k + dk), ())
+    ):
+        sphere = (*c, r)
+        spheres.append(sphere)
+        grid.setdefault((i, j, k), []).append(sphere)
+
+with open("system/setFieldsDict", "w") as f:
+    f.write(
+        "FoamFile\n{\n    format      ascii;\n    class       dictionary;\n"
+        "    location    \"system\";\n    object      setFieldsDict;\n}\n\n"
+        "regions\n(\n"
+        "    boxToCell\n    {\n        box (-1 -1 -1) (1 1 0);\n"
+        "        fieldValues (volScalarFieldValue alpha.metal 1);\n    }\n"
+    )
+    for x, y, z, r in spheres:
+        f.write(
+            "    sphereToCell\n    {\n"
+            f"        centre ({x:.4e} {y:.4e} {z:.4e});\n"
+            f"        radius {r:.4e};\n"
+            "        fieldValues (volScalarFieldValue alpha.metal 1);\n    }\n"
+        )
+    f.write(");\n")
+
+print(f"{len(spheres)} particles")

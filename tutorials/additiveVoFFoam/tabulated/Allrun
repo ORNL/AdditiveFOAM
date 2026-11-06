@@ -1,0 +1,26 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+application=`getApplication`
+
+#------------------------------------------------------------------------------
+# Case setup
+primesToAdditiveFoam $ADDITIVEFOAM_TUTORIALS/tabulated/constant/primes-export.csv \
+    constant/beamProfile.txt
+
+restore0Dir
+
+runApplication blockMesh
+
+runApplication smoothSetFields
+
+runApplication decomposePar
+#------------------------------------------------------------------------------
+# AdditiveFOAM
+runParallel $application
+#------------------------------------------------------------------------------
+# Reconstruction
+runApplication reconstructPar
+#------------------------------------------------------------------------------

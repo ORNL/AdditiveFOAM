@@ -1,0 +1,27 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  14
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "$ADDITIVEFOAM_ETC/materials/AlSi10Mg.cfg"
+
+gas
+{
+    rho     1.6;
+    mu      2.2e-5;
+    Cp      (520 0 0);
+    kappa   (0.018 0 0);
+}
+
+// ************************************************************************* //

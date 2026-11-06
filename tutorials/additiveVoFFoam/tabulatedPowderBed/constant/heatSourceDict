@@ -1,0 +1,73 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  14
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      heatSourceDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+sources
+{
+    beam
+    {
+        path            scanPath;
+        widthReference  D4Sigma;
+
+        absorption
+        {
+            model       constant;
+            eta         0.2;
+        }
+
+        heatSource
+        {
+            model       projected;
+            depth       5.0e-5;
+            tolerance   1.0e-3;
+            nPoints     (10 10 10);
+
+            profile
+            {
+                model   tabulated;
+                file    "beamProfile.txt";
+            }
+
+            projection
+            {
+                model       exponential;
+                nSlope      0;
+                nIntercept  1;
+            }
+        }
+    }
+}
+
+refinement
+{
+    model                   none;
+
+    //model                 targetCellLoad;
+    
+    refinementTemperature   1000;
+
+    buffers
+    {
+        beam                (200.0e-6 200.0e-6 100e-6);
+    }
+
+    targetCellsPerProc      5000;
+    nBufferVolumes          4;
+    maxSearchIter           10;
+    timeTolerance           1e-4;
+}
+
+// ************************************************************************* //
