@@ -1,12 +1,17 @@
 #include "pU/surfaceTensionForce.H"
 
-// Mushy-zone drag of the solid fraction (Kozeny-Carman)
-const volScalarField alphaSc(min(alphaS, scalar(0.95)));
+// Mushy-zone drag of the solid volume fraction (Carman-Kozeny)
+const volScalarField porosity(min(max(1.0 - alphaS, scalar(0)), scalar(1)));
 
 const volScalarField D
 (
     "D",
-    mu1*(180.0/sqr(DAS))*sqr(alphaSc)/pow3(1.0 - alphaSc)
+    rho
+   *min
+    (
+        Cu*sqr(1.0 - porosity)/(pow3(porosity) + 0.001),
+        dimensionedScalar(dimless/dimTime, 1e12)
+    )
 );
 
 const surfaceScalarField Df("Df", fvc::interpolate(D));

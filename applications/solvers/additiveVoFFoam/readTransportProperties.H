@@ -44,11 +44,12 @@ const dimensionedScalar beta1
     transportProperties.lookup("beta")
 );
 
-const dimensionedScalar DAS
+//- Mushy-zone constant per unit density; a large value keeps the solid rigid
+const dimensionedScalar Cu
 (
-    "DAS",
-    dimLength,
-    transportProperties.lookup("DAS")
+    "Cu",
+    dimless/dimTime,
+    transportProperties.lookupOrDefault<scalar>("Cu", 1e10)
 );
 
 const dimensionedScalar Lf
