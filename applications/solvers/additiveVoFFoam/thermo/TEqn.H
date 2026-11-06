@@ -1,0 +1,178 @@
+{
+    const label nThermoCorr =
+        pimple.dict().lookupOrDefault<label>("nThermoCorrectors", 20);
+    const scalar energyTol =
+        pimple.dict().lookupOrDefault<scalar>("energyTolerance", 1e-5);
+
+    const dimensionedScalar rDeltaT = 1.0/runTime.deltaT();
+    const surfaceScalarField alphaPhi2("alphaPhi2", phi - alphaPhi1);
+
+    const scalar r1 = rho1.value();
+    const scalar r2 = rho2.value();
+    const scalar L = Lf.value();
+    const scalar Ts = solidus.value();
+
+    volScalarField dFdT
+    (
+        IOobject("dFdT", runTime.name(), mesh),
+        mesh,
+        dimensionedScalar(dimless/dimTemperature, 0)
+    );
+
+    volScalarField T0("T0", T);
+
+    alphaS.oldTime();
+
+    forAll(alphaS, celli)
+    {
+        alphaS[celli] = alpha1c[celli]*metal.fs(T[celli]);
+    }
+    alphaS.correctBoundaryConditions();
+
+    #include "thermo/updateProperties.H"
+
+    bool converged = false;
+
+    for (label tCorr = 0; tCorr < nThermoCorr && !converged; tCorr++)
+    {
+        // Newton linearization of the solid fraction about the current T
+        forAll(T, celli)
+        {
+            T0[celli] = T[celli];
+            dFdT[celli] = alpha1c[celli]*metal.dfsdT(T[celli]);
+        }
+        T0.correctBoundaryConditions();
+        dFdT.correctBoundaryConditions();
+
+        const volScalarField Tprev("Tprev", T);
+        const volScalarField alphaSprev("alphaSprev", alphaS);
+
+        const surfaceScalarField rhoCpPhi
+        (
+            "rhoCpPhi",
+            rho1*alphaPhi1*linearInterpolate(Cp1)
+          + rho2*alphaPhi2*linearInterpolate(Cp2)
+        );
+
+        // Upwind in both convection terms: their high-order parts cancel
+        const fv::gaussConvectionScheme<scalar> upwindCp
+        (
+            mesh,
+            rhoCpPhi,
+            tmp<surfaceInterpolationScheme<scalar>>
+            (
+                new upwind<scalar>(mesh, rhoCpPhi)
+            )
+        );
+
+        fvScalarMatrix TEqn
+        (
+            fvm::ddt(rhoCp, T)
+          - fvc::ddt(rhoCp, T) + fvc::ddt(rhoH)
+          + upwindCp.fvmDiv(rhoCpPhi, T)
+          - upwindCp.fvcDiv(rhoCpPhi, T)
+          + fvc::div(rhoHPhi)
+          - fvm::laplacian(kappa, T)
+         ==
+            sources.qDot()
+          + rho1*Lf*fvc::ddt(alphaS)
+          + rDeltaT*rho1*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
+        );
+
+        TEqn.relax();
+        TEqn.solve();
+
+        // Optimum approach: the cell energy follows from the solved
+        // linearization and T is put back on the energy curve
+        scalarField& Tc = T.primitiveFieldRef();
+
+        forAll(Tc, i)
+        {
+            const scalar a = alpha1[i];
+            const scalar ac = alpha1c[i];
+            const scalar Tk = Tprev[i];
+
+            const scalar Estar =
+                rhoH[i] + rhoCp[i]*(Tc[i] - Tk)
+              + r1*L*(ac - alphaSprev[i] - dFdT[i]*(Tc[i] - Tk));
+
+            auto energy = [&](const scalar t)
+            {
+                return
+                    a*r1*metal.h(t) + (1 - a)*r2*CpGas.integral(Ts, t)
+                  + r1*L*ac*(1 - metal.fs(t));
+            };
+
+            auto capacity = [&](const scalar t)
+            {
+                return
+                    a*r1*metal.Cp(t) + (1 - a)*r2*CpGas.value(t)
+                  - r1*L*ac*metal.dfsdT(t);
+            };
+
+            scalar lo = min(Tk, Tc[i]);
+            scalar hi = max(Tk, Tc[i]);
+            scalar span = max(hi - lo, scalar(1));
+            while (energy(lo) > Estar) { lo -= span; span *= 2; }
+            span = max(hi - lo, scalar(1));
+            while (energy(hi) < Estar) { hi += span; span *= 2; }
+
+            scalar t = Tc[i];
+            for (label it = 0; it < 60; it++)
+            {
+                const scalar f = energy(t) - Estar;
+                if (f > 0) { hi = t; } else { lo = t; }
+                if (hi - lo < 1e-9*max(t, scalar(1))) { break; }
+                const scalar tn = t - f/max(capacity(t), small);
+                t = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
+            }
+            Tc[i] = t;
+        }
+        T.correctBoundaryConditions();
+
+        forAll(alphaS, celli)
+        {
+            alphaS[celli] = alpha1c[celli]*metal.fs(T[celli]);
+        }
+        alphaS.correctBoundaryConditions();
+
+        #include "thermo/updateProperties.H"
+
+        // Energy moved by this iteration relative to the energy exchanged
+        // in the step
+        const scalarField& V = mesh.V();
+        const scalar energyCorrection = gSum
+        (
+            V
+           *(
+                rhoCp.primitiveField()
+               *mag(T.primitiveField() - Tprev.primitiveField())
+              + r1*L*mag(alphaS.primitiveField() - alphaSprev.primitiveField())
+            )
+        );
+        const scalar energyStep = gSum
+        (
+            V
+           *(
+                rhoCp.primitiveField()
+               *mag(T.primitiveField() - T.oldTime().primitiveField())
+              + r1*L
+               *mag(alphaS.primitiveField() - alphaS.oldTime().primitiveField())
+              + sources.qDot().primitiveField()/rDeltaT.value()
+            )
+        );
+        const scalar residual = energyCorrection/max(energyStep, vSmall);
+
+        Info<< "Thermo: iteration " << tCorr
+            << " residual: " << residual << endl;
+
+        converged = residual < energyTol && tCorr > 0;
+    }
+
+    if (!converged)
+    {
+        WarningInFunction
+            << "Energy equation not converged in " << nThermoCorr
+            << " iterations" << endl;
+    }
+}
