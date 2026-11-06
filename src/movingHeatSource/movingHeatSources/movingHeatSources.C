@@ -105,7 +105,8 @@ void Foam::movingHeatSources::adjustDeltaT(scalar& deltaT)
     }
 }
 
-void Foam::movingHeatSources::update()
+template<class SourceQDot>
+void Foam::movingHeatSources::integrate(const SourceQDot& sourceQDot)
 {
     if (dict_.readIfModified())
     {
@@ -129,7 +130,7 @@ void Foam::movingHeatSources::update()
 
             const scalar beamDeltaT = sources_[i].beam().deltaT();
 
-            volScalarField sourceQDot
+            volScalarField qDoti
             (
                 IOobject
                 (
@@ -149,18 +150,95 @@ void Foam::movingHeatSources::update()
 
                 sources_[i].beam().move(pathTime);
 
-                sourceQDot += dt*sources_[i].qDot();
+                qDoti += dt*sourceQDot(sources_[i]);
             }
 
-            sourceQDot /= deltaT;
+            qDoti /= deltaT;
 
-            qDot_ += sourceQDot;
+            qDot_ += qDoti;
         }
     }
 
     qDot_.correctBoundaryConditions();
 
     refinement_->update();
+}
+
+
+Foam::labelList Foam::movingHeatSources::surfaceCells
+(
+    const volScalarField& alpha
+) const
+{
+    // Columns are identified by their cell-centre (x, y) on a 1 nm grid
+    auto column = [](const point& c)
+    {
+        return labelPair(round(c.x()*1e9), round(c.y()*1e9));
+    };
+
+    typedef HashTable<scalar, labelPair, labelPair::Hash<>> columnHeights;
+
+    columnHeights zTop;
+    HashTable<label, labelPair, labelPair::Hash<>> topCell;
+
+    const volVectorField& C = mesh_.C();
+
+    forAll(alpha, celli)
+    {
+        if (alpha[celli] > 0.5)
+        {
+            const labelPair key(column(C[celli]));
+            const scalar z = C[celli].z();
+
+            auto iter = zTop.find(key);
+            if (iter == zTop.end() || z > iter())
+            {
+                zTop.set(key, z);
+                topCell.set(key, celli);
+            }
+        }
+    }
+
+    columnHeights zTopGlobal(zTop);
+    Pstream::mapCombineGather(zTopGlobal, maxEqOp<scalar>());
+    Pstream::mapCombineScatter(zTopGlobal);
+
+    DynamicList<label> cells(topCell.size());
+    forAllConstIter(columnHeights, zTop, iter)
+    {
+        if (iter() == zTopGlobal[iter.key()])
+        {
+            cells.append(topCell[iter.key()]);
+        }
+    }
+
+    return labelList(cells);
+}
+
+
+void Foam::movingHeatSources::update()
+{
+    integrate
+    (
+        [](const movingHeatSource& source)
+        {
+            return source.qDot();
+        }
+    );
+}
+
+
+void Foam::movingHeatSources::update(const volScalarField& alpha)
+{
+    const labelList cells(surfaceCells(alpha));
+
+    integrate
+    (
+        [&cells](const movingHeatSource& source)
+        {
+            return source.qDot(cells);
+        }
+    );
 }
 
 // ************************************************************************* //

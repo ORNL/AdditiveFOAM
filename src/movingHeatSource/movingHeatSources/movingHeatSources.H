@@ -73,6 +73,15 @@ private:
         //- Construct sources and refinement model from the dictionary
         void readSources();
 
+        //- Set qDot from the per-source heating, averaged over the beam
+        //  path travelled during the time step
+        template<class SourceQDot>
+        void integrate(const SourceQDot& sourceQDot);
+
+        //- Cells first reached along -z, the highest cell with alpha > 0.5
+        //  in each vertical column
+        labelList surfaceCells(const volScalarField& alpha) const;
+
 public:
 
     // Constructors
@@ -99,6 +108,9 @@ public:
 
         //- Update total qDot field
         void update();
+
+        //- Update total qDot field as a flux through the surface of alpha
+        void update(const volScalarField& alpha);
 };
 
 

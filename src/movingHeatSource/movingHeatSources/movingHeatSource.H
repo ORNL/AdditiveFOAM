@@ -77,6 +77,10 @@ public:
 
     tmp<volScalarField> qDot() const;
 
+    //- Absorbed power as a flux through the given surface cells, distributed
+    //  by the beam-plane profile over their horizontal areas
+    tmp<volScalarField> qDot(const labelUList& surfaceCells) const;
+
     void operator=(const movingHeatSource&) = delete;
 };
 

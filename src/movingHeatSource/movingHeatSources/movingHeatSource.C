@@ -207,4 +207,78 @@ Foam::tmp<Foam::volScalarField> Foam::movingHeatSource::qDot() const
     return tqDot;
 }
 
+Foam::tmp<Foam::volScalarField> Foam::movingHeatSource::qDot
+(
+    const labelUList& surfaceCells
+) const
+{
+    tmp<volScalarField> tqDot
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "qDot_" + name_,
+                mesh_.time().name(),
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh_,
+            dimensionedScalar("zero", dimPower/dimVolume, 0)
+        )
+    );
+
+    if (beam_.power() <= small)
+    {
+        return tqDot;
+    }
+
+    volScalarField& qDot = tqDot.ref();
+
+    const vector position = beam_.position();
+    const pointField& points = mesh_.points();
+
+    scalarField weights(surfaceCells.size());
+    scalarField heights(surfaceCells.size());
+    scalar sumWeights = 0;
+
+    forAll(surfaceCells, i)
+    {
+        const label celli = surfaceCells[i];
+        const vector r(mesh_.cellCentres()[celli] - position);
+
+        weights[i] = heatSource_->weight(vector(r.x(), r.y(), 0));
+
+        scalar zMin = great;
+        scalar zMax = -great;
+        const labelList& vertices = mesh_.cellPoints()[celli];
+        forAll(vertices, j)
+        {
+            zMin = min(zMin, points[vertices[j]].z());
+            zMax = max(zMax, points[vertices[j]].z());
+        }
+        heights[i] = zMax - zMin;
+
+        sumWeights += weights[i]*mesh_.V()[celli]/heights[i];
+    }
+
+    reduce(sumWeights, sumOp<scalar>());
+
+    if (sumWeights > vSmall)
+    {
+        const scalar absorbedPower =
+            absorption_->eta(references_.aspectRatio())*beam_.power();
+
+        forAll(surfaceCells, i)
+        {
+            qDot[surfaceCells[i]] =
+                absorbedPower*weights[i]/(sumWeights*heights[i]);
+        }
+    }
+
+    return tqDot;
+}
+
+
 // ************************************************************************* //
