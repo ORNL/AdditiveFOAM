@@ -43,3 +43,18 @@ jobs:
           blockMesh
           decomposePar
           mpirun -n 8 --oversubscribe --allow-run-as-root additiveFoam -parallel
+      - name: Test additiveVoFFoam
+        run: |
+          . /opt/openfoam14/etc/bashrc
+          . ./etc/bashrc
+          cp -r tutorials/additiveVoFFoam/tabulated vofCase
+          cd vofCase
+          primesToAdditiveFoam \
+            $ADDITIVEFOAM_TUTORIALS/tabulated/constant/primes-export.csv \
+            constant/beamProfile.txt
+          cp -r 0.orig 0
+          foamDictionary -entry endTime -set 2e-5 system/controlDict
+          blockMesh
+          smoothSetFields
+          decomposePar
+          mpirun -n 8 --oversubscribe --allow-run-as-root additiveVoFFoam -parallel

@@ -1,3 +1,29 @@
+# Release 3.0.0
+
+## Features
+
+- Added `additiveVoFFoam`, a transient heat transfer and fluid flow solver
+  with a volume of fluid metal-gas free surface for resolved powder-bed and
+  melt-pool simulations. It includes surface tension with Marangoni stress,
+  recoil pressure, mushy-zone drag, thermal buoyancy, and a conservative
+  enthalpy formulation of melting and solidification on the material
+  `thermoPath`.
+- Moving heat sources can be absorbed as a surface flux at the first metal
+  surface reached by the beam, using the planar profile of any heat-source
+  model and the scan-path subcycling of the volumetric sources.
+- Added `smoothSetFields`, which initializes volume fractions of spheres and
+  boxes with sub-cell resolution from a `setFieldsDict`.
+- Added `sigma` and optional `vaporization` entries to the material
+  configuration files.
+- Added bare-plate and powder-bed `additiveVoFFoam` tutorials with the
+  tabulated heat source.
+
+## Upgrade notes
+
+- The moving heat source, function object and utility libraries moved from
+  `applications/solvers/additiveFoam` to `src`. Library names are unchanged.
+  `ADDITIVEFOAM_SRC` points to the new location.
+
 # Release 2.0.0
 
 ## Features
