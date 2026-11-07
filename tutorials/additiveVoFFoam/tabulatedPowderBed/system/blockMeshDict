@@ -15,11 +15,12 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 xmin -0.00025;
-xmax 0.00225;
-ymin -0.0002;
-ymax 0.0002;
-zmin -0.0001;
-zmax 0.0001;
+xmax 0.002225;
+ymin -0.000195;
+ymax 0.000195;
+zmin -0.0003;
+zmid -0.00006;
+zmax 0.0000975;
 
 vertices
 (
@@ -27,15 +28,21 @@ vertices
     ($xmax $ymin $zmin)
     ($xmax $ymax $zmin)
     ($xmin $ymax $zmin)
+    ($xmin $ymin $zmid)
+    ($xmax $ymin $zmid)
+    ($xmax $ymax $zmid)
+    ($xmin $ymax $zmid)
     ($xmin $ymin $zmax)
     ($xmax $ymin $zmax)
     ($xmax $ymax $zmax)
     ($xmin $ymax $zmax)
 );
 
+// 7.5 um cells above z = -60 um, coarsening towards the bottom of the plate
 blocks
 (
-    hex (0 1 2 3 4 5 6 7) (500 80 40) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) (330 52 13) simpleGrading (1 1 0.2)
+    hex (4 5 6 7 8 9 10 11) (330 52 21) simpleGrading (1 1 1)
 );
 
 boundary
@@ -53,7 +60,7 @@ boundary
         type patch;
         faces
         (
-            (4 5 6 7)
+            (8 9 10 11)
         );
     }
     sides
@@ -65,6 +72,10 @@ boundary
             (1 2 6 5)
             (0 1 5 4)
             (3 7 6 2)
+            (4 8 11 7)
+            (5 6 10 9)
+            (4 5 9 8)
+            (7 11 10 6)
         );
     }
 );

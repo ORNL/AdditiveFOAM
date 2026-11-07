@@ -13,8 +13,9 @@ The bare plate, 0.3 mm thick with 0.1 mm of gas above, on a 10 um mesh.
 
 `tabulatedPowderBed`
 
-A 50 um powder layer on the plate, on a 5 um mesh. `createPowderBed` writes
-`system/setFieldsDict` with non-overlapping particles of 15 um mean radius.
+A 50 um powder layer on the 0.3 mm plate, on a 7.5 um mesh that coarsens
+towards the bottom of the plate. `createPowderBed` writes `system/setFieldsDict`
+with non-overlapping particles of 15 um mean radius.
 
 `smoothSetFields` sets `alpha.metal` from `system/setFieldsDict` with
 volume fractions in the cells cut by the plate surface and the particles.
