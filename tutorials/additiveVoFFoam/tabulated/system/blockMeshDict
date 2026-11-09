@@ -16,10 +16,10 @@ FoamFile
 
 xmin -0.0005;
 xmax 0.0025;
-ymin -0.00025;
-ymax 0.00025;
-zmin -0.0003;
-zmax 0.0001;
+ymin -0.00075;
+ymax 0.00075;
+zmin -0.001;
+zmax 0.0003;
 
 vertices
 (
@@ -33,9 +33,17 @@ vertices
     ($xmin $ymax $zmax)
 );
 
+// 10 um cells within 0.35 mm of the track and between z = -0.25 mm and
+// z = 0.15 mm, coarsening towards the sides, the bottom and the top
 blocks
 (
-    hex (0 1 2 3 4 5 6 7) (300 50 40) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) (300 100 70)
+    simpleGrading
+    (
+        1
+        ((0.4 15 0.1667) (0.7 70 1) (0.4 15 6))
+        ((0.75 23 0.1333) (0.4 40 1) (0.15 7 4))
+    )
 );
 
 boundary

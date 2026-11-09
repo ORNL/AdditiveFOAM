@@ -2,8 +2,9 @@
 """Write system/setFieldsDict for a random AlSi10Mg powder layer on the plate.
 
 Non-overlapping spheres are placed by random sequential addition in a 50 um
-layer above the plate (z = 0). Radii follow a normal distribution, mean 15 um,
-standard deviation 4 um, limited to 8-25 um. The seed is fixed.
+layer above the plate (z = 0). Radii follow a normal distribution, mean 18 um,
+standard deviation 3.5 um, limited to 15-25 um so that every particle spans
+at least three cells. The seed is fixed.
 """
 
 import math
@@ -12,10 +13,10 @@ import random
 random.seed(1)
 
 xmin, xmax = -0.2e-3, 2.2e-3
-ymin, ymax = -0.17e-3, 0.17e-3
+ymin, ymax = -0.3e-3, 0.3e-3
 height = 50e-6
-rmin, rmax = 8e-6, 25e-6
-attempts = 200000
+rmin, rmax = 15e-6, 25e-6
+attempts = 350000
 
 cell = 2*rmax
 grid = {}
@@ -27,7 +28,7 @@ def key(x, y, z):
 
 
 for _ in range(attempts):
-    r = min(max(random.gauss(15e-6, 4e-6), rmin), rmax)
+    r = min(max(random.gauss(18e-6, 3.5e-6), rmin), rmax)
     c = (
         random.uniform(xmin + r, xmax - r),
         random.uniform(ymin + r, ymax - r),
