@@ -10,7 +10,7 @@ application=`getApplication`
 primesToAdditiveFoam $ADDITIVEFOAM_TUTORIALS/additiveFoam/tabulated/constant/primes-export.csv \
     constant/beamProfile.txt
 
-restore0Dir
+rm -rf 0 && cp -r 0.orig 0
 
 ./createPowderBed
 
