@@ -7,7 +7,8 @@
   melt-pool simulations. It includes surface tension with Marangoni stress,
   recoil pressure, mushy-zone drag, thermal buoyancy, and a conservative
   enthalpy formulation of melting and solidification on the material
-  `thermoPath`.
+  `thermoPath`. `alpha.melted` records the metal that has melted, for
+  fusion-zone cross-sections of the track.
 - Moving heat sources can be absorbed as a surface flux at the first metal
   surface reached by the beam, using the planar profile of any heat-source
   model and the scan-path subcycling of the volumetric sources.

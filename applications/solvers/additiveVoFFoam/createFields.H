@@ -70,6 +70,22 @@ forAll(alphaSolid, celli)
 }
 alphaSolid.correctBoundaryConditions();
 
+//- Volume fraction of the cell occupied by metal that has been liquid
+volScalarField alphaMelted
+(
+    IOobject
+    (
+        IOobject::groupName("alpha", "melted"),
+        runTime.name(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar(dimless, 0),
+    zeroGradientFvPatchScalarField::typeName
+);
+
 Info<< "Reading field p_rgh\n" << endl;
 volScalarField p_rgh
 (

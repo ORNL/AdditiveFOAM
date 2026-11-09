@@ -184,4 +184,9 @@
             << "Energy equation not converged in " << nThermoCorr
             << " iterations" << endl;
     }
+
+    // Solid metal does not move, so the melted metal of a cell is its largest
+    // liquid fraction, limited by the metal that remains
+    alphaMelted = min(alpha1c, max(alphaMelted, alpha1c - alphaSolid));
+    alphaMelted.correctBoundaryConditions();
 }
