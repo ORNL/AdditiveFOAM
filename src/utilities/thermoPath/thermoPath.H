@@ -97,6 +97,9 @@ class thermoPath
         //- Return temperature at the requested solid fraction
         scalar temperatureAtSolidFraction(const scalar alpha) const;
 
+        //- Path segment containing T, solidus < T < liquidus
+        label segment(const scalar T) const;
+
 
 public:
 
@@ -153,6 +156,12 @@ public:
         {
             return sourceName_;
         }
+
+        //- Equilibrium solid fraction at temperature T
+        scalar alpha(const scalar T) const;
+
+        //- Derivative of the solid fraction with temperature at T
+        scalar dAlphadT(const scalar T) const;
 };
 
 

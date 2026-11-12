@@ -14,6 +14,11 @@
   model and the scan-path subcycling of the volumetric sources.
 - Added `smoothSetFields`, which initializes volume fractions of spheres and
   boxes with sub-cell resolution from a `setFieldsDict`.
+- `additiveFoam` solves the phase change with the optimum approach: a Newton
+  linearization of the solid fraction followed by projection of each cell onto
+  the `thermoPath` at its energy. It converges in fewer iterations and
+  tolerates larger temperature changes per step.
+- `thermoPath` accepts isothermal steps, such as a eutectic plateau.
 - Added `sigma` and optional `vaporization` entries to the material
   configuration files.
 - Added bare-plate and powder-bed `additiveVoFFoam` tutorials with the
@@ -26,6 +31,9 @@
   `ADDITIVEFOAM_SRC` points to the new location.
 - The tutorials are grouped by solver in `tutorials/additiveFoam` and
   `tutorials/additiveVoFFoam`.
+- `additiveFoam` stops the phase-change iterations on the energy moved by an
+  iteration relative to the energy exchanged in the step, set by
+  `energyTolerance` (default 1e-5) in `PIMPLE`. It replaces `thermoTolerance`.
 
 # Release 2.0.0
 

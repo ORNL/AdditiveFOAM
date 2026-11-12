@@ -117,6 +117,43 @@ void Foam::thermoPath::set
         alpha_[i] = path[i].second();
     }
 
+    // Order by temperature, and by decreasing solid fraction on an isothermal
+    // step such as a eutectic plateau
+    for (label i = 1; i < T_.size(); i++)
+    {
+        for (label j = i; j > 0; j--)
+        {
+            if
+            (
+                T_[j] < T_[j - 1]
+             || (T_[j] == T_[j - 1] && alpha_[j] > alpha_[j - 1])
+            )
+            {
+                Swap(T_[j], T_[j - 1]);
+                Swap(alpha_[j], alpha_[j - 1]);
+            }
+        }
+    }
+
+    for (label i = 1; i < T_.size(); i++)
+    {
+        if (alpha_[i] >= alpha_[i - 1] && T_[i] == T_[i - 1])
+        {
+            FatalErrorInFunction
+                << "Thermodynamic path " << sourceName_
+                << " repeats the point (" << T_[i] << " " << alpha_[i] << ")"
+                << exit(FatalError);
+        }
+        if (alpha_[i] > alpha_[i - 1])
+        {
+            FatalErrorInFunction
+                << "Thermodynamic path " << sourceName_
+                << " must have solid fractions that do not increase with"
+                << " temperature"
+                << exit(FatalError);
+        }
+    }
+
     solidus_ = temperatureAtSolidFraction(1.0);
     liquidus_ = temperatureAtSolidFraction(0.0);
 }
@@ -191,6 +228,51 @@ Foam::thermoPath::thermoPath
     sourceName_()
 {
     read(transportProperties, runTime);
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::label Foam::thermoPath::segment(const scalar T) const
+{
+    label i = 0;
+    while (i < T_.size() - 2 && T_[i + 1] < T)
+    {
+        i++;
+    }
+    return i;
+}
+
+
+Foam::scalar Foam::thermoPath::alpha(const scalar T) const
+{
+    if (T <= solidus_)
+    {
+        return 1;
+    }
+    if (T >= liquidus_)
+    {
+        return 0;
+    }
+
+    const label i = segment(T);
+
+    return
+        alpha_[i]
+      + (alpha_[i + 1] - alpha_[i])*(T - T_[i])/(T_[i + 1] - T_[i]);
+}
+
+
+Foam::scalar Foam::thermoPath::dAlphadT(const scalar T) const
+{
+    if (T <= solidus_ || T >= liquidus_)
+    {
+        return 0;
+    }
+
+    const label i = segment(T);
+
+    return (alpha_[i + 1] - alpha_[i])/(T_[i + 1] - T_[i]);
 }
 
 // ************************************************************************* //
