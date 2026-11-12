@@ -140,6 +140,13 @@ public:
 
         // Evaluation functions
 
+            //- Return false: the patch value is not altered by assignment, so
+            //  the boundary flux is that of the tangential patch value
+            virtual bool assignable() const
+            {
+                return false;
+            }
+
             //- Return gradient at boundary
             virtual tmp<vectorField> snGrad() const;
 
