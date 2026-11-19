@@ -60,7 +60,7 @@ PIMPLE
     pRefValue       0;
 
     nThermoCorrectors   20;
-    energyTolerance     1e-5;
+    thermoTolerance     1e-8;
     explicitSolve       true;
     Tmax                3300.0;
 }

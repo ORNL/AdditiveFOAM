@@ -1,8 +1,8 @@
 {
     const label nThermoCorr =
         pimple.dict().lookupOrDefault<label>("nThermoCorrectors", 20);
-    const scalar energyTol =
-        pimple.dict().lookupOrDefault<scalar>("energyTolerance", 1e-5);
+    const scalar thermoTol =
+        pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
 
     const dimensionedScalar rDeltaT = 1.0/runTime.deltaT();
     const surfaceScalarField alphaPhi2("alphaPhi2", phi - alphaPhi1);
@@ -122,7 +122,7 @@
             {
                 const scalar f = energy(t) - Estar;
                 if (f > 0) { hi = t; } else { lo = t; }
-                if (hi - lo < 1e-9*max(t, scalar(1))) { break; }
+                if (hi - lo < 1e-13*max(t, scalar(1))) { break; }
                 const scalar tn = t - f/max(capacity(t), small);
                 t = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
             }
@@ -138,44 +138,20 @@
 
         #include "thermo/updateProperties.H"
 
-        // Energy moved by this iteration relative to the energy exchanged
-        // in the step
-        const scalarField& V = mesh.V();
-        const scalar energyCorrection = gSum
+        // Largest change of the solid fraction in a cell by this iteration
+        const scalar residual = gMax
         (
-            V
-           *(
-                rhoCp.primitiveField()
-               *mag(T.primitiveField() - Tprev.primitiveField())
-              + r1*L
-               *mag
-                (
-                    alphaSolid.primitiveField()
-                  - alphaSolidPrev.primitiveField()
-                )
+            mag
+            (
+                alphaSolid.primitiveField()
+              - alphaSolidPrev.primitiveField()
             )
         );
-        const scalar energyStep = gSum
-        (
-            V
-           *(
-                rhoCp.primitiveField()
-               *mag(T.primitiveField() - T.oldTime().primitiveField())
-              + r1*L
-               *mag
-                (
-                    alphaSolid.primitiveField()
-                  - alphaSolid.oldTime().primitiveField()
-                )
-              + sources.qDot().primitiveField()/rDeltaT.value()
-            )
-        );
-        const scalar residual = energyCorrection/max(energyStep, vSmall);
 
         Info<< "Thermo: iteration " << tCorr
             << " residual: " << residual << endl;
 
-        converged = residual < energyTol && tCorr > 0;
+        converged = residual < thermoTol && tCorr > 0;
     }
 
     if (!converged)

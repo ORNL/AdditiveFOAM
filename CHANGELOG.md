@@ -37,9 +37,6 @@
   `ADDITIVEFOAM_SRC` points to the new location.
 - The tutorials are grouped by solver in `tutorials/additiveFoam` and
   `tutorials/additiveVoFFoam`.
-- `additiveFoam` stops the phase-change iterations on the energy moved by an
-  iteration relative to the energy exchanged in the step, set by
-  `energyTolerance` (default 1e-5) in `PIMPLE`. It replaces `thermoTolerance`.
 
 # Release 2.0.0
 

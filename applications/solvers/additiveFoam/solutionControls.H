@@ -3,7 +3,7 @@ scalar nThermoCorr =
     pimple.dict().lookupOrDefault<scalar>("nThermoCorrectors", 20);
 
 scalar thermoTol =
-    pimple.dict().lookupOrDefault<scalar>("energyTolerance", 1e-5);
+    pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
 
 dimensionedScalar Tmax
 (

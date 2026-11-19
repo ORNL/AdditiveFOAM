@@ -22,7 +22,6 @@
     T.oldTime();
     alpha1.oldTime();
 
-    const scalarField& V = mesh.V();
     const scalar L = Lf.value();
 
     for (int tCorr=0; tCorr < nThermoCorr; tCorr++)
@@ -61,7 +60,6 @@
         //- put each cell on the path at the energy of the linearized solution,
         //  Cp*(t - T*) = Lf*(alpha(t) - alpha*), whose left side minus right
         //  side increases with t
-        scalar energyCorrection = 0;
 
         forAll(T, celli)
         {
@@ -87,7 +85,7 @@
             {
                 const scalar g = f(t);
                 if (g > 0) { hi = t; } else { lo = t; }
-                if (hi - lo < 1e-9*max(t, scalar(1))) { break; }
+                if (hi - lo < 1e-13*max(t, scalar(1))) { break; }
                 const scalar tn = t - g/(c - thermo.dAlphadT(t));
                 t = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
             }
@@ -101,39 +99,14 @@
                 max(alphaStar + c*(t - Tstar), thermo.alpha(t + eps)),
                 thermo.alpha(t - eps)
             );
-
-            energyCorrection +=
-                V[celli]
-               *(
-                    Cp[celli]*mag(t - T0[celli])
-                  + L*mag(alpha1[celli] - alpha10[celli])
-                );
         }
 
         T.correctBoundaryConditions();
         alpha1.correctBoundaryConditions();
 
-        //- check convergence: energy moved by this iteration relative to the
-        //  energy exchanged in the step
-        const scalar energyStep = gSum
-        (
-            V
-           *(
-                Cp.primitiveField()
-               *mag(T.primitiveField() - T.oldTime().primitiveField())
-              + L
-               *mag
-                (
-                    alpha1.primitiveField() - alpha1.oldTime().primitiveField()
-                )
-              + mag(sources.qDot().primitiveField())
-               /(rho.value()*rDeltaT.value())
-            )
-        );
-
+        //- check convergence: largest change of the solid fraction in a cell
         const scalar residual =
-            returnReduce(energyCorrection, sumOp<scalar>())
-           /max(energyStep, vSmall);
+            gMax(mag(alpha1.internalField() - alpha10.internalField())());
 
         Info<< "Thermo: iteration " << tCorr
             << " residual: " << residual << endl;
