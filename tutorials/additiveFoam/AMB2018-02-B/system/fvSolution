@@ -61,7 +61,7 @@ PIMPLE
 
 
     nThermoCorrectors   20;
-    thermoTolerance     1e-8;
+    thermoTolerance     1e-5;
     explicitSolve       true;
 }
 
