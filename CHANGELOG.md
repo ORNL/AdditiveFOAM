@@ -24,6 +24,12 @@
 - Added bare-plate and powder-bed `additiveVoFFoam` tutorials with the
   tabulated heat source.
 
+## Fixes
+
+- The time step dilates by up to 1% to hit the end of a scan-path vector, as
+  intended. It no longer leaves a remainder step of a few nanoseconds, after
+  which the step had to grow back by a factor of 1.2 per step.
+
 ## Upgrade notes
 
 - The moving heat source, function object and utility libraries moved from

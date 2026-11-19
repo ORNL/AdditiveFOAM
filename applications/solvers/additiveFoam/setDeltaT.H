@@ -41,9 +41,14 @@ if (adjustTimeStep)
 
     scalar deltaT = min(deltaTFact*runTime.deltaTValue(), maxDeltaT);
 
-    sources.adjustDeltaT(deltaT);
-
+    // The write-time adjustment of setDeltaT divides the time to the next
+    // write evenly and replaces the time step, so the scan-path adjustment
+    // is applied to its result
     runTime.setDeltaT(deltaT);
+
+    deltaT = runTime.deltaTValue();
+    sources.adjustDeltaT(deltaT);
+    runTime.setDeltaTNoAdjust(deltaT);
 }
 
 Info<< "deltaT = " <<  runTime.deltaTValue() << endl;

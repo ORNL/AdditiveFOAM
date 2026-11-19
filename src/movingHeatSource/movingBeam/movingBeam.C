@@ -241,11 +241,12 @@ void Foam::movingBeam::adjustDeltaT(scalar& dt) const
 
         if (nSteps < labelMax)
         {
-            // allow time step to dilate 1% to hit target path time
+            // Number of steps to the end of the path vector: the time step
+            // may dilate by up to 1% so that the end is hit without a
+            // remainder step of a small fraction of the time step
             const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
 
-            // reduce the time step to hit the next path vector end time
-            dt = min(timeToNextPath/nStepsToNextPath, dt);
+            dt = timeToNextPath/nStepsToNextPath;
         }
     }
 }
