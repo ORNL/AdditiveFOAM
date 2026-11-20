@@ -117,14 +117,20 @@
             span = max(hi - lo, scalar(1));
             while (energy(hi) < Estar) { hi += span; span *= 2; }
 
+            // Safeguarded Newton iteration: a Newton step inside the bracket,
+            // otherwise bisection. It ends when the update no longer moves
+            // the temperature or the bracket has closed.
             scalar t = Tc[i];
+            const scalar tolT = 1e-12*max(mag(t), scalar(1));
             for (label it = 0; it < 60; it++)
             {
                 const scalar f = energy(t) - Estar;
                 if (f > 0) { hi = t; } else { lo = t; }
-                if (hi - lo < 1e-13*max(t, scalar(1))) { break; }
                 const scalar tn = t - f/max(capacity(t), small);
-                t = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
+                const scalar tNew = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
+                const bool done = mag(tNew - t) <= tolT || hi - lo <= tolT;
+                t = tNew;
+                if (done) { break; }
             }
             Tc[i] = t;
         }
