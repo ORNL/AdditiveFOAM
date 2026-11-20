@@ -198,6 +198,14 @@
             const scalar alphaStar =
                 alpha1[celli] + alphaOffset[celli] + dFdT[celli]*Tstar;
 
+            //- a cell whose linearized state is on the path is its own
+            //  projection (as in TEqn.H)
+            if (thermo.alpha(Tstar) == alphaStar)
+            {
+                alpha1[celli] = alphaStar;
+                continue;
+            }
+
             auto f = [&](const scalar t)
             {
                 return c*(t - Tstar) - (thermo.alpha(t) - alphaStar);

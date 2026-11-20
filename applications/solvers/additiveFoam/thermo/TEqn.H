@@ -68,6 +68,15 @@
             const scalar alphaStar =
                 alpha10[celli] + dFdT[celli]*(Tstar - T0[celli]);
 
+            //- a cell whose linearized state is on the path is its own
+            //  projection: every cell outside the melting range that stays
+            //  there, which is most of the mesh on every solve
+            if (thermo.alpha(Tstar) == alphaStar)
+            {
+                alpha1[celli] = alphaStar;
+                continue;
+            }
+
             auto f = [&](const scalar t)
             {
                 return c*(t - Tstar) - (thermo.alpha(t) - alphaStar);
