@@ -19,6 +19,13 @@
   the `thermoPath` at its energy. It converges in fewer iterations and
   tolerates larger temperature changes per step.
 - `thermoPath` accepts isothermal steps, such as a eutectic plateau.
+- `phaseChangeIteration nested;` in `PIMPLE` adds a convergence guarantee to
+  the phase-change iteration of both solvers. The Newton iteration is kept;
+  if its active path segments repeat within a step, which is a limit cycle,
+  the step is completed with the nested iteration of Brugnano and Casulli
+  (SIAM J. Sci. Comput. 31, 2009) on the piecewise-linear path, which reaches
+  the solution in finitely many solves. Steps that do not cycle execute the
+  same solves as the default `newton`.
 - Added `sigma` and optional `vaporization` entries to the material
   configuration files.
 - Added bare-plate and powder-bed `additiveVoFFoam` tutorials with the

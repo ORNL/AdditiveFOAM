@@ -98,6 +98,10 @@ int main(int argc, char *argv[])
 
     Info<< "\nStarting time loop\n" << endl;
 
+    //- Phase-change iteration: "newton" (optimum approach) or "nested"
+    const word phaseChangeIteration =
+        pimple.dict().lookupOrDefault<word>("phaseChangeIteration", "newton");
+
     while (runTime.run())
     {
         #include "readDyMControls.H"
@@ -113,7 +117,15 @@ int main(int argc, char *argv[])
         while (pimple.loop())
         {
             #include "alphaEqn.H"
-            #include "thermo/TEqn.H"
+
+            if (phaseChangeIteration == "nested")
+            {
+                #include "thermo/TEqnNested.H"
+            }
+            else
+            {
+                #include "thermo/TEqn.H"
+            }
             #include "pU/UEqn.H"
 
             while (pimple.correct())

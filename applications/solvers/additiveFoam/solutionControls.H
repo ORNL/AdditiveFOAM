@@ -5,6 +5,11 @@ scalar nThermoCorr =
 scalar thermoTol =
     pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
 
+//- Phase-change iteration: "newton" (optimum approach) or "nested"
+//  (Brugnano-Casulli nested iteration of the piecewise-linear latent heat)
+const word phaseChangeIteration =
+    pimple.dict().lookupOrDefault<word>("phaseChangeIteration", "newton");
+
 dimensionedScalar Tmax
 (
     "Tmax",

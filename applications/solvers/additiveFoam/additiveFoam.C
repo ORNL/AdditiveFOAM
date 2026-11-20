@@ -135,7 +135,14 @@ int main(int argc, char *argv[])
             }
         }
 
-        #include "thermo/TEqn.H"
+        if (phaseChangeIteration == "nested")
+        {
+            #include "thermo/TEqnNested.H"
+        }
+        else
+        {
+            #include "thermo/TEqn.H"
+        }
 
         #include "updateProperties.H"
 
