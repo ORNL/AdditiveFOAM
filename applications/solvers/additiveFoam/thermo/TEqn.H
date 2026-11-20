@@ -24,6 +24,13 @@
 
     const scalar L = Lf.value();
 
+    //- solid fraction before each solve, for the linearization and the
+    //  residual; allocated once
+    volScalarField alpha10("alpha10", alpha1);
+
+    //- the implicit temperature limit is assembled only when one is set
+    const bool limitT = Tmax.value() < vGreat;
+
     for (int tCorr=0; tCorr < nThermoCorr; tCorr++)
     {
         forAll(T, celli)
@@ -34,20 +41,12 @@
         T0.correctBoundaryConditions();
         dFdT.correctBoundaryConditions();
 
-        const volScalarField alpha10("alpha10", alpha1);
+        alpha10 = alpha1;
 
-        //- optional implicit limiting of temperature field
-        volScalarField A
+        //- the energy equation with the linearized latent heat
+        tmp<fvScalarMatrix> tTEqnLatent
         (
-            "A",
-            dimensionedScalar(rho.dimensions()*Cp.dimensions(), 1e15)
-           *pos(T - Tmax)
-        );
-
-        //- solve the energy equation
-        solve
-        (
-            TEqn + rDeltaT*(fvm::Sp(A, T) - A*Tmax)
+            TEqn
          ==
             (
                 (ddtScheme == "Euler")
@@ -57,9 +56,26 @@
           + rDeltaT*rho*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
         );
 
+        //- optional implicit limiting of temperature field
+        if (limitT)
+        {
+            const volScalarField A
+            (
+                "A",
+                dimensionedScalar(rho.dimensions()*Cp.dimensions(), 1e15)
+               *pos(T - Tmax)
+            );
+
+            tTEqnLatent.ref() += rDeltaT*(fvm::Sp(A, T) - A*Tmax);
+        }
+
+        tTEqnLatent.ref().solve();
+
         //- put each cell on the path at the energy of the linearized solution,
         //  Cp*(t - T*) = Lf*(alpha(t) - alpha*), whose left side minus right
         //  side increases with t
+
+        scalar residual = 0;
 
         forAll(T, celli)
         {
@@ -74,6 +90,7 @@
             if (thermo.alpha(Tstar) == alphaStar)
             {
                 alpha1[celli] = alphaStar;
+                residual = max(residual, mag(alphaStar - alpha10[celli]));
                 continue;
             }
 
@@ -114,14 +131,14 @@
                 max(alphaStar + c*(t - Tstar), thermo.alpha(t + eps)),
                 thermo.alpha(t - eps)
             );
+            residual = max(residual, mag(alpha1[celli] - alpha10[celli]));
         }
 
         T.correctBoundaryConditions();
         alpha1.correctBoundaryConditions();
 
         //- check convergence: largest change of the solid fraction in a cell
-        const scalar residual =
-            gMax(mag(alpha1.internalField() - alpha10.internalField())());
+        reduce(residual, maxOp<scalar>());
 
         Info<< "Thermo: iteration " << tCorr
             << " residual: " << residual << endl;
