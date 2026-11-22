@@ -94,6 +94,35 @@ const scalar pRecoil0
     0.54*vaporizationDict.lookupOrDefault<scalar>("p0", 101325)
 );
 
+//- Evaporative cooling of the surface, with the recoil: the Hertz-Knudsen
+//  mass flux with the back-flux coefficient of Anisimov,
+//  0.82*p0*exp(Lv*M/R*(1/Tvap - 1/T))*sqrt(M/(2 pi R T)), times Lv
+const scalar evaporationCoeff
+(
+    recoil
+  ? 0.82*vaporizationDict.lookupOrDefault<scalar>("p0", 101325)
+   *Foam::sqrt
+    (
+        scalar
+        (
+            vaporizationDict.lookup<scalar>("M")
+           /(2*constant::mathematical::pi*constant::physicoChemical::R.value())
+        )
+    )
+   *vaporizationDict.lookup<scalar>("Lv")
+  : 0
+);
+
+//- Radiative cooling of the surface when an emissivity is given
+const scalar emissivity
+(
+    transportProperties.lookupOrDefault<scalar>("emissivity", 0)
+);
+const scalar Tambient
+(
+    transportProperties.lookupOrDefault<scalar>("Tambient", 300)
+);
+
 //- Gas
 const dictionary& gasDict(transportProperties.subDict("gas"));
 

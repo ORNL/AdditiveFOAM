@@ -23,7 +23,7 @@ surfaceScalarField surfaceTensionForce
 
     const surfaceVectorField nHatf(gradAlphaf/(mag(gradAlphaf) + deltaN));
 
-    // Curvature, smoothed towards the interface centre
+    // Curvature, smoothed toward the interface center
     const volScalarField K(-fvc::div(nHatf & mesh.Sf()));
 
     const volScalarField w(sqrt(alpha1c*(1.0 - alpha1c) + 0.001));
@@ -51,13 +51,30 @@ surfaceScalarField surfaceTensionForce
         sigma0 + dSigmadT*(max(T, solidus) - liquidus)
     );
 
+    const volScalarField alphaLiquid(max(alpha1c - alphaSolid, scalar(0)));
+    const volScalarField alpha2c(1.0 - alpha1c);
+
+    // A property of the liquid surface is evaluated on the liquid side of the
+    // face. In a smeared thermal field the gas cell next to the surface is
+    // colder than the surface, and a plain face interpolation would average
+    // the surface tension, its gradient and the recoil pressure with values
+    // that belong to no surface: the gas side carries sigma(solidus) and a
+    // zero gradient below the solidus, and a recoil pressure of nothing
+    const surfaceScalarField alphaLiquidf(fvc::interpolate(alphaLiquid));
+
+    auto liquidFace = [&](const auto& field)
+    {
+        return fvc::interpolate(alphaLiquid*field)/max(alphaLiquidf, small);
+    };
+
     // Normal pressure jump of the liquid-gas pair: capillary pressure and
     // recoil pressure of the evaporating liquid
-    surfaceScalarField pJumpf(fvc::interpolate(sigma)*Kf);
+    surfaceScalarField pJumpf(liquidFace(sigma)*Kf);
 
     if (recoil)
     {
-        pJumpf += fvc::interpolate
+        // Saturation pressure at the temperature of the liquid surface
+        const volScalarField pRecoil
         (
             dimensionedScalar(dimPressure, pRecoil0)
            *exp
@@ -69,20 +86,19 @@ surfaceScalarField surfaceTensionForce
                 )
             )
         );
-    }
 
-    const volScalarField alphaL(max(alpha1c - alphaSolid, scalar(0)));
-    const volScalarField alpha2c(1.0 - alpha1c);
+        pJumpf += liquidFace(pRecoil);
+    }
 
     surfaceTensionForce +=
         pJumpf
        *(
-            fvc::interpolate(alpha2c)*fvc::snGrad(alphaL)
-          - fvc::interpolate(alphaL)*fvc::snGrad(alpha2c)
+            fvc::interpolate(alpha2c)*fvc::snGrad(alphaLiquid)
+          - fvc::interpolate(alphaLiquid)*fvc::snGrad(alpha2c)
         );
 
-    // Marangoni stress
-    const surfaceVectorField gradSigmaf(fvc::interpolate(fvc::grad(sigma)));
+    // Marangoni stress, from the surface-tension gradient of the liquid side
+    const surfaceVectorField gradSigmaf(liquidFace(fvc::grad(sigma)));
 
     surfaceTensionForce +=
         (

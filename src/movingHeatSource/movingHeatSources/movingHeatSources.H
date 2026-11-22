@@ -74,15 +74,15 @@ private:
         void readSources();
 
         //- Set qDot from the per-source heating, averaged over the beam
-        //  path travelled during the time step
+        //  path traveled during the time step
         template<class SourceQDot>
         void integrate(const SourceQDot& sourceQDot);
 
-        //- Cells first reached along -z, the highest cell with alpha > 0.5
-        //  in each vertical column
-        labelList surfaceCells(const volScalarField& alpha) const;
-
 public:
+
+        //- Cells first reached along -z, the highest cell with alpha > 0.5
+        //  in each vertical column: the free surface as the beam sees it
+        labelList surfaceCells(const volScalarField& alpha) const;
 
     // Constructors
 

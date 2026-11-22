@@ -272,6 +272,35 @@ surfaceScalarField rhoHPhi
     dimensionedScalar(dimPower, 0)
 );
 
+//- Sensible enthalpy law of a cell: the metal on its path and the gas, on
+//  the clipped metal fraction like the other thermal properties
+const sensibleEnergy sensible
+{
+    alpha1c.primitiveField(),
+    rhoCp.primitiveField(),
+    rhoH.primitiveField(),
+    thermo,
+    CpGas,
+    rho1.value(),
+    rho2.value()
+};
+
+//- Surface cooling (evaporation, radiation): implicit coefficient and
+//  explicit remainder of the linearized sink, and the step's powers
+volScalarField surfaceCoolingSp
+(
+    IOobject("surfaceCoolingSp", runTime.name(), mesh),
+    mesh,
+    dimensionedScalar(dimPower/dimVolume/dimTemperature, 0)
+);
+volScalarField surfaceCoolingSu
+(
+    IOobject("surfaceCoolingSu", runTime.name(), mesh),
+    mesh,
+    dimensionedScalar(dimPower/dimVolume, 0)
+);
+scalar evaporationPower = 0, radiationPower = 0, surfaceArea = 0;
+
 #include "thermo/updateProperties.H"
 rhoCp.oldTime();
 rhoH.oldTime();
