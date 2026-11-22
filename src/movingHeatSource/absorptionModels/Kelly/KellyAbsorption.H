@@ -54,6 +54,13 @@ public:
     {}
 
     virtual scalar eta(const scalar aspectRatio) const;
+
+    //- The aspect-ratio law stands in for the keyhole a volumetric source
+    //  does not resolve; it is not a surface absorptivity
+    virtual word scope() const
+    {
+        return "volumetric";
+    }
 };
 
 } // End namespace absorptionModels

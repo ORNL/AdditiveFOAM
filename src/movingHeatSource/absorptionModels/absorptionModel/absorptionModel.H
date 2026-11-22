@@ -62,7 +62,22 @@ public:
     virtual ~absorptionModel()
     {}
 
+    //- Absorptivity of a volumetric source, from the melt pool aspect ratio
     virtual scalar eta(const scalar aspectRatio) const = 0;
+
+    //- Absorptivity of a surface hit at the incidence cosine cosTheta; a
+    //  model without an angle dependence returns eta(aspectRatio)
+    virtual scalar eta(const scalar aspectRatio, const scalar cosTheta) const
+    {
+        return eta(aspectRatio);
+    }
+
+    //- The deposition the model is written for: "surface" (a flux on the
+    //  first metal surface), "volumetric" (a source in the metal), or "any"
+    virtual word scope() const
+    {
+        return "any";
+    }
 
     void operator=(const absorptionModel&) = delete;
 };

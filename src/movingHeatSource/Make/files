@@ -2,6 +2,7 @@ absorptionModels/absorptionModel/absorptionModel.C
 absorptionModels/absorptionModel/absorptionModelNew.C
 absorptionModels/constant/constantAbsorption.C
 absorptionModels/Kelly/KellyAbsorption.C
+absorptionModels/Fresnel/FresnelAbsorption.C
 
 pathVector/pathVector.C
 

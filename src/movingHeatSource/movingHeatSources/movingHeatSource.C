@@ -209,9 +209,15 @@ Foam::tmp<Foam::volScalarField> Foam::movingHeatSource::qDot() const
 
 Foam::tmp<Foam::volScalarField> Foam::movingHeatSource::qDot
 (
-    const labelUList& surfaceCells
+    const labelUList& surfaceCells,
+    const scalarField& cosTheta,
+    scalar& absorbedPower,
+    scalar& reflectedPower
 ) const
 {
+    absorbedPower = 0;
+    reflectedPower = 0;
+
     tmp<volScalarField> tqDot
     (
         new volScalarField
@@ -267,15 +273,27 @@ Foam::tmp<Foam::volScalarField> Foam::movingHeatSource::qDot
 
     if (sumWeights > vSmall)
     {
-        const scalar absorbedPower =
-            absorption_->eta(references_.aspectRatio())*beam_.power();
+        // The beam power reaching each surface cell, by its share of the
+        // profile over the projected area, and the part the surface absorbs
+        // at its own incidence angle; the rest leaves as reflected power
+        const scalar aspectRatio = references_.aspectRatio();
 
         forAll(surfaceCells, i)
         {
-            qDot[surfaceCells[i]] =
-                absorbedPower*weights[i]/(sumWeights*heights[i]);
+            const label celli = surfaceCells[i];
+            const scalar incident =
+                beam_.power()*weights[i]*mesh_.V()[celli]
+               /(heights[i]*sumWeights);
+            const scalar eta = absorption_->eta(aspectRatio, cosTheta[i]);
+
+            qDot[celli] = eta*incident/mesh_.V()[celli];
+            absorbedPower += eta*incident;
+            reflectedPower += (1.0 - eta)*incident;
         }
     }
+
+    reduce(absorbedPower, sumOp<scalar>());
+    reduce(reflectedPower, sumOp<scalar>());
 
     return tqDot;
 }

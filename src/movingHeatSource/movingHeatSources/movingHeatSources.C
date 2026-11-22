@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "movingHeatSources.H"
+#include "fvcGrad.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -170,7 +171,7 @@ Foam::labelList Foam::movingHeatSources::surfaceCells
     const volScalarField& alpha
 ) const
 {
-    // Columns are identified by their cell-centre (x, y) on a 1 nm grid
+    // Columns are identified by their cell-center (x, y) on a 1 nm grid
     auto column = [](const point& c)
     {
         return labelPair(round(c.x()*1e9), round(c.y()*1e9));
@@ -218,6 +219,19 @@ Foam::labelList Foam::movingHeatSources::surfaceCells
 
 void Foam::movingHeatSources::update()
 {
+    forAll(sources_, i)
+    {
+        if (sources_[i].absorption().scope() == "surface")
+        {
+            FatalErrorInFunction
+                << "Absorption model " << sources_[i].absorption().type()
+                << " of source " << sources_[i].name()
+                << " describes a surface hit; the source is volumetric here. "
+                << "Use constant or Kelly."
+                << exit(FatalError);
+        }
+    }
+
     integrate
     (
         [](const movingHeatSource& source)
@@ -232,13 +246,63 @@ void Foam::movingHeatSources::update(const volScalarField& alpha)
 {
     const labelList cells(surfaceCells(alpha));
 
+    // Incidence cosine of the vertical beam on the surface of each cell,
+    // from the normal of the metal fraction
+    const volVectorField gradAlpha(fvc::grad(alpha));
+    scalarField cosTheta(cells.size(), 1.0);
+    forAll(cells, i)
+    {
+        const vector& g = gradAlpha[cells[i]];
+        cosTheta[i] = mag(g.z())/(mag(g) + vSmall);
+    }
+
+    forAll(sources_, i)
+    {
+        if (sources_[i].absorption().scope() == "volumetric")
+        {
+            FatalErrorInFunction
+                << "Absorption model " << sources_[i].absorption().type()
+                << " of source " << sources_[i].name()
+                << " describes a volumetric source; the beam is absorbed at "
+                << "the metal surface here. Use constant or Fresnel."
+                << exit(FatalError);
+        }
+    }
+
+    scalarField absorbed(sources_.size(), 0), reflected(sources_.size(), 0);
+    label sourcei = 0;
+
     integrate
     (
-        [&cells](const movingHeatSource& source)
+        [&](const movingHeatSource& source)
         {
-            return source.qDot(cells);
+            // the source index: sources are integrated in order
+            while (sourcei < sources_.size() && &sources_[sourcei] != &source)
+            {
+                sourcei++;
+            }
+            scalar a = 0, r = 0;
+            tmp<volScalarField> tq(source.qDot(cells, cosTheta, a, r));
+            if (sourcei < sources_.size())
+            {
+                absorbed[sourcei] += a;
+                reflected[sourcei] += r;
+            }
+            return tq;
         }
     );
+
+    forAll(sources_, i)
+    {
+        if (sources_[i].beam().activePath() && sources_[i].beam().power() > small)
+        {
+            // powers accumulated over the sub-steps of the path integration
+            // are per call; report the mean over the step
+            Info<< "Beam " << sources_[i].name() << ": absorbed "
+                << absorbed[i] << " W, reflected " << reflected[i]
+                << " W (sum of the path sub-steps)" << endl;
+        }
+    }
 }
 
 // ************************************************************************* //

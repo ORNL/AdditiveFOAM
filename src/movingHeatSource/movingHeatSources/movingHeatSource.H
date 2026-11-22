@@ -79,7 +79,19 @@ public:
 
     //- Absorbed power as a flux through the given surface cells, distributed
     //  by the beam-plane profile over their horizontal areas
-    tmp<volScalarField> qDot(const labelUList& surfaceCells) const;
+    tmp<volScalarField> qDot
+    (
+        const labelUList& surfaceCells,
+        const scalarField& cosTheta,
+        scalar& absorbedPower,
+        scalar& reflectedPower
+    ) const;
+
+    //- The absorption model
+    const absorptionModel& absorption() const
+    {
+        return absorption_();
+    }
 
     void operator=(const movingHeatSource&) = delete;
 };
