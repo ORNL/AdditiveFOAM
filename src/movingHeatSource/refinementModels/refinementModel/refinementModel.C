@@ -167,18 +167,18 @@ void Foam::refinementModel::scanPathFrame
 bool Foam::refinementModel::cellOverlapsOBB
 (
     const treeBoundBox& cellAABB,
-    const point& centre,
+    const point& center,
     const vector& e0,
     const vector& e1,
     const vector& e2,
     const vector& L
 ) const
 {
-    const point cellCentre = 0.5*(cellAABB.min() + cellAABB.max());
+    const point cellCenter = 0.5*(cellAABB.min() + cellAABB.max());
 
     const vector cellHalfLength = 0.5*(cellAABB.max() - cellAABB.min());
 
-    const vector d = cellCentre - centre;
+    const vector d = cellCenter - center;
 
     const scalar r0 =
         cellHalfLength.x()*mag(e0.x())
@@ -291,7 +291,7 @@ Foam::scalar Foam::refinementModel::markScanPath
 
             const scalar scanLength = sqrt(sqr(d.x()) + sqr(d.y()));
 
-            const point centre = 0.5*(p0 + p1);
+            const point center = 0.5*(p0 + p1);
 
             const vector L
             (
@@ -317,8 +317,8 @@ Foam::scalar Foam::refinementModel::markScanPath
 
             treeBoundBox pathAABB
             (
-                centre - pathAABBHalfLength,
-                centre + pathAABBHalfLength
+                center - pathAABBHalfLength,
+                center + pathAABBHalfLength
             );
 
             forAll(mesh_.cells(), celli)
@@ -334,7 +334,7 @@ Foam::scalar Foam::refinementModel::markScanPath
                  && cellOverlapsOBB
                     (
                         cellAABBs[celli],
-                        centre,
+                        center,
                         e0,
                         e1,
                         e2,

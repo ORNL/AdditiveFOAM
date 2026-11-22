@@ -16,16 +16,16 @@ const volScalarField D
 
 const surfaceScalarField Df("Df", fvc::interpolate(D));
 
-// Buoyancy density: the fluid weight with thermal expansion; the solid
-// carries its own weight
-const volScalarField alphaL(alpha1 - min(alphaSolid, alpha1));
+// Buoyancy density, as rhok in additiveFoam but dimensional here: the fluid
+// weight with thermal expansion; the solid carries its own weight
+const volScalarField alphaLiquid(alpha1 - min(alphaSolid, alpha1));
 
-const volScalarField rhoBuoyant
+const volScalarField rhok
 (
-    "rhoBuoyant",
+    "rhok",
     rho - min(alphaSolid, alpha1)*(rho1 - rho2)
-  - alphaL*rho1*beta1*(T - liquidus)
-  - (1.0 - alphaL)*rho2*beta2*(T - liquidus)
+  - alphaLiquid*rho1*beta1*(T - liquidus)
+  - (1.0 - alphaLiquid)*rho2*beta2*(T - liquidus)
 );
 
 fvVectorMatrix UEqn
@@ -49,7 +49,7 @@ if (pimple.momentumPredictor())
             (
                 (
                     surfaceTensionForce
-                  - ghf*fvc::snGrad(rhoBuoyant)
+                  - ghf*fvc::snGrad(rhok)
                   - fvc::snGrad(p_rgh)
                 )*mesh.magSf()
               - Df*phi

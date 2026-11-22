@@ -10,7 +10,7 @@ that of the tabulated tutorial, and `Allrun` converts its PRIMES export.
 `tabulated`
 
 A 1.5 mm wide, 1 mm thick plate with 0.3 mm of gas above. The mesh is 10 um
-within 0.35 mm of the track and coarsens towards the sides, the bottom and the
+within 0.35 mm of the track and coarsens toward the sides, the bottom and the
 top.
 
 `tabulatedPowderBed`

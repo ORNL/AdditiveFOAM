@@ -34,7 +34,7 @@ vertices
 );
 
 // 10 um cells within 0.35 mm of the track and between z = -0.25 mm and
-// z = 0.15 mm, coarsening towards the sides, the bottom and the top
+// z = 0.15 mm, coarsening toward the sides, the bottom and the top
 blocks
 (
     hex (0 1 2 3 4 5 6 7) (300 100 70)

@@ -1,7 +1,6 @@
 {
     rAU = 1.0/UEqn.A();
 
-    // Face mobility of the interpolated momentum diagonal
     const surfaceScalarField rAUf("rAUf", 1.0/fvc::interpolate(UEqn.A()));
     const surfaceScalarField rAUDf("rAUDf", rAUf/(1.0 + rAUf*Df));
 
@@ -39,7 +38,7 @@
 
     const surfaceScalarField phig
     (
-        (surfaceTensionForce - ghf*fvc::snGrad(rhoBuoyant))*rAUDf*mesh.magSf()
+        (surfaceTensionForce - ghf*fvc::snGrad(rhok))*rAUDf*mesh.magSf()
     );
 
     phiHbyA += phig;
@@ -67,7 +66,6 @@
 
             p_rgh.relax();
 
-            // Velocity from the same face-weighted acceleration as phi
             U =
             (
                 HbyA
@@ -81,7 +79,7 @@
 
     #include "continuityErrs.H"
 
-    p == p_rgh + rhoBuoyant*gh;
+    p == p_rgh + rhok*gh;
 
     if (p_rgh.needReference())
     {
@@ -92,6 +90,6 @@
             pressureReference.refValue()
           - getRefCellValue(p, pressureReference.refCell())
         );
-        p_rgh = p - rhoBuoyant*gh;
+        p_rgh = p - rhok*gh;
     }
 }

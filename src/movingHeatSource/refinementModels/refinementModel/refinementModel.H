@@ -93,7 +93,7 @@ class refinementModel
         bool cellOverlapsOBB
         (
             const treeBoundBox& cellAABB,
-            const point& centre,
+            const point& center,
             const vector& e0,
             const vector& e1,
             const vector& e2,
