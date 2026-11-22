@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
     // Initialize time-stepping controls
     scalar DiNum = 0.0;
-    scalar alphaCoNum = 0.0;
+    scalar phaseChangeCoNum = 0.0;
     movingHeatSources sources(mesh);
 
     Info<< "\nStarting time loop\n" << endl;

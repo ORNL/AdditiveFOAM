@@ -1,17 +1,19 @@
 if (adjustTimeStep)
 {
-    scalar maxAlphaCo =
-        runTime.controlDict().lookupOrDefault<scalar>("maxAlphaCo", 1.0);
+    // Phase-change Courant number: the change of the solid fraction a cell
+    // can make in one step on a linear path through the melting range
+    const scalar maxPhaseChangeCo =
+        runTime.controlDict().lookupOrDefault<scalar>("maxPhaseChangeCo", 1.0);
 
-    const volScalarField::Internal alphaNum
+    const volScalarField::Internal phaseChangeNum
     (
         mag(fvc::ddt(T)) / (liquidus - solidus)
        *runTime.deltaT()
     );
 
-    alphaCoNum = gMax(alphaNum);
+    phaseChangeCoNum = gMax(phaseChangeNum);
 
-    Info << "Thermo Number max: " << alphaCoNum << endl;
+    Info<< "Phase-change Courant Number max: " << phaseChangeCoNum << endl;
 
     scalar maxDi = runTime.controlDict().lookupOrDefault<scalar>("maxDi", 10.0);
 
@@ -23,7 +25,7 @@ if (adjustTimeStep)
            *fvc::interpolate(kappa)
            *mesh.surfaceInterpolation::deltaCoeffs()
         )
-       /(mesh.V()*rho*Cp)
+       /(mesh.V()*rhoCp)
        *runTime.deltaT()
     );
 
@@ -33,7 +35,7 @@ if (adjustTimeStep)
 
     scalar maxDeltaTFact = min
     (
-        min(maxCo/(CoNum + small), maxAlphaCo/(alphaCoNum + small)),
+        min(maxCo/(CoNum + small), maxPhaseChangeCo/(phaseChangeCoNum + small)),
         maxDi/(DiNum + small)
     );
 

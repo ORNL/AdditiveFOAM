@@ -10,19 +10,24 @@ IOdictionary transportProperties
     )
 );
 
-const int PolySize(3);
-const dictionary& solidDict(transportProperties.subDict("solid"));
-const dictionary& liquidDict(transportProperties.subDict("liquid"));
+//- Phase-change path and solid-liquid thermodynamics of the material
+thermoPath path(transportProperties, runTime);
+
+const solidLiquidThermo thermo
+(
+    path,
+    transportProperties.subDict("solid"),
+    transportProperties.subDict("liquid")
+);
+
+const dimensionedScalar solidus("solidus", dimTemperature, thermo.solidus());
+const dimensionedScalar liquidus("liquidus", dimTemperature, thermo.liquidus());
+
+//- Powder, below the solidus
 const dictionary& powderDict(transportProperties.subDict("powder"));
 
-
-Polynomial<PolySize> kappa1(solidDict.lookup("kappa"));
-Polynomial<PolySize> kappa2(liquidDict.lookup("kappa"));
-Polynomial<PolySize> kappa3(powderDict.lookup("kappa"));
-
-Polynomial<PolySize> Cp1(solidDict.lookup("Cp"));
-Polynomial<PolySize> Cp2(liquidDict.lookup("Cp"));
-Polynomial<PolySize> Cp3(powderDict.lookup("Cp"));
+const Polynomial<3> CpPowder(powderDict.lookup("Cp"));
+const Polynomial<3> kappaPowder(powderDict.lookup("kappa"));
 
 // Reference density [kg/m^3]
 const dimensionedScalar rho
@@ -40,12 +45,12 @@ const dimensionedScalar beta
     transportProperties.lookup("beta")
 );
 
-//- Length scale of mushy zone [m]
-const dimensionedScalar DAS
+//- Mushy-zone constant per unit density; a large value keeps the solid rigid
+const dimensionedScalar Cu
 (
-    "DAS",
-    dimLength,
-    transportProperties.lookup("DAS")
+    "Cu",
+    dimless/dimTime,
+    transportProperties.lookupOrDefault<scalar>("Cu", 1e10)
 );
 
 //- Latent heat of fusion [J/kg]

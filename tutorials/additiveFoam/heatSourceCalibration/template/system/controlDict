@@ -51,7 +51,7 @@ maxCo           0.5;
 
 maxDi           1;
 
-maxAlphaCo      1;
+maxPhaseChangeCo      1;
 
 functions
 {
