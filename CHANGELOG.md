@@ -2,6 +2,44 @@
 
 ## Features
 
+- Added the `Fresnel` absorption model: the absorptivity of a metal surface
+  from the Fresnel equations with the complex refractive index n + ik at the
+  local incidence angle, for unpolarized light. The constants come from the
+  absorption dictionary or from the `optical` sub-dictionary of the material
+  card; the three shipped cards carry cited values at 1.07 um. The surface
+  flux of `additiveVoFFoam` now evaluates the absorptivity per surface cell at
+  the incidence angle of the beam on the metal-fraction normal, conserves the
+  beam power as absorbed plus reflected, and reports both per beam every
+  step. Absorption models are scoped by deposition: `constant` serves both,
+  `Fresnel` the surface flux, `Kelly` the volumetric source; the wrong
+  combination is refused.
+- `additiveVoFFoam` cools the free surface by evaporation and radiation.
+  Evaporation uses the Hertz-Knudsen mass flux with the back-flux coefficient
+  of Anisimov, from the `vaporization` entries that already drive the recoil
+  pressure; radiation uses `emissivity` and `Tambient` (default 300 K) when an
+  emissivity is given. Both act on the surface cells of the beam over the true
+  surface area, are evaluated at the temperature of the liquid surface, and
+  are linearized inside the phase-change iteration. The log reports the
+  evaporated and radiated power every step.
+- Surface tension, its gradient (Marangoni stress) and the recoil pressure
+  are evaluated on the liquid side of an interface face. The face average
+  used before mixed them with values of the gas cell, whose temperature lies
+  below the surface temperature in a smeared thermal field: the recoil and
+  the Marangoni stress were halved at a hot wall above a cold gas cell, and
+  the capillary pressure carried the surface tension at the solidus.
+- The time-step limit on the phase change in `additiveFoam` is
+  `maxPhaseChangeCo` (was `maxAlphaCo`): the change of solid fraction a cell
+  may make in one step. `maxAlphaCo` in `additiveVoFFoam` keeps its usual VoF
+  meaning, the interface Courant number. There is no fallback for the old
+  name.
+- `additiveFoam` and `additiveVoFFoam` share one mushy-zone drag: the
+  Carman-Kozeny coefficient `Cu*fs^2/((1 - fs)^3 + 0.001)` of the solid
+  fraction, capped at 1e12 1/s, with `Cu` an optional entry of
+  `transportProperties` that defaults to 1e10 1/s. The `DAS` entry and the
+  dendrite-arm-spacing form of `additiveFoam` are removed: at the resolution
+  of powder-bed simulations the permeability length scale is not resolved,
+  and the constant's role is to hold solid metal still. Melt pool dimensions
+  of the AMB2018-02-B tutorial change by 1 to 2%.
 - Added `additiveVoFFoam`, a transient heat transfer and fluid flow solver
   with a volume of fluid metal-gas free surface for resolved powder-bed and
   melt-pool simulations. It includes surface tension with Marangoni stress,
@@ -16,16 +54,24 @@
   boxes with sub-cell resolution from a `setFieldsDict`.
 - `additiveFoam` solves the phase change with the optimum approach: a Newton
   linearization of the solid fraction followed by projection of each cell onto
-  the `thermoPath` at its energy. It converges in fewer iterations and
+  the `thermoPath` at its enthalpy. It converges in fewer iterations and
   tolerates larger temperature changes per step.
+- `additiveFoam` solves the energy equation in conservative enthalpy form, as
+  `additiveVoFFoam` does. The enthalpy of a cell is now conserved through a
+  temperature-dependent heat capacity, the consolidation of powder and mesh
+  refinement, where the temperature form of 2.0.0 gained energy: up to 0.15%
+  of the absorbed energy at large time steps with the AlSi10Mg heat capacity
+  and 6% in an IN625 powder bed, whose powder heat capacity is 55% of the
+  solid's. Across a mesh change the enthalpy is mapped and the temperature and
+  solid fraction are recovered from it.
 - `thermoPath` accepts isothermal steps, such as a eutectic plateau.
-- `phaseChangeIteration nested;` in `PIMPLE` adds a convergence guarantee to
-  the phase-change iteration of both solvers. The Newton iteration is kept;
-  if its active path segments repeat within a step, which is a limit cycle,
-  the step is completed with the nested iteration of Brugnano and Casulli
-  (SIAM J. Sci. Comput. 31, 2009) on the piecewise-linear path, which reaches
-  the solution in finitely many solves. Steps that do not cycle execute the
-  same solves as the default `newton`.
+- The phase-change iteration of both solvers is the `phaseChangeSolver` class
+  of `libadditiveFoamUtilities`; each solver supplies its form of the sensible
+  energy equation and the enthalpy law of a cell. The latent heat is
+  linearized with the time-derivative scheme of the temperature, so both
+  solvers run with the `Euler`, `backward` and `CrankNicolson` schemes.
+- The solid-liquid thermodynamics of the material, `solidLiquidThermo` in
+  `libadditiveFoamUtilities`, are shared by both solvers.
 - Added `sigma` and optional `vaporization` entries to the material
   configuration files.
 - Added bare-plate and powder-bed `additiveVoFFoam` tutorials with the
@@ -39,6 +85,11 @@
 
 ## Upgrade notes
 
+- Powder properties apply below the solidus. A cell that exceeds the solidus
+  takes the solid-liquid heat capacity and conductivity in that step, and its
+  `alpha.powder` is set to zero at the end of the step as before. The powder
+  enthalpy is relative to the solid at the solidus, so consolidation there
+  neither absorbs nor releases heat.
 - The moving heat source, function object and utility libraries moved from
   `applications/solvers/additiveFoam` to `src`. Library names are unchanged.
   `ADDITIVEFOAM_SRC` points to the new location.
