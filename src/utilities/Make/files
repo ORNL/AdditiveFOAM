@@ -1,5 +1,6 @@
 graph/curve.C
 graph/graph.C
 thermoPath/thermoPath.C
+phaseChangeSolver/phaseChangeSolver.C
 
 LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamUtilities

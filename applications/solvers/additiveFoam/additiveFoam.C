@@ -59,12 +59,13 @@ Description
 #include "Polynomial.H"
 
 #include "EulerDdtScheme.H"
-#include "CrankNicolsonDdtScheme.H"
 
 #include "additiveFoamInfo.H"
 #include "movingHeatSources.H"
 #include "thermoPath.H"
-#include "interpolateXY.H"
+#include "solidLiquidThermo.H"
+#include "phaseChangeSolver.H"
+#include "thermo/sensibleEnergy.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -100,22 +101,26 @@ int main(int argc, char *argv[])
 
         sources.update();
 
+        // The enthalpy of each cell is authoritative across a mesh change:
+        // its sensible and latent parts are mapped with the mesh and the
+        // state is recovered from their sum
+        const scalar enthalpy0 =
+            mesh.dynamic()
+          ? fvc::domainIntegrate(rhoH + rho*Lf*(1 - alphaSolid)).value()
+          : 0;
+
         mesh.update();
 
         if (mesh.topoChanged())
         {
-            // Temperature is authoritative after topology changes. A
-            // conservative scheme should consider enthalpy as authoritative.
-            forAll(mesh.cells(), cellI)
-            {
-                scalar alpha1_ =
-                    interpolateXY(T[cellI], thermo.x(), thermo.y());
-                alpha1[cellI] = min(max(alpha1_, 0.0), 1.0);
-            }
+            phaseChange.setFromEnthalpy(rhoH + rho*Lf*(1 - alphaSolid), sensible);
 
-            alpha1.correctBoundaryConditions();
+            #include "thermo/updateProperties.H"
 
-            #include "updateProperties.H"
+            Info<< "Mesh change: enthalpy before " << enthalpy0
+                << " J, after "
+                << fvc::domainIntegrate(rhoH + rho*Lf*(1 - alphaSolid)).value()
+                << " J" << endl;
         }
 
         runTime++;
@@ -135,16 +140,12 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (phaseChangeIteration == "nested")
-        {
-            #include "thermo/TEqnNested.H"
-        }
-        else
-        {
-            #include "thermo/TEqn.H"
-        }
+        #include "thermo/TEqn.H"
 
-        #include "updateProperties.H"
+        // Powder heated above the solidus has consolidated; its properties
+        // apply below the solidus only, so no property changes with it
+        alphaPowder *= pos0(solidus - T);
+        alphaPowder.correctBoundaryConditions();
 
         runTime.write();
 

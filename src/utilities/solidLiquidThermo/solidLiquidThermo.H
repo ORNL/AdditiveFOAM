@@ -24,18 +24,19 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::metalThermo
+    Foam::solidLiquidThermo
 
 Description
-    Equilibrium thermodynamics of the metal along the phase-change path:
+    Equilibrium thermodynamics of the material along the phase-change path:
     solid fraction, sensible enthalpy, heat capacity and conductivity of the
     solid-liquid mixture. Solid properties are evaluated between 300 K and the
     solidus, liquid properties between the liquidus and twice the liquidus.
+    The sensible enthalpy is relative to the solidus, where it is zero.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef metalThermo_H
-#define metalThermo_H
+#ifndef solidLiquidThermo_H
+#define solidLiquidThermo_H
 
 #include "thermoPath.H"
 #include "Polynomial.H"
@@ -45,7 +46,7 @@ Description
 namespace Foam
 {
 
-class metalThermo
+class solidLiquidThermo
 {
     // Private Data
 
@@ -103,7 +104,7 @@ public:
 
     // Constructors
 
-        metalThermo
+        solidLiquidThermo
         (
             const thermoPath& path,
             const dictionary& solidDict,
@@ -117,19 +118,26 @@ public:
             Ts_(path.solidus()),
             Tl_(path.liquidus())
         {
-            labelList order;
-            sortedOrder(path.x(), order);
+            // thermoPath has ordered the points by temperature, and by
+            // decreasing solid fraction on an isothermal step
+            T_ = path.x();
+            fs_ = path.y();
 
-            T_ = scalarField(path.x(), order);
-            fs_ = scalarField(path.y(), order);
-
+            // Temperatures do not decrease and solid fractions do not
+            // increase; an isothermal step of the path (a eutectic) repeats a
+            // temperature with a lower solid fraction
             for (label i = 1; i < T_.size(); i++)
             {
-                if (T_[i] <= T_[i - 1] || fs_[i] > fs_[i - 1])
+                if
+                (
+                    T_[i] < T_[i - 1]
+                 || fs_[i] > fs_[i - 1]
+                 || (T_[i] == T_[i - 1] && fs_[i] == fs_[i - 1])
+                )
                 {
                     FatalErrorInFunction
-                        << "thermoPath must have increasing temperatures and "
-                        << "non-increasing solid fractions"
+                        << "thermoPath must have non-decreasing temperatures "
+                        << "and non-increasing solid fractions"
                         << exit(FatalError);
                 }
             }
@@ -187,19 +195,26 @@ public:
             return (fs_[i + 1] - fs_[i])/(T_[i + 1] - T_[i]);
         }
 
-        //- Specific heat capacity
-        scalar Cp(const scalar T) const
+        //- Specific heat capacity at T with the solid fraction f of the
+        //  material, which on an isothermal step of the path is a state of
+        //  the cell and not a function of T
+        scalar Cp(const scalar T, const scalar f) const
         {
-            if (T <= Ts_)
+            if (T <= Ts_ && f >= 1)
             {
                 return CpS_.value(max(T, 300.0));
             }
-            if (T >= Tl_)
+            if (T >= Tl_ && f <= 0)
             {
                 return CpL_.value(min(T, 2*Tl_));
             }
-            const scalar f = fs(T);
             return f*CpS_.value(Ts_) + (1 - f)*CpL_.value(Tl_);
+        }
+
+        //- Specific heat capacity on the path
+        scalar Cp(const scalar T) const
+        {
+            return Cp(T, fs(T));
         }
 
         //- Sensible enthalpy relative to the solidus
@@ -228,13 +243,19 @@ public:
               + (CpS_.value(Ts_) - CpL_.value(Tl_))*integralFs(T);
         }
 
-        //- Thermal conductivity
-        scalar kappa(const scalar T) const
+        //- Thermal conductivity at T with the solid fraction f of the
+        //  material
+        scalar kappa(const scalar T, const scalar f) const
         {
-            const scalar f = fs(T);
             return
                 f*kappaS_.value(min(max(T, 300.0), Ts_))
               + (1 - f)*kappaL_.value(min(max(T, Tl_), 2*Tl_));
+        }
+
+        //- Thermal conductivity on the path
+        scalar kappa(const scalar T) const
+        {
+            return kappa(T, fs(T));
         }
 };
 

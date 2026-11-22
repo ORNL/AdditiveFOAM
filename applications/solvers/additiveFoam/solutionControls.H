@@ -1,14 +1,9 @@
 //- Set solution controls for thermodynamic algorithm
-scalar nThermoCorr =
-    pimple.dict().lookupOrDefault<scalar>("nThermoCorrectors", 20);
+label nThermoCorr =
+    pimple.dict().lookupOrDefault<label>("nThermoCorrectors", 20);
 
 scalar thermoTol =
     pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
-
-//- Phase-change iteration: "newton" (optimum approach) or "nested"
-//  (Brugnano-Casulli nested iteration of the piecewise-linear latent heat)
-const word phaseChangeIteration =
-    pimple.dict().lookupOrDefault<word>("phaseChangeIteration", "newton");
 
 dimensionedScalar Tmax
 (
@@ -25,7 +20,7 @@ Info<< "absorbed power: " << totalPower << endl;
 //- prevent iteration of PIMPLE and THERMO where needed
 bool beamOn(totalPower > small);
 
-bool fluidInDomain((1 - gMin(alpha1)) > small);
+bool fluidInDomain((1 - gMin(alphaSolid)) > small);
 
 if (!(beamOn || fluidInDomain))
 {
@@ -46,7 +41,7 @@ if (explicitSolve)
            *fvc::interpolate(kappa)
            *mesh.surfaceInterpolation::deltaCoeffs()
         )
-       /(mesh.V()*rho*Cp)
+       /(mesh.V()*rhoCp)
        *runTime.deltaT()
     );
 

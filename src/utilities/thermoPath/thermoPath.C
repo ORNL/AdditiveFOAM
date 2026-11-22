@@ -275,4 +275,20 @@ Foam::scalar Foam::thermoPath::dAlphadT(const scalar T) const
     return (alpha_[i + 1] - alpha_[i])/(T_[i + 1] - T_[i]);
 }
 
+
+Foam::scalar Foam::thermoPath::step(const scalar T, const scalar tol) const
+{
+    scalar drop = 0;
+
+    for (label i = 1; i < T_.size(); i++)
+    {
+        if (T_[i] == T_[i - 1] && mag(T - T_[i]) <= tol)
+        {
+            drop += alpha_[i - 1] - alpha_[i];
+        }
+    }
+
+    return drop;
+}
+
 // ************************************************************************* //

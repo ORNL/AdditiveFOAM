@@ -162,6 +162,10 @@ public:
 
         //- Derivative of the solid fraction with temperature at T
         scalar dAlphadT(const scalar T) const;
+
+        //- Drop of the solid fraction across an isothermal step of the path
+        //  within tol of T; zero when there is none
+        scalar step(const scalar T, const scalar tol) const;
 };
 
 

@@ -66,9 +66,13 @@ volScalarField alphaSolid
 
 forAll(alphaSolid, celli)
 {
-    alphaSolid[celli] = alpha1c[celli]*metal.fs(T[celli]);
+    alphaSolid[celli] = alpha1c[celli]*thermo.fs(T[celli]);
 }
 alphaSolid.correctBoundaryConditions();
+
+//- Phase-change iteration of the energy equation on the thermoPath, with the
+//  latent heat weighted by the metal fraction of the cell
+phaseChangeSolver phaseChange(T, alphaSolid, path, rho1*Lf, &alpha1c);
 
 //- Volume fraction of the cell occupied by metal that has been liquid
 volScalarField alphaMelted

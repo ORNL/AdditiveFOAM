@@ -1,23 +1,6 @@
 Info<< "Reading transportProperties\n" << endl;
 #include "readTransportProperties.H"
 
-Info<< "Reading thermoPath\n" << endl;
-thermoPath thermo(transportProperties, runTime);
-
-dimensionedScalar liquidus
-(
-    "liquidus",
-    dimTemperature,
-    thermo.liquidus()
-);
-
-dimensionedScalar solidus
-(
-    "solidus",
-    dimTemperature,
-    thermo.solidus()
-);
-
 Info<< "Reading field T\n" << endl;
 volScalarField T
 (
@@ -33,7 +16,7 @@ volScalarField T
 );
 
 Info<< "Setting auxiliary fields for solidification model\n" << endl;
-volScalarField alpha3
+volScalarField alphaPowder
 (
     IOobject
     (
@@ -48,7 +31,7 @@ volScalarField alpha3
     zeroGradientFvPatchScalarField::typeName
 );
 
-volScalarField alpha1
+volScalarField alphaSolid
 (
     IOobject
     (
@@ -63,27 +46,44 @@ volScalarField alpha1
     zeroGradientFvPatchScalarField::typeName
 );
 
-// set solid fraction field consistent with temperature
-forAll(mesh.cells(), celli)
+//- Solid fraction on the phase-change path at the initial temperature
+forAll(alphaSolid, celli)
 {
-    scalar alpha1_ = interpolateXY(T[celli], thermo.x(), thermo.y());
-    alpha1[celli] = min(max(alpha1_, 0.0), 1.0);
+    alphaSolid[celli] = thermo.fs(T[celli]);
 }
+alphaSolid.correctBoundaryConditions();
 
-alpha1.correctBoundaryConditions();
+//- Phase-change iteration of the energy equation on the thermoPath
+phaseChangeSolver phaseChange(T, alphaSolid, path, rho*Lf);
 
-volScalarField Cp
+//- Heat capacity, sensible enthalpy and conductivity of the cells
+volScalarField rhoCp
 (
     IOobject
     (
-        "Cp",
+        "rhoCp",
         runTime.name(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
     ),
     mesh,
-    dimensionedScalar("Cp", dimensionSet(0, 2, -2, -1, 0), 0.0),
+    dimensionedScalar(dimEnergy/dimVolume/dimTemperature, 0),
+    zeroGradientFvPatchScalarField::typeName
+);
+
+volScalarField rhoH
+(
+    IOobject
+    (
+        "rhoH",
+        runTime.name(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar(dimEnergy/dimVolume, 0),
     zeroGradientFvPatchScalarField::typeName
 );
 
@@ -93,14 +93,30 @@ volScalarField kappa
     (
         "kappa",
         runTime.name(),
-        mesh
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
     ),
     mesh,
-    dimensionedScalar("kappa", dimensionSet(1, 1, -3, -1, 0), 0.0),
+    dimensionedScalar(dimPower/dimLength/dimTemperature, 0),
     zeroGradientFvPatchScalarField::typeName
 );
 
-#include "updateProperties.H"
+//- Sensible enthalpy law of a cell: the solid-liquid mixture and, below the
+//  solidus, the powder it may still be
+const sensibleEnergy sensible
+{
+    alphaPowder.primitiveField(),
+    rhoCp.primitiveField(),
+    rhoH.primitiveField(),
+    thermo,
+    CpPowder,
+    rho.value()
+};
+
+#include "thermo/updateProperties.H"
+rhoCp.oldTime();
+rhoH.oldTime();
 
 Info<< "Reading field p_rgh\n" << endl;
 volScalarField p_rgh

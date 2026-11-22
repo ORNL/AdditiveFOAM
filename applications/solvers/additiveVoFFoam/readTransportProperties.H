@@ -10,18 +10,18 @@ IOdictionary transportProperties
     )
 );
 
-//- Metal
+//- Metal: phase-change path and solid-liquid thermodynamics
 thermoPath path(transportProperties, runTime);
 
-const metalThermo metal
+const solidLiquidThermo thermo
 (
     path,
     transportProperties.subDict("solid"),
     transportProperties.subDict("liquid")
 );
 
-const dimensionedScalar solidus("solidus", dimTemperature, metal.solidus());
-const dimensionedScalar liquidus("liquidus", dimTemperature, metal.liquidus());
+const dimensionedScalar solidus("solidus", dimTemperature, thermo.solidus());
+const dimensionedScalar liquidus("liquidus", dimTemperature, thermo.liquidus());
 
 const dimensionedScalar rho1
 (

@@ -1,60 +1,75 @@
 {
-    #include "thermo/thermoScheme.H"
+    //- Energy equation in conservative enthalpy form, linearized about the
+    //  state of the last projection: the implicit terms in T are the Newton
+    //  corrections of the explicit enthalpy terms, and vanish at convergence.
+    //  The conductivity of the step is that of its old state. The explicit
+    //  solution is forward Euler with the fluxes of the step at the old time;
+    //  otherwise the ddt scheme of T applies to the sensible and the latent
+    //  heat alike
+    const dimensionedScalar rDeltaT = 1.0/runTime.deltaT();
 
-    //- solve thermodynamic coupling with the optimum approach: a Newton
-    //  linearization of the solid fraction, then projection of each cell onto
-    //  the thermodynamic path at the energy of the linearized solution
-    volScalarField dFdT
-    (
-        IOobject
-        (
-            "dFdT",
-            runTime.name(),
-            mesh
-        ),
-        mesh,
-        dimensionedScalar("dFdT", dimless/dimTemperature, 0.0)
-    );
+    tmp<volScalarField> tFluxExplicit;
 
-    volScalarField T0("T0", T);
+    if (explicitSolve)
+    {
+        tFluxExplicit =
+            fvc::div(fvc::flux(phi, rhoH, "div(phi,T)"))
+          - fvc::laplacian(kappa, T)
+          - sources.qDot();
+    }
 
-    //- store the old-time fields before the cell updates below modify them
-    T.oldTime();
-    alpha1.oldTime();
+    //- Terms of the step that do not depend on the enthalpy state, assembled
+    //  once: convection of the sensible heat with the heat capacity of the
+    //  old state, conduction with its conductivity, and the heat source. The
+    //  convective flux of the enthalpy is corrected to the state of each
+    //  iteration below
+    tmp<surfaceScalarField> tRhoCpPhi;
+    tmp<fvScalarMatrix> tTEqnStep;
 
-    const scalar L = Lf.value();
+    if (!explicitSolve)
+    {
+        tRhoCpPhi = phi*linearInterpolate(rhoCp);
 
-    //- solid fraction before each solve, for the linearization and the
-    //  residual; allocated once
-    volScalarField alpha10("alpha10", alpha1);
+        tTEqnStep =
+            fvm::div(tRhoCpPhi(), T, "div(phi,T)")
+          - fvm::laplacian(kappa, T)
+          - sources.qDot();
+    }
 
     //- the implicit temperature limit is assembled only when one is set
     const bool limitT = Tmax.value() < vGreat;
 
-    for (int tCorr=0; tCorr < nThermoCorr; tCorr++)
+    phaseChange.begin(nThermoCorr, thermoTol);
+
+    while (phaseChange.loop())
     {
-        forAll(T, celli)
+        fvScalarMatrix TEqn(T, dimPower);
+
+        if (explicitSolve)
         {
-            T0[celli] = T[celli];
-            dFdT[celli] = thermo.dAlphadT(T[celli]);
-        }
-        T0.correctBoundaryConditions();
-        dFdT.correctBoundaryConditions();
+            fv::EulerDdtScheme<scalar> euler(mesh);
 
-        alpha10 = alpha1;
-
-        //- the energy equation with the linearized latent heat
-        tmp<fvScalarMatrix> tTEqnLatent
-        (
-            TEqn
-         ==
+            TEqn =
             (
-                (ddtScheme == "Euler")
-              ? rho*Lf*fv::EulerDdtScheme<scalar>(mesh).fvcDdt(alpha1)
-              : rho*Lf*fvc::ddt(alpha1)
-            )
-          + rDeltaT*rho*Lf*(fvm::Sp(dFdT, T) - dFdT*T0)
-        );
+                euler.fvmDdt(rhoCp, T) - euler.fvcDdt(rhoCp, T)
+              + euler.fvcDdt(rhoH)
+              + tFluxExplicit()
+             ==
+                phaseChange.latentSource(true)
+            );
+        }
+        else
+        {
+            TEqn =
+            (
+                fvm::ddt(rhoCp, T) - fvc::ddt(rhoCp, T) + fvc::ddt(rhoH)
+              + tTEqnStep()
+              - fvc::div(tRhoCpPhi(), T, "div(phi,T)")
+              + fvc::div(fvc::flux(phi, rhoH, "div(phi,T)"))
+             ==
+                phaseChange.latentSource()
+            );
+        }
 
         //- optional implicit limiting of temperature field
         if (limitT)
@@ -62,90 +77,18 @@
             const volScalarField A
             (
                 "A",
-                dimensionedScalar(rho.dimensions()*Cp.dimensions(), 1e15)
-               *pos(T - Tmax)
+                dimensionedScalar(rhoCp.dimensions(), 1e15)*pos(T - Tmax)
             );
 
-            tTEqnLatent.ref() += rDeltaT*(fvm::Sp(A, T) - A*Tmax);
+            TEqn += rDeltaT*(fvm::Sp(A, T) - A*Tmax);
         }
 
-        tTEqnLatent.ref().solve();
+        TEqn.solve();
 
-        //- put each cell on the path at the energy of the linearized solution,
-        //  Cp*(t - T*) = Lf*(alpha(t) - alpha*), whose left side minus right
-        //  side increases with t
+        phaseChange.project(sensible);
 
-        scalar residual = 0;
-
-        forAll(T, celli)
-        {
-            const scalar Tstar = T[celli];
-            const scalar c = Cp[celli]/L;
-            const scalar alphaStar =
-                alpha10[celli] + dFdT[celli]*(Tstar - T0[celli]);
-
-            //- a cell whose linearized state is on the path is its own
-            //  projection: every cell outside the melting range that stays
-            //  there, which is most of the mesh on every solve
-            if (thermo.alpha(Tstar) == alphaStar)
-            {
-                alpha1[celli] = alphaStar;
-                residual = max(residual, mag(alphaStar - alpha10[celli]));
-                continue;
-            }
-
-            auto f = [&](const scalar t)
-            {
-                return c*(t - Tstar) - (thermo.alpha(t) - alphaStar);
-            };
-
-            scalar lo = min(T0[celli], Tstar);
-            scalar hi = max(T0[celli], Tstar);
-            scalar span = max(hi - lo, scalar(1));
-            while (f(lo) > 0) { lo -= span; span *= 2; }
-            span = max(hi - lo, scalar(1));
-            while (f(hi) < 0) { hi += span; span *= 2; }
-
-            //- safeguarded Newton iteration: a Newton step inside the bracket,
-            //  otherwise bisection. It ends when the update no longer moves
-            //  the temperature or the bracket has closed
-            scalar t = Tstar;
-            const scalar tolT = 1e-12*max(mag(t), scalar(1));
-            for (label it = 0; it < 60; it++)
-            {
-                const scalar g = f(t);
-                if (g > 0) { hi = t; } else { lo = t; }
-                const scalar tn = t - g/(c - thermo.dAlphadT(t));
-                const scalar tNew = (tn > lo && tn < hi) ? tn : 0.5*(lo + hi);
-                const bool done = mag(tNew - t) <= tolT || hi - lo <= tolT;
-                t = tNew;
-                if (done) { break; }
-            }
-
-            //- on an isothermal step of the path the solid fraction follows
-            //  from the energy, within the step
-            const scalar eps = 1e-6*max(t, scalar(1));
-            T[celli] = t;
-            alpha1[celli] = min
-            (
-                max(alphaStar + c*(t - Tstar), thermo.alpha(t + eps)),
-                thermo.alpha(t - eps)
-            );
-            residual = max(residual, mag(alpha1[celli] - alpha10[celli]));
-        }
-
-        T.correctBoundaryConditions();
-        alpha1.correctBoundaryConditions();
-
-        //- check convergence: largest change of the solid fraction in a cell
-        reduce(residual, maxOp<scalar>());
-
-        Info<< "Thermo: iteration " << tCorr
-            << " residual: " << residual << endl;
-
-        if ((residual < thermoTol) && (tCorr > 0))
-        {
-            break;
-        }
+        #include "thermo/updateEnthalpy.H"
     }
+
+    #include "thermo/updateProperties.H"
 }
